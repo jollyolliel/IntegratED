@@ -19,6 +19,7 @@ import sqlalchemy as sa
 from extensions import db
 from helpers.ai import scope
 from helpers.ai.tools import ToolContext, ai_tool
+from helpers.refusal import Refusal
 from helpers.utils import day_bounds
 
 
@@ -116,7 +117,7 @@ def _column(model: type, table: sa.Table, field: str) -> Any:
         Any: The SQLAlchemy column.
     """
     if field in scope.REDACTED_FIELDS or field not in table.c:
-        raise ValueError(
+        raise Refusal(
             f"No filterable field {field!r}. Available: "
             + ", ".join(scope.visible_columns(model))
         )
@@ -192,7 +193,7 @@ def _day_clause(column: Any, op: str, value: str) -> Any:
         return column < end
     if op == "lt":
         return column < start
-    raise ValueError(f"Operator {op!r} does not take a date value.")
+    raise Refusal(f"Operator {op!r} does not take a date value.")
 
 
 # Dispatched, never built as a dict of all six expressions: SQLAlchemy rejects
@@ -223,15 +224,15 @@ def build_filters(model: type, table: sa.Table, filters: list[dict[str, Any]] | 
             # ValueError (not TypeError) is intentional: helpers/ai/loop.py feeds
             # ValueError/LookupError/PermissionError back to the model as a
             # correctable tool result, per docs/features/ai-assistant.md's tool contract.
-            raise ValueError("Each filter must be an object {field, op, value}.")  # noqa: TRY004
+            raise Refusal("Each filter must be an object {field, op, value}.")
         field = item.get("field")
         op = (item.get("op") or "eq").strip().lower()
         value = item.get("value")
 
         if not isinstance(field, str) or not field:
-            raise ValueError("Each filter needs a non-empty string 'field'.")
+            raise Refusal("Each filter needs a non-empty string 'field'.")
         if op not in OPERATORS:
-            raise ValueError(f"Unknown operator {op!r}. Use one of: {', '.join(OPERATORS)}.")
+            raise Refusal(f"Unknown operator {op!r}. Use one of: {', '.join(OPERATORS)}.")
         column = _column(model, table, field)
 
         if op == "is_null":
@@ -240,7 +241,7 @@ def build_filters(model: type, table: sa.Table, filters: list[dict[str, Any]] | 
             continue
         if op == "in":
             if not isinstance(value, (list, tuple)):
-                raise ValueError("Operator 'in' needs a list value.")
+                raise Refusal("Operator 'in' needs a list value.")
             clauses.append(column.in_([_coerce(column, v) for v in value]))
             continue
         if op == "contains":
@@ -498,7 +499,7 @@ def aggregate_records(ctx: ToolContext, entity: str, op: str, field: str, filter
     """
     key = str(op).strip().lower()
     if key not in AGGREGATIONS:
-        raise ValueError(f"Unknown aggregation {op!r}. Use one of: {', '.join(sorted(AGGREGATIONS))}.")
+        raise Refusal(f"Unknown aggregation {op!r}. Use one of: {', '.join(sorted(AGGREGATIONS))}.")
 
     model, _ = scope.resolve(entity)
     entity = scope.canonical_name(entity)

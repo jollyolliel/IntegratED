@@ -122,7 +122,12 @@ def _raw_clay_classes(markup: str, path: str) -> list[Finding]:
 
 
 #: A `<select …>` open tag (Jinja inside it may hold a `>`) and whether its first child is the button.
-SELECT_RE = re.compile(r"<select\b((?:\{\{.*?\}\}|\{%.*?%\}|[^>])*)>\s*(<button>\s*<selectedcontent)?", re.DOTALL)
+#: The alternatives never overlap — a `{{`/`{%` block cannot run past its own close and a lone `{`
+#: is only ever a `{` — so a tag that never closes fails in linear time instead of backtracking.
+SELECT_RE = re.compile(
+    r"<select\b((?:\{\{(?:(?!\}\}).)*\}\}|\{%(?:(?!%\}).)*%\}|\{(?![{%])|[^>{])*)>\s*(<button>\s*<selectedcontent)?",
+    re.DOTALL,
+)
 LISTBOX_RE = re.compile(r"\bmultiple\b|\bsize\s*=\s*[\"']?(?:[2-9]|\d\d)")
 
 

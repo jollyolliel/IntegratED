@@ -212,3 +212,28 @@ def test_translation_audit_resolves_a_template_relative_to_templates_or_the_repo
 ])
 def test_translation_audit_describes_jx_templates(path, role):
     assert translation_audit._template_role(path) == role
+
+
+# --- scripts/translation_audit.py talking to Gemini ---
+
+
+def test_the_gemini_key_travels_in_a_header_not_the_url(monkeypatch):
+    """A key in the query string ends up in tracebacks, proxy logs and request errors."""
+    sent = {}
+
+    class Reply:
+        status_code = 200
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [{"text": "{}"}]}}]}
+
+    def fake_post(url, **kwargs):
+        sent["url"], sent["headers"] = url, kwargs.get("headers", {})
+        return Reply()
+
+    monkeypatch.setattr(translation_audit, "GEMINI_API_KEY", "test-key-123")
+    monkeypatch.setattr(translation_audit.requests, "post", fake_post)
+
+    assert translation_audit.gemini_call("hi") == "{}"
+    assert "test-key-123" not in sent["url"]
+    assert sent["headers"]["x-goog-api-key"] == "test-key-123"

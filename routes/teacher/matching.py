@@ -4,6 +4,7 @@ from helpers import teacher_ops
 from helpers.analytics import capture_event
 from helpers.current_user import current_teacher as current_user
 from helpers.matching import FACTORS
+from helpers.refusal import refusal_message
 from helpers.utils import wants_json
 from routes.teacher import teacher_bp
 
@@ -62,7 +63,7 @@ def teacher_manual_match():
     except ValueError as exc:
         # Capacity is the teacher's decision — refuse rather than silently
         # evicting a learner the volunteer already has.
-        message = str(exc)
+        message = refusal_message(exc)
         if wants_json():
             return jsonify(success=False, message=message), 400
         abort(400, description=message)
@@ -126,7 +127,7 @@ def teacher_set_match_settings():
     try:
         levels = teacher_ops.set_match_settings(teacher, weights, spread)["levels"]
     except ValueError as exc:
-        message = str(exc)
+        message = refusal_message(exc)
         if wants_json():
             return jsonify(success=False, message=message), 400
         flash(message, "error")
@@ -159,7 +160,7 @@ def teacher_set_volunteer_capacity(volunteer_id):
     except (LookupError, PermissionError):
         abort(403)
     except ValueError as exc:
-        message = str(exc)
+        message = refusal_message(exc)
         if wants_json():
             return jsonify(success=False, message=message), 400
         abort(400, description=message)

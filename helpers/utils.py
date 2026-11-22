@@ -34,10 +34,20 @@ def wants_json() -> bool:
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 def safe_local_path(value: str | None) -> str | None:
-    """`value` if it is a same-site path (a safe `next=` redirect target), else None."""
-    if not value or not value.startswith("/") or value.startswith("//") or "\\" in value:
+    """`value` if it is a same-site path (a safe `next=` redirect target), else None.
+
+    Refuses backslashes and control characters as well as `//host`: browsers read `/\\host` as
+    `//host`, and drop tab and newline from a URL before parsing it, so `/<TAB>/host` is too.
+    """
+    if not value or not value.startswith("/") or "\\" in value:
         return None
-    return value
+    if any(ord(char) < 0x20 or ord(char) == 0x7F for char in value):
+        return None
+    parts = urlsplit(value)
+    if parts.scheme or parts.netloc:
+        return None
+    # Rebuilt behind a constant "/" so the result is a path by construction, not just by the checks above.
+    return "/" + value[1:]
 
 def same_site_referrer_path() -> str | None:
     """The path + query of the request's Referer when it is this site, else None."""

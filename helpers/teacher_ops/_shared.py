@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any, Protocol
 
 from extensions import db
+from helpers.refusal import Refusal
 from models import Teacher
 
 # Upper bound on learners per volunteer. Y2Y sessions are one-on-one time split
@@ -51,7 +52,7 @@ def _coerce_date(value: Any) -> date_cls:
     try:
         return datetime.strptime(str(value).strip(), "%Y-%m-%d").date()
     except (AttributeError, TypeError, ValueError):
-        raise ValueError("Enter a valid session date.")
+        raise Refusal("Enter a valid session date.")
 
 
 def _coerce_bool(value: Any) -> bool:
@@ -70,4 +71,4 @@ def _coerce_bool(value: Any) -> bool:
         return True
     if text in ("false", "0", "absent", "no"):
         return False
-    raise ValueError("is_present must be true or false.")
+    raise Refusal("is_present must be true or false.")

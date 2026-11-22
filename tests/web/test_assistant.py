@@ -112,6 +112,42 @@ def test_applying_a_change_writes_the_row(client, db_session, staged):
     assert staged["record"].duration == 2.5
 
 
+def test_a_refused_apply_explains_why(client, db_session, staged):
+    client.post(f"/assistant/changes/{staged['change_id']}/apply")
+
+    response = client.post(f"/assistant/changes/{staged['change_id']}/apply")
+
+    assert response.json["message"] == "That change is already applied."
+
+
+def test_an_unexpected_apply_error_does_not_leak_its_text(client, db_session, staged, monkeypatch):
+    from helpers.ai import staging
+
+    def explode(*_args, **_kwargs):
+        raise ValueError("internal detail")
+
+    monkeypatch.setattr(staging, "apply_change", explode)
+
+    response = client.post(f"/assistant/changes/{staged['change_id']}/apply")
+
+    assert response.status_code == 400
+    assert "internal detail" not in response.json["message"]
+
+
+def test_apply_all_does_not_leak_unexpected_error_text(client, db_session, staged, monkeypatch):
+    from helpers.ai import staging
+
+    def explode(*_args, **_kwargs):
+        raise ValueError("internal detail")
+
+    monkeypatch.setattr(staging, "apply_change", explode)
+
+    response = client.post("/assistant/changes/apply-all")
+
+    assert response.json["results"][0]["status"] == "failed"
+    assert "internal detail" not in response.json["results"][0]["error"]
+
+
 def test_applying_a_stale_change_reports_a_conflict(client, db_session, staged):
     staged["record"].duration = 9.0
     db_session.commit()

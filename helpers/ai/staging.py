@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any, TypedDict
 from extensions import db
 from helpers import teacher_ops
 from helpers.ai import scope
+from helpers.refusal import Refusal, refusal_message
 from models import AssistantChange
 
 if TYPE_CHECKING:
@@ -154,7 +155,7 @@ def stage(ctx: ToolContext, tool_name: str, args: dict[str, Any], summary_prefix
     """
     write_op = WRITE_OPS.get(tool_name)
     if write_op is None:
-        raise ValueError(f"No staged write named {tool_name!r}.")
+        raise Refusal(f"No staged write named {tool_name!r}.")
 
     teacher = ctx.teacher
     resolved = write_op.validate(teacher, args)
@@ -273,17 +274,17 @@ def update_change(teacher: Teacher, change_id: int, values: dict[str, Any]) -> A
     """
     change = get_change(teacher, change_id)
     if change.status != "pending":
-        raise ValueError("Only a pending change can be edited.")
+        raise Refusal("Only a pending change can be edited.")
 
     write_op = WRITE_OPS.get(change.tool_name)
     if write_op is None:
-        raise ValueError(f"No staged write named {change.tool_name!r}.")
+        raise Refusal(f"No staged write named {change.tool_name!r}.")
 
     editable = write_op.editable_columns()
     after = dict(change.after or {})
     for column, value in (values or {}).items():
         if column not in editable:
-            raise ValueError(f"{column!r} cannot be edited on this change.")
+            raise Refusal(f"{column!r} cannot be edited on this change.")
         after[column] = value
 
     # Re-validate against the merged arguments so an edit that breaks an
@@ -389,16 +390,16 @@ def apply_change(teacher: Teacher, change_id: int) -> AssistantChange:
     """
     change = get_change(teacher, change_id)
     if change.status != "pending":
-        raise ValueError(f"That change is already {change.status}.")
+        raise Refusal(f"That change is already {change.status}.")
 
     write_op = WRITE_OPS.get(change.tool_name)
     if write_op is None:
-        raise ValueError(f"No staged write named {change.tool_name!r}.")
+        raise Refusal(f"No staged write named {change.tool_name!r}.")
 
     if change.depends_on_id:
         parent = db.session.get(AssistantChange, change.depends_on_id)
         if parent is not None and parent.status != "applied":
-            raise ValueError(
+            raise Refusal(
                 "The change this one depends on was not applied, so this one is skipped."
             )
 
@@ -417,7 +418,7 @@ def apply_change(teacher: Teacher, change_id: int) -> AssistantChange:
     except (ValueError, LookupError, PermissionError) as exc:
         db.session.rollback()
         change.status = "pending"
-        change.error = str(exc)
+        change.error = _failure_text(exc)
         db.session.commit()
         raise
 
@@ -426,6 +427,23 @@ def apply_change(teacher: Teacher, change_id: int) -> AssistantChange:
     change.error = None
     db.session.commit()
     return change
+
+
+def _failure_text(exc: Exception) -> str:
+    """What the review panel says about a change that could not be applied.
+
+    Args:
+        exc (Exception): What the write op raised.
+
+    Returns:
+        str: A `Refusal`'s own message, or a fixed line per exception type — never the raw text
+        of an exception nobody wrote for the teacher.
+    """
+    if isinstance(exc, LookupError):
+        return "That record no longer exists."
+    if isinstance(exc, PermissionError):
+        return "That record belongs to another teacher."
+    return refusal_message(exc)
 
 
 def reject_change(teacher: Teacher, change_id: int) -> AssistantChange:
@@ -440,7 +458,7 @@ def reject_change(teacher: Teacher, change_id: int) -> AssistantChange:
     """
     change = get_change(teacher, change_id)
     if change.status != "pending":
-        raise ValueError(f"That change is already {change.status}.")
+        raise Refusal(f"That change is already {change.status}.")
     change.status = "rejected"
     db.session.commit()
     return change
@@ -462,7 +480,7 @@ def apply_all(teacher: Teacher) -> list[ApplyResult]:
             results.append({"id": change.id, "status": applied.status,
                             "error": applied.error})
         except (ValueError, LookupError, PermissionError) as exc:
-            results.append({"id": change.id, "status": "failed", "error": str(exc)})
+            results.append({"id": change.id, "status": "failed", "error": _failure_text(exc)})
     return results
 
 

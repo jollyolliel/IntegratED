@@ -35,6 +35,7 @@ Thumbs.db
 desktop.ini
 
 # ── Claude Code (local-only parts; shared config is tracked) ─────────────────
+CLAUDE.local.md
 .claude/docs/
 .claude/state/
 .claude/worktrees/

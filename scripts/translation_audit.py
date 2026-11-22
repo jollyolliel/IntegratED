@@ -54,9 +54,11 @@ import os
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = "gemini-3.1-flash-lite"
+# The key goes in the `x-goog-api-key` header (see gemini_call), never the query string,
+# where it would be printed in any requests error or traceback.
 GEMINI_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    f"{GEMINI_MODEL}:generateContent"
 )
 
 # All non-English languages
@@ -409,7 +411,9 @@ def gemini_call(prompt: str, *, json_mode: bool = True, temperature: float = 0.2
         },
     }
     for attempt in range(4):
-        resp = requests.post(GEMINI_URL, json=payload, timeout=120)
+        resp = requests.post(
+            GEMINI_URL, json=payload, headers={"x-goog-api-key": GEMINI_API_KEY}, timeout=120
+        )
         if resp.status_code == 429:
             wait = 20 * (attempt + 1)
             print(f"  Rate-limited — waiting {wait}s…")

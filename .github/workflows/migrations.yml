@@ -28,6 +28,10 @@ on:
       - ".github/workflows/migrations.yml"
   workflow_dispatch:
 
+# Read-only token: these jobs only check out and test the code.
+permissions:
+  contents: read
+
 jobs:
   postgres-replay:
     runs-on: ubuntu-latest

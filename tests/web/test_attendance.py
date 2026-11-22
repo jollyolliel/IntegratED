@@ -96,6 +96,67 @@ def test_attendance_rejects_a_learner_outside_the_teacher_roster(
     assert response.status_code == 403
 
 
+def _logged_record_id(client, db_session, learner, volunteer):
+    log_attendance(client, [{"learner_id": learner.id, "volunteer_id": volunteer.id, "status": "present", "duration": 1}])
+    return db_session.scalars(select(Attendance.id).filter_by(user_id=learner.id)).one()
+
+
+def test_updating_attendance_never_sends_the_teacher_off_site(client, db_session, authenticated_teacher, roster):
+    """A same-site Origin passes the cross-site check, so the Referer must not be trusted as the target."""
+    learner, volunteer, _ = roster
+    record_id = _logged_record_id(client, db_session, learner, volunteer)
+
+    response = client.post(
+        "/teacher/attendance/update",
+        data={"attendance_id": record_id, "date": "2026-08-10", "status": "present", "duration": "2"},
+        headers={"Origin": "http://localhost", "Referer": "https://evil.example/phish"},
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/teacher/attendance")
+
+
+def test_updating_attendance_returns_to_the_same_site_page_it_came_from(
+    client, db_session, authenticated_teacher, roster
+):
+    learner, volunteer, _ = roster
+    record_id = _logged_record_id(client, db_session, learner, volunteer)
+
+    response = client.post(
+        "/teacher/attendance/update",
+        data={"attendance_id": record_id, "date": "2026-08-10", "status": "present", "duration": "2"},
+        headers={"Referer": "http://localhost/teacher/attendance/history?page=2"},
+    )
+
+    assert response.headers["Location"] == "/teacher/attendance/history?page=2"
+
+
+def test_an_unexpected_attendance_error_does_not_leak_its_text(
+    client, db_session, authenticated_teacher, roster, monkeypatch
+):
+    from helpers import teacher_ops
+
+    def explode(*_args, **_kwargs):
+        raise ValueError("psycopg internals: relation attendance_pkey")
+
+    monkeypatch.setattr(teacher_ops, "log_attendance_batch", explode)
+    learner, _, _ = roster
+
+    response = log_attendance(client, [{"learner_id": learner.id, "status": "present", "duration": 1}])
+
+    assert response.status_code == 400
+    assert "psycopg" not in response.json["message"]
+
+
+def test_an_attendance_refusal_still_explains_itself(client, db_session, authenticated_teacher, roster):
+    learner, _, _ = roster
+
+    response = log_attendance(client, [{"learner_id": learner.id, "status": "present", "duration": 0}])
+
+    assert response.status_code == 400
+    assert "greater than zero" in response.json["message"]
+
+
 def register_hours_inputs(client, date="2026-08-10"):
     """The register's hours inputs: ({learner id: input}, {volunteer id: input})."""
     from tests.support.html import parse

@@ -90,6 +90,13 @@ def test_switching_language_ignores_an_off_site_referrer_path(client, db_session
     assert response.status_code == 403
 
 
+@pytest.mark.parametrize("target", ["/\t/evil.example", "/\n/evil.example"])
+def test_switching_language_refuses_a_target_a_browser_would_read_as_off_site(client, db_session, target):
+    response = client.post("/set-language", data={"lang": "es", "next": target})
+
+    assert_redirects_to(response, "/")
+
+
 # ── flash messages reach the page as valid JSON ──────────────────────────────
 
 

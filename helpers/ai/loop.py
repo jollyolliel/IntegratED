@@ -19,6 +19,7 @@ from extensions import db
 from helpers.ai import registry, scope, staging
 from helpers.ai.provider import ProviderError
 from helpers.ai.tools import ToolContext, all_tools, get_tool, tool_specs
+from helpers.refusal import Refusal
 from models import AssistantConversation, AssistantMessage, Teacher
 
 logger = logging.getLogger(__name__)
@@ -237,7 +238,7 @@ def run_turn(teacher_id: int, conversation_id: int, user_text: str, lang: str = 
             started = time.monotonic()
             try:
                 if tool is None:
-                    raise ValueError(f"No tool named {call.name!r}.")
+                    raise Refusal(f"No tool named {call.name!r}.")
                 result = tool.fn(ctx, **(call.arguments or {}))
                 ok = True
             except (ValueError, LookupError, PermissionError) as exc:

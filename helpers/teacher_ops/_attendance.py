@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any, TypedDict
 
 from extensions import db
+from helpers.refusal import Refusal
 from helpers.teacher_ops._shared import _coerce_bool, _coerce_date, _owned
 from helpers.utils import day_bounds
 from models import Attendance, Learner, Teacher, Volunteer
@@ -115,13 +116,13 @@ def validate_update_user_attendance(teacher: Teacher, attendance_id: int, date: 
         try:
             new_duration = float(duration)
         except (TypeError, ValueError):
-            raise ValueError("Enter a duration greater than zero for a session that took place.")
+            raise Refusal("Enter a duration greater than zero for a session that took place.")
         if new_duration <= 0:
-            raise ValueError("Enter a duration greater than zero for a session that took place.")
+            raise Refusal("Enter a duration greater than zero for a session that took place.")
     else:
         new_duration = float(record.duration or 0)
         if new_duration <= 0:
-            raise ValueError("Enter a duration greater than zero for a session that took place.")
+            raise Refusal("Enter a duration greater than zero for a session that took place.")
 
     new_notes = record.notes
     if notes is not None:
@@ -185,7 +186,7 @@ def _resolve_side(label: str, is_present: bool, duration_raw: DurationInput | No
         try:
             duration = float(duration_raw)
         except (TypeError, ValueError):
-            raise ValueError(f"Invalid duration for {label}.")
+            raise Refusal(f"Invalid duration for {label}.")
     elif default_duration is not None:
         duration = default_duration
     elif mirror_duration is not None:
@@ -194,9 +195,9 @@ def _resolve_side(label: str, is_present: bool, duration_raw: DurationInput | No
         # duration for a mirrored volunteer.
         duration = mirror_duration
     else:
-        raise ValueError(f"Enter a duration for {label}'s session.")
+        raise Refusal(f"Enter a duration for {label}'s session.")
     if duration <= 0:
-        raise ValueError(f"Enter a duration greater than zero for {label}'s session.")
+        raise Refusal(f"Enter a duration greater than zero for {label}'s session.")
     return duration
 
 
@@ -215,7 +216,7 @@ def validate_log_attendance_batch(teacher: Teacher, date: DateInput, pairs: list
         AttendanceBatch: The batch normalized and ready to write.
     """
     if not pairs:
-        raise ValueError("No pairs to log.")
+        raise Refusal("No pairs to log.")
 
     session_date = _coerce_date(date)
 
@@ -224,7 +225,7 @@ def validate_log_attendance_batch(teacher: Teacher, date: DateInput, pairs: list
         try:
             default = float(default_duration)
         except (TypeError, ValueError):
-            raise ValueError("Invalid default duration.")
+            raise Refusal("Invalid default duration.")
 
     resolved_pairs: list[ResolvedPair] = []
     for pair in pairs:
@@ -234,7 +235,7 @@ def validate_log_attendance_batch(teacher: Teacher, date: DateInput, pairs: list
             # must be catchable the same way as every other one in this
             # function, and by the assistant loop's ValueError/LookupError/
             # PermissionError -> fed-back-to-model contract (docs/features/ai-assistant.md).
-            raise ValueError("Each pair needs a learner_id.")  # noqa: TRY004
+            raise Refusal("Each pair needs a learner_id.")
         learner = _owned(Learner, learner_id, teacher, "learner")
         label = learner.name or learner.username
 

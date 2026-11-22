@@ -13,8 +13,9 @@ at staging time rather than at apply time.
 Exceptions:
   ``LookupError``     — no such row (route: 404)
   ``PermissionError`` — row belongs to another teacher (route: 403)
-  ``ValueError``      — the request is malformed or breaks an invariant (400);
-                        ``str(e)`` is the message shown to the user.
+  ``Refusal``         — a ``ValueError``: the request is malformed or breaks an
+                        invariant (400); routes show it via ``refusal_message(e)``,
+                        which hides the text of any other exception.
 
 Layout:
   _shared.py      _owned ownership check, date/bool coercion, MAX_VOLUNTEER_CAPACITY

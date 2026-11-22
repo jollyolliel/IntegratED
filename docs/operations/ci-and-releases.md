@@ -7,6 +7,7 @@ The workflows in `.github/workflows/` and the labels that steer them.
 | Workflow | Trigger | Does |
 |---|---|---|
 | `tests.yml` | every push / PR to `master` | `ruff check`, `ty check`, then the full test suite with coverage (floor 78%). Dependabot PRs run a smoke job instead (install without dev deps, `import main`) |
+| `codeql.yml` | every push / PR to `master`, weekly, manually | CodeQL code scanning for Python, JS and the workflows, configured by `.github/codeql/codeql-config.yml` (see [Security scanning](#security-scanning)) |
 | `migrations.yml` | changes to migrations, models or the lock | replays every migration on a real Postgres 17 and diffs against the models — catches SQLite-only migrations |
 | `deploy.yml` | push to `master` | builds and deploys ([deployment.md](deployment.md)) unless skipped — **independent of tests** |
 | `auto-tag.yml` | after `tests.yml` succeeds on `master` | tags `vX.Y.Z` and creates the GitHub Release |
@@ -33,8 +34,10 @@ Commit-message wording: the `.claude/skills/create-commit-message` skill.
 
 ## Dependabot
 
-One grouped weekly PR per ecosystem (Python via uv, GitHub Actions), labelled
-`release:patch` + `deploy:skip`. Dependabot PRs never deploy (skipped by
+One grouped weekly PR per ecosystem (Python via uv, GitHub Actions, the
+Docker base images), labelled `release:patch` + `deploy:skip`. Security
+updates arrive as their own grouped PR per ecosystem, with the same labels,
+as soon as an advisory lands. Dependabot PRs never deploy (skipped by
 author, not only by label) and skip the full suite; the full suite runs on the
 merge commit instead, so tagging is still gated on it.
 
@@ -54,6 +57,17 @@ verdict. Its shape is deliberate:
   therefore authored by `github-actions[bot]`. `allowed_bots:
   "dependabot[bot]"` lets the bot-triggered run past the action's human-actor
   check.
+
+## Security scanning
+
+`codeql.yml` is CodeQL's *advanced* setup, so GitHub's default setup must stay
+off (it rejects uploads from a workflow while default setup is on). The config
+runs `security-and-quality` (a superset of the default and
+`security-extended` suites), the `local` threat model (CLI arguments,
+environment variables and files count as untrusted, which is what reaches
+`scripts/` and `commands.py`), and the GitHub Security Lab community packs.
+Findings land under the repository's *Security → Code scanning*. How to report
+a vulnerability: `SECURITY.md`.
 
 ## Workflow hygiene
 

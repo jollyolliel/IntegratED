@@ -1,0 +1,35 @@
+name: "IntegratED CodeQL configuration"
+
+# Read by .github/workflows/codeql.yml (advanced setup). Goal: catch as much as CodeQL can,
+# on top of the default suite that GitHub's default setup runs.
+
+# `security-and-quality` is a superset of `security-extended`, which is a superset of the
+# default suite: every default query, the lower-precision security queries, and the
+# maintainability/correctness queries.
+queries:
+  - uses: security-and-quality
+
+# The default threat model only treats remote input (HTTP requests) as tainted. `local` adds
+# command-line arguments, environment variables, files and stdin — the inputs of scripts/ and
+# commands.py, which the remote model never looks at.
+threat-models: local
+
+packs:
+  python:
+    # GitHub Security Lab community queries (extra sinks, frameworks and audit checks).
+    - githubsecuritylab/codeql-python-queries
+    # Credential checks the standard suites leave out.
+    - codeql/python-queries:Security/CWE-798/HardcodedCredentials.ql
+  javascript:
+    - githubsecuritylab/codeql-javascript-queries
+    - codeql/javascript-queries:Security/CWE-798/HardcodedCredentials.ql
+    - codeql/javascript-queries:Security/CWE-313/PasswordInConfigurationFile.ql
+  actions:
+    - githubsecuritylab/codeql-actions-queries
+
+paths-ignore:
+  # Third-party and generated code: findings there are not ours to fix.
+  - .venv
+  - node_modules
+  - static/css/tailwind.css
+  - "**/__pycache__"

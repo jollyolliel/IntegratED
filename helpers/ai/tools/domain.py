@@ -19,6 +19,7 @@ from helpers.learning import (
     get_recommended_worksheets,
 )
 from helpers.matching import Scorer
+from helpers.refusal import Refusal
 from helpers.teacher_ops import _owned
 from helpers.utils import day_bounds
 from models import (
@@ -176,7 +177,7 @@ def _day(value: Any, what: str) -> dt.date:
     try:
         return dt.date.fromisoformat(str(value).strip())
     except (AttributeError, TypeError, ValueError):
-        raise ValueError(f"{what} must be a date like 2026-08-17.")
+        raise Refusal(f"{what} must be a date like 2026-08-17.")
 
 
 def _window(date_from: Any, date_to: Any) -> tuple[dt.datetime, dt.datetime]:
@@ -192,7 +193,7 @@ def _window(date_from: Any, date_to: Any) -> tuple[dt.datetime, dt.datetime]:
     start = day_bounds(_day(date_from, "date_from"))[0]
     end = day_bounds(_day(date_to, "date_to"))[1]
     if end <= start:
-        raise ValueError("date_to must not be before date_from.")
+        raise Refusal("date_to must not be before date_from.")
     return start, end
 
 
@@ -456,7 +457,7 @@ def progress_between(ctx: ToolContext, date_from: str, date_to: str, learner_ids
         wanted = {int(i) for i in learner_ids}
         unknown = wanted - set(roster)
         if unknown:
-            raise ValueError(
+            raise Refusal(
                 "Not your learners: " + ", ".join(str(i) for i in sorted(unknown))
             )
         roster = {i: roster[i] for i in wanted}
@@ -569,7 +570,7 @@ def attendance_summary(ctx: ToolContext, date_from: str, date_to: str, group_by:
     start, end = _window(date_from, date_to)
     key = (group_by or "learner").strip().lower()
     if key not in ("learner", "volunteer", "day"):
-        raise ValueError("group_by must be 'learner', 'volunteer' or 'day'.")
+        raise Refusal("group_by must be 'learner', 'volunteer' or 'day'.")
 
     # Learners' own records only — the canonical one-row-per-session view; a
     # pair's mirrored volunteer record isn't a second session.
@@ -675,7 +676,7 @@ def _auto_match_candidates(teacher: Teacher) -> tuple[list[Learner], list[Volunt
         tuple[list[Learner], list[Volunteer]]: Unmatched learners, volunteers with an open slot.
     """
     if not teacher.school_id:
-        raise ValueError("You are not assigned to a school, so matching has no pool to draw from.")
+        raise Refusal("You are not assigned to a school, so matching has no pool to draw from.")
 
     learners = list(db.session.scalars(
         db.select(Learner).filter_by(teacher_id=teacher.id, is_matched=False)

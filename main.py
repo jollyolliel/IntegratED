@@ -198,8 +198,11 @@ def create_app(config_class=None):
         try:
             db.session.execute(db.text("SELECT 1"))
             return jsonify({"status": "ok"}), 200
-        except Exception as e:  # noqa: BLE001 - health check must report ANY DB failure, not just recognized ones
-            return jsonify({"status": "error", "detail": str(e)}), 503
+        except Exception:
+            # Any DB failure, not just recognised ones. The driver's message names hosts and
+            # users, so it goes to the log, not to whoever probed /health.
+            app.logger.exception("Health check could not reach the database")
+            return jsonify({"status": "error"}), 503
 
     # Audio: a cache in front of ElevenLabs — stored file, else generated if listed (helpers/audio_cache.py)
     from helpers import audio_cache
