@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0B0828"/>
+      <stop offset=".3" stop-color="#171045"/>
+      <stop offset=".55" stop-color="#25165F"/>
+      <stop offset=".75" stop-color="#3A2180"/>
+      <stop offset=".9" stop-color="#5A2E95"/>
+      <stop offset="1" stop-color="#8E4AA6"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="1000" fill="url(#sky)"/>
+
+  <!-- Horizon glow over the launch moon: three flat tonal steps. -->
+  <path d="M-20 1000 V900 C80 870 170 880 220 868 C290 852 360 866 420 880 V1000Z" fill="#A65AA8" opacity=".35"/>
+  <path d="M-20 1000 V940 C90 918 180 928 240 916 C300 904 360 914 420 926 V1000Z" fill="#C46FAE" opacity=".35"/>
+
+  <!-- Lower nebula band: magenta over violet, inner shapes brighter. -->
+  <path d="M-30 690 C40 640 120 668 190 640 C260 612 330 600 430 640 V760 C350 744 300 780 220 772 C140 764 70 800 -30 780Z" fill="#B04BB2" opacity=".2"/>
+  <path d="M-30 704 C50 676 110 690 180 668 C250 646 320 640 430 666 V730 C340 722 290 748 210 742 C140 736 60 760 -30 748Z" fill="#E070C0" opacity=".18"/>
+  <path d="M60 704 C120 690 170 696 220 684 C270 672 310 676 350 688 C300 704 250 716 200 716 C150 716 110 718 60 704Z" fill="#FFB0DA" opacity=".18"/>
+
+  <!-- Upper nebula band: cool blue, sweeping the other way. -->
+  <path d="M-30 300 C60 330 140 300 210 320 C290 342 350 322 430 290 V380 C350 400 290 420 210 404 C140 390 50 420 -30 400Z" fill="#4A5BE0" opacity=".2"/>
+  <path d="M30 336 C100 350 150 330 210 344 C270 358 320 346 380 326 C330 370 270 380 210 372 C150 366 90 372 30 336Z" fill="#7F8CFF" opacity=".18"/>
+
+  <!-- Distant galaxies. -->
+  <g transform="translate(316 196) rotate(-24)">
+    <ellipse rx="30" ry="9" fill="#E8DCFF" opacity=".16"/>
+    <ellipse rx="18" ry="5.5" fill="#E8DCFF" opacity=".26"/>
+    <ellipse rx="7" ry="2.6" fill="#FFFFFF" opacity=".7"/>
+  </g>
+  <g transform="translate(72 520) rotate(18)">
+    <ellipse rx="22" ry="7" fill="#FFD9F0" opacity=".16"/>
+    <ellipse rx="12" ry="4" fill="#FFD9F0" opacity=".28"/>
+    <ellipse rx="4.5" ry="2" fill="#FFFFFF" opacity=".7"/>
+  </g>
+  <g transform="translate(250 860) rotate(-8)">
+    <ellipse rx="16" ry="5" fill="#E8DCFF" opacity=".18"/>
+    <ellipse rx="4" ry="1.6" fill="#FFFFFF" opacity=".6"/>
+  </g>
+
+  <!-- A few bright named stars with cross glints. -->
+  <g fill="#FFF6DD">
+    <path transform="translate(118 120)" d="M0-11 C1-2.5 2.5-1 11 0 C2.5 1 1 2.5 0 11 C-1 2.5-2.5 1-11 0 C-2.5-1-1-2.5 0-11Z"/>
+    <path transform="translate(352 448) scale(.8)" d="M0-11 C1-2.5 2.5-1 11 0 C2.5 1 1 2.5 0 11 C-1 2.5-2.5 1-11 0 C-2.5-1-1-2.5 0-11Z"/>
+    <path transform="translate(40 840) scale(.7)" d="M0-11 C1-2.5 2.5-1 11 0 C2.5 1 1 2.5 0 11 C-1 2.5-2.5 1-11 0 C-2.5-1-1-2.5 0-11Z"/>
+  </g>
+</svg>

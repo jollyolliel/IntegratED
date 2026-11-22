@@ -1,0 +1,21 @@
+/* Base — body defaults + display font (overrides theme.html dark defaults for staff/admin pages) */
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  background-color: var(--color-surface-page);
+  color: var(--color-ink-heading);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Preflight's `[hidden]` is no more specific than a component class and loads before them, so
+   `.btn-clay { display: inline-flex }` would keep a `hidden` button on screen. */
+[hidden]:where(:not([hidden="until-found"])) { display: none !important; }
+
+/* Every heading is in the display typeface; a heading that wants the body font says so with a
+   `font-sans` utility. */
+h1, h2, h3, h4 { font-family: 'Baloo 2', system-ui, sans-serif; }
+
+/* .display-font: Baloo 2 for a non-heading — the logo, big numbers. Free for any template. */
+.display-font { font-family: 'Baloo 2', system-ui, sans-serif; }

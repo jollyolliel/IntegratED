@@ -1,0 +1,19 @@
+{#- The shell of the six learner games: a full-bleed <Page> with no footer, the `games` styles
+    and GSAP, plus the level-up modal, the completion overlay and `window.GameKit` (questions,
+    answer checks, completion, HUD, shuffle, speech — components/game_kit.jx) after the game itself.
+    `styles` adds partials to `games`; `lesson` feeds the completion overlay. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/level_up_modal.jx" as LevelUpModal #}
+{#import "@components/completion_overlay.jx" as CompletionOverlay #}
+{#import "@components/game_kit.jx" as GameKit #}
+{#def title, lesson, styles="", head="", body_class=None #}
+{%- set game_head %}<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  {{ head }}{% endset -%}
+<Page title={{ title }} styles={{ ("games " ~ styles) | trim }} head={{ game_head }} footer={{ false }}
+  body_class={{ body_class }} attrs={{ attrs }}>
+  {#- First: each game's inline script calls GameKit as it runs. #}
+  <GameKit />
+  {{ content }}
+  <LevelUpModal />
+  <CompletionOverlay lesson={{ lesson }} />
+</Page>

@@ -1,0 +1,19 @@
+{#- Every school on the platform. The pager swaps only the table. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@page_components/administrator/schools_results.jx" as SchoolsResults #}
+{#import "@components/shell/main.jx" as Main #}
+{#def school_stats, page, page_count #}
+<Page title="Schools — Admin">
+  <Main>
+    <div class="flex justify-between items-start mb-8">
+      <div>
+        <BackLink href={{ url_for('administrator.dashboard') }} label="Dashboard" />
+        <h1 class="display-font text-4xl font-extrabold text-sky-950 mt-1">{{ t('admin.schools.heading') }}</h1>
+      </div>
+      <Button href={{ url_for('administrator.create_school') }} icon="plus">{{ t('admin.schools.new_school') }}</Button>
+    </div>
+    <SchoolsResults school_stats={{ school_stats }} page={{ page }} page_count={{ page_count }} />
+  </Main>
+</Page>

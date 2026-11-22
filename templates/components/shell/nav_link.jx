@@ -1,0 +1,18 @@
+{#- One header nav link. `bar` is the desktop link (its `data-label` reserves the bold width so
+    the row doesn't shift, and the "More" overflow script reads it); `menu` is a mobile-menu row.
+    `pulse` adds the "new" marker to the learner's Learn link. Content, when given, replaces the
+    label text (an icon + label row). -#}
+{#def href, label, active=False, variant=None, pulse=False #}
+{%- set variant = prop("NavLink", "variant", variant) -%}
+{%- if variant == "bar" -%}
+<a {{ attrs.render(class=("nav-link-active" if active else "nav-link-inactive") ~ (" relative" if pulse else ""), href=href, data_label=label) }}>
+  {%- if content %}{{ content }}{% else %}{{ label }}{% endif -%}
+  {%- if pulse %}<span class="absolute -top-1 -end-1 w-2.5 h-2.5 bg-sky-500 rounded-full learn-pulse-dot" aria-hidden="true"></span>{% endif -%}
+</a>
+{%- else -%}
+{%- set state = "bg-sky-100 text-sky-700 border border-sky-200" if active else "text-gray-600 hover:bg-sky-50 hover:text-sky-700" -%}
+<a {{ attrs.render(class="block px-4 py-3 rounded-xl text-sm font-medium " ~ state ~ " transition-colors", href=href) }}>
+  {%- if content %}{{ content }}{% else %}{{ label }}{% endif -%}
+  {%- if pulse %}<span class="inline-flex items-center gap-1 ms-1 text-xs font-bold uppercase text-sky-600"><span class="w-1.5 h-1.5 rounded-full bg-sky-500" aria-hidden="true"></span>{{ t('nav.new') }}</span>{% endif -%}
+</a>
+{%- endif %}

@@ -1,0 +1,12 @@
+id: no-arbitrary-color
+valid:
+  - '<div class="bg-primary w-[300px] rounded-[10px]"></div>'
+  - '<div class="[--nav-fg:var(--color-ink-muted)]"></div>'
+  - '<div class="p-4 {% if done %}bg-accent{% endif %}"></div>'
+invalid:
+  - '<div class="bg-[#F3F4F6]"></div>'
+  - '<button class="btn-clay btn-flat hover:border-[#D1D5DB]"></button>'
+  - '<a class="btn-nav-login [--nav-fg:#6b7280]"></a>'
+  - '<div class="shadow-[3px_3px_0_#be123c]"></div>'
+  - '<div class="p-4 {% if done %}bg-[#fff]{% endif %}"></div>'
+  - '<div class="bg-[rgba(0,0,0,0.5)]"></div>'

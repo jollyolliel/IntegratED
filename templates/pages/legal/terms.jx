@@ -1,0 +1,67 @@
+{#- The terms of use: the policy prose inside <LegalPage>, linking across to the privacy policy. -#}
+{#import "@components/shell/legal_page.jx" as LegalPage #}
+<LegalPage title={{ t('terms.page_title') }} updated="25 May 2026" other_href={{ url_for('base.privacy') }} other_label="Privacy Policy" other_icon="lock-closed">
+  <p>Welcome to the IntegratED's Terms of Use agreement. For purposes of this agreement, "Site" refers to the Company's website. "Service" refers to the Company's services accessed via the Site, in which users can learn and acquire basic language skills and knowledge in English and a local language<sup>1</sup>, learn basic digital literacy<sup>2</sup>, while also connecting with local student aged volunteers. The terms "we," "us," and "our" refer to the Company. "You" refers to you, as a user of our Site or our Service.</p>
+
+  <p>The following Terms of Use apply when you view or use the Service. Please review the following terms carefully. By accessing or using the Service, you signify your agreement to these Terms of Use. <strong>If you do not agree to be bound by these Terms of Use in their entirety, you may not access or use the Service.</strong></p>
+
+  <h2>Privacy Policy</h2>
+  <p>The Company respects the privacy of its Service users. Please refer to the Company's <a href="{{ url_for('base.privacy') }}">Privacy Policy</a>, which explains how we collect, use, and disclose information that pertains to your privacy. When you access or use the Service, you signify your agreement to the Privacy Policy as well as these Terms of Use.</p>
+
+  <h2>About the Service</h2>
+  <p>The Service allows you to learn and acquire basic language skills and knowledge in English and a local language, learn basic digital literacy, while also connecting with local student aged volunteers. Administrators buy a subscription that allows for both student and volunteer accounts to be made and used.</p>
+  <p>Users make a username and password or sign in with their email (must be compatible domain with a subscription affiliation) and use this as their log-in credentials.</p>
+
+  <h2>Registration; Rules for User Conduct and Use of the Service</h2>
+  <p>You need to be at least 15 years old to register for and use the Service.</p>
+  <p>If you are a user who signs up for the Service, you will create a personalized account which includes a unique username and a password to access the Service and to receive messages from the Company. You agree to notify us immediately of any unauthorized use of your password and/or account. The Company will not be responsible for any liabilities, losses, or damages arising out of the unauthorized use of your member name, password and/or account.</p>
+
+  <h2>Use Restrictions</h2>
+  <p>Your permission to use the Site is conditioned upon the following use, posting and conduct restrictions. You agree that you will not under any circumstances:</p>
+  <ul>
+    <li>Access the Service for any reason other than your personal, non-commercial use solely as permitted by the normal functionality of the Service.</li>
+    <li>Collect or harvest any personal data of any user of the Site or the Service.</li>
+    <li>Use the Site or the Service for the solicitation of business in the course of trade or in connection with a commercial enterprise.</li>
+    <li>Distribute any part or parts of the Site or the Service without our explicit written permission.</li>
+    <li>Use the Service for any unlawful purpose or for the promotion of illegal activities.</li>
+    <li>Attempt to, or harass, abuse or harm another person or group.</li>
+    <li>Use another user's account without permission.</li>
+    <li>Intentionally allow another user to access your account.</li>
+    <li>Provide false or inaccurate information when registering an account.</li>
+    <li>Interfere or attempt to interfere with the proper functioning of the Service.</li>
+    <li>Make any automated use of the Site, the Service or the related systems.</li>
+    <li>Bypass any robot exclusion headers or other measures we take to restrict access to the Service.</li>
+    <li>Circumvent, disable or otherwise interfere with any security-related features of the Service.</li>
+    <li>Publish or link to malicious content of any sort.</li>
+  </ul>
+
+  <h2>Online Content Disclaimer</h2>
+  <p>Opinions, advice, statements, offers, or other information or content made available through the Service, but not directly by the Site, are those of their respective authors, and should not necessarily be relied upon. We do not guarantee the accuracy, completeness, or usefulness of any information on the Site or the Service.</p>
+
+  <h2>Intellectual Property</h2>
+  <p>You acknowledge and agree that we and our licensors retain ownership of all intellectual property rights of any kind related to the Service, including applicable copyrights, trademarks and other proprietary rights. We reserve all rights that are not expressly granted to you under these Terms of Use.</p>
+
+  <h2>Warranty Disclaimer</h2>
+  <p>THE SERVICE IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND. WITHOUT LIMITING THE FOREGOING, WE EXPRESSLY DISCLAIM ALL WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, REGARDING THE SERVICE INCLUDING WITHOUT LIMITATION ANY WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, SECURITY, ACCURACY AND NON-INFRINGEMENT.</p>
+
+  <h2>Limitation of Damages</h2>
+  <p>TO THE EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE SITE, THE SERVICE, ITS AFFILIATES, DIRECTORS, OR EMPLOYEES BE LIABLE TO YOU FOR ANY LOSS OF PROFITS, USE, OR DATA, OR FOR ANY INCIDENTAL, INDIRECT, SPECIAL, CONSEQUENTIAL OR EXEMPLARY DAMAGES.</p>
+
+  <h2>Modification of Terms of Use</h2>
+  <p>We can amend these Terms of Use at any time and will update these Terms of Use in the event of any such amendments. Your continued use of the Site or the Service signifies your agreement to our revisions to these Terms of Use.</p>
+
+  <h2>General Terms</h2>
+  <p>These Terms of Use and your use of the Site are governed by the federal laws of the Hellenic Republic and the laws of the State of Attica, without regard to conflict of law provisions.</p>
+  <p>You agree that any cause of action related to or arising out of your relationship with the Company must commence within ONE year after the cause of action accrues. Otherwise, such cause of action is permanently barred.</p>
+
+  {% if contact_email %}
+  <h2>Contact Us</h2>
+  <p>If you have questions regarding these Terms of Use, please contact us at <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</p>
+  {% endif %}
+
+  <hr class="border-0 border-t-[1.5px] border-primary-soft my-8" />
+  <p class="text-xs text-ink-faint">
+    <sup>1</sup> Local language refers to the predominant language in the country/region in which the "service" is used in.<br/>
+    <sup>2</sup> Referring to the basic use of a computer and basic computer programs such as Word or Excel.
+  </p>
+</LegalPage>

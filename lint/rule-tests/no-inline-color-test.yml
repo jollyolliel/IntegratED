@@ -1,0 +1,9 @@
+id: no-inline-color
+valid:
+  - '<div style="width: {{ pct }}%;"></div>'
+  - '<div style="background: {{ school.colour }};"></div>'
+  - '<div style="border-color: var(--color-card-rose-border);"></div>'
+invalid:
+  - '<div style="border-color: #FECDD3; box-shadow: 4px 4px 0 #FECDD3;"></div>'
+  - '<p style="color: rgba(225,29,72,0.8);"></p>'
+  - '<div style="width: 40px; background:#F8F9FF"></div>'

@@ -1,0 +1,91 @@
+{#- The school directory's swap region: the top three as photo cards, then every school as a
+    searchable photo grid and its pager. Each card opens that school's page. `routes/base/_public.py` renders it alone for an
+    `X-Fragment` request. `school_stats` (this page, A–Z) and `top_schools` (the top three by
+    donations, empty while searching or past page 1) rows are {school, total_donations,
+    user_count}; `school_count` is how many schools match `q`. -#}
+{#import "@page_components/public/school_photo.jx" as SchoolPhoto #}
+{#import "@components/pagination.jx" as Pagination #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/icon.jx" as Icon #}
+{#def school_stats, page, page_count, top_schools=[], school_count=0, q="" #}
+<div data-swap-region>
+{%- macro rank_badge(rank) -%}
+<span class="rank-badge rank-{{ rank if rank <= 3 else 'n' }}">{{ rank }}</span>
+{%- endmacro -%}
+<section class="school-dir">
+  <div class="school-dir-inner">
+    {%- if top_schools %}
+    <h2 class="school-dir-h2 display-font font-extrabold">{{ t('schools.leading_heading') }}</h2>
+    <div class="school-dir-feature">
+      {%- for stat in top_schools %}
+      <Card href={{ url_for('base.school_detail', id=stat.school.id) }} data-rank={{ loop.index }} class={{ ('school-dir-lead' if loop.first else 'school-dir-side') ~ ' p-3' }}>
+        <span class="school-dir-photo">
+          <SchoolPhoto school={{ stat.school }} />
+          <span class="school-dir-rank">{{ rank_badge(loop.index) }}</span>
+        </span>
+        <span class="px-1 pb-1">
+          <span class="school-dir-name">{{ stat.school.name }}</span>
+          {%- if loop.first %}
+          <span class="school-dir-mission">{{ stat.school.mission_statement or t('schools.default_mission') }}</span>
+          {%- endif %}
+          <span class="school-dir-facts">
+            {%- if stat.total_donations > 0 %}
+            <span><strong class="text-accent">${{ "%.0f"|format(stat.total_donations) }}</strong>{{ t('schools.raised') }}</span>
+            {%- endif %}
+            <span><strong class="text-primary">{{ stat.user_count }}</strong>{{ t('schools.users') }}</span>
+          </span>
+        </span>
+      </Card>
+      {%- endfor %}
+    </div>
+    {%- endif %}
+
+    <div class="school-dir-head" id="directory">
+      <h2 class="school-dir-h2 display-font font-extrabold">{{ t('schools.directory_heading') }}</h2>
+      <form class="school-dir-search" method="get" action="{{ url_for('base.schools') }}#directory" role="search">
+        <label class="sr-only" for="school-search">{{ t('schools.search_label') }}</label>
+        <Input type="search" icon="magnifying-glass" name="q" id="school-search" value={{ q }} placeholder={{ t('schools.search_placeholder') }} maxlength="100" class="school-dir-field" />
+        <Button variant="sky" type="submit">{{ t('schools.search_button') }}</Button>
+      </form>
+    </div>
+    <p class="school-dir-count">
+      {%- set plural = 'one' if school_count == 1 else 'other' %}
+      {%- if q %}{{ t('schools.matching_' ~ plural, count=school_count, q=q) }}<a href="{{ url_for('base.schools') }}#directory">{{ t('schools.clear_search') }}</a>
+      {%- else %}{{ t('schools.count_' ~ plural, count=school_count) }}{%- endif %}
+    </p>
+    {%- if school_stats %}
+    <ul class="school-dir-grid">
+      {%- for stat in school_stats %}
+      <li>
+        <Card href={{ url_for('base.school_detail', id=stat.school.id) }} class="school-dir-card p-3">
+          <span class="school-dir-photo">
+            <SchoolPhoto school={{ stat.school }} />
+          </span>
+          <span class="px-1 pb-1">
+            <span class="school-dir-name">{{ stat.school.name }}</span>
+            <span class="school-dir-mission">{{ stat.school.mission_statement or t('schools.default_mission') }}</span>
+          </span>
+        </Card>
+      </li>
+      {%- endfor %}
+    </ul>
+    {%- elif q %}
+    <div class="school-dir-empty" data-empty-search>
+      <img src="{{ url_for('static', filename='svg/school.svg') }}" alt="" />
+      <p>{{ t('schools.no_match', q=q) }}</p>
+      <Button variant="soft" href={{ url_for('base.schools') ~ '#directory' }}>{{ t('schools.show_all') }}</Button>
+    </div>
+    {%- else %}
+    <div class="school-dir-empty">
+      <img src="{{ url_for('static', filename='svg/school.svg') }}" alt="" />
+      <p>{{ t('schools.no_schools') }}</p>
+    </div>
+    {%- endif %}
+    <div class="mt-8">
+      <Pagination endpoint="base.schools" page={{ page }} total_pages={{ page_count }} args={{ {'q': q} if q else {} }} />
+    </div>
+  </div>
+</section>
+</div>

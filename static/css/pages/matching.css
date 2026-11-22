@@ -1,0 +1,211 @@
+/* =========================================
+   static/css/pages/matching.css — pages/teacher/people.jx only
+
+   The matching-priorities modal and the Auto-Match preview modal, whose
+   markup lives in page_components/teacher/match_priorities.jx and
+   page_components/teacher/match_preview.jx. One page uses these, so they are not in
+   admin.css: that partial is linked by seventeen templates.
+
+   Surface follows the feature-announcement popup (docs/ui-design/page-behaviour.md): 2.5px
+   border and the 6px modal elevation, so it reads as lifted off the roster
+   rather than as another in-page card.
+   ========================================= */
+.mp-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgb(var(--color-ink-heading-rgb) / 0.45);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  animation: mp-fade-in 180ms ease-out;
+}
+.mp-overlay.hidden { display: none; }
+.mp-card {
+  position: relative;
+  width: 100%; max-width: 620px;
+  max-height: calc(100vh - 32px);
+  display: flex; flex-direction: column;
+  background: white;
+  border: 2.5px solid var(--color-sky-200);
+  border-radius: 22px;
+  box-shadow: 6px 6px 0 var(--color-sky-100);
+  animation: mp-pop-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes mp-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mp-pop-in {
+  from { transform: translateY(12px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+.mp-close {
+  position: absolute; top: 14px; inset-inline-end: 14px; z-index: 2;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 12px;
+  background: var(--color-sky-50); color: var(--color-sky-700); cursor: pointer;
+  transition: background 150ms ease-out, color 150ms ease-out;
+}
+.mp-close:hover { background: var(--color-sky-100); color: var(--color-primary-dark); }
+.mp-head { padding: 20px 22px 12px; }
+.mp-title { font-size: 1.25rem; font-weight: 800; color: var(--color-ink-heading); margin-top: 4px; }
+.mp-sub { font-size: 0.82rem; color: var(--color-ink-muted); margin-top: 2px; max-width: 62ch; }
+.mp-body { padding: 4px 22px 8px; overflow-y: auto; }
+
+/* The equaliser. Seven dropdowns hide the one thing that matters about these
+   values — that they only mean anything relative to each other — so the filled
+   bars are the control *and* the readout, and the column of them is a profile
+   the teacher can read at a glance. */
+.mp-eq { display: flex; flex-direction: column; }
+.mp-eq-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--color-sky-50); }
+.mp-eq-row:last-child { border-bottom: none; }
+.mp-eq-name { font-size: 0.85rem; font-weight: 600; color: var(--color-ink-body); display: inline-flex; align-items: center; gap: 6px; }
+.mp-eq-scale { display: inline-flex; gap: 3px; }
+.mp-eq-step { cursor: pointer; display: block; padding: 4px 0; }
+.mp-eq-step input { position: absolute; opacity: 0; width: 0; height: 0; }
+.mp-eq-bar { display: block; width: 22px; height: 15px; border-radius: 4px; background: var(--color-slate-100); border: 1.5px solid var(--color-slate-200); transition: background 150ms ease-out, border-color 150ms ease-out; }
+.mp-eq-step:hover .mp-eq-bar { border-color: var(--color-sky-200); }
+/* Fill every bar up to the chosen one, so the row reads as a level rather than
+   a scattered selection. Driven by `data-level`, not `:has(input:checked)`:
+   level 0 means "off" and must fill *nothing*, which a fill-up-to-checked rule
+   cannot express — it always lights the step that is checked, and it outweighs
+   any later override on specificity. The server renders `data-level`, so the
+   bars are right before any JS runs. */
+.mp-eq-scale[data-level="1"] .mp-eq-step:nth-child(-n+2) .mp-eq-bar,
+.mp-eq-scale[data-level="2"] .mp-eq-step:nth-child(-n+3) .mp-eq-bar,
+.mp-eq-scale[data-level="3"] .mp-eq-step:nth-child(-n+4) .mp-eq-bar,
+.mp-eq-scale[data-level="4"] .mp-eq-step:nth-child(-n+5) .mp-eq-bar {
+  background: var(--color-sky-400); border-color: var(--color-primary);
+}
+.mp-eq-step input:focus-visible + .mp-eq-bar { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.mp-eq-value { font-size: 0.72rem; font-weight: 700; color: var(--color-sky-700); min-width: 56px; text-align: end; }
+.mp-eq-scale[data-level="0"] ~ .mp-eq-value { color: var(--color-ink-faint); }
+.mp-note { font-size: 0.75rem; color: var(--color-ink-faint); margin-top: 10px; }
+
+/* Hover/focus tooltip, shown above its dot and never reflowing the row.
+   **Positioned `fixed` from JS, not `absolute` against the dot** — the modal
+   body is a scroll container, and an absolutely-positioned bubble on the top
+   row is clipped by it to a stub. Fixed coordinates escape every ancestor's
+   overflow, and the same measurement keeps the bubble inside the viewport at
+   the edges. Hover *and* keyboard focus open it; the dot carries the text as
+   its own accessible name, so the bubble itself is decorative. */
+.mp-tip { display: inline-flex; }
+.mp-tip-dot {
+  width: 15px; height: 15px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--color-sky-100); color: var(--color-sky-700);
+  font-size: 0.6rem; font-weight: 700; font-style: normal; cursor: help;
+}
+.mp-tip-bubble {
+  position: fixed; top: 0; left: 0;
+  width: max-content; max-width: 230px;
+  padding: 7px 10px; border-radius: 10px;
+  background: var(--color-ink-heading); color: white;
+  font-size: 0.72rem; font-weight: 500; line-height: 1.35; text-align: start;
+  opacity: 0; pointer-events: none; z-index: 210;
+  transform: translateY(3px);
+  transition: opacity 140ms ease-out, transform 140ms ease-out;
+}
+.mp-tip-bubble::after {
+  content: ""; position: absolute; top: 100%; left: var(--mp-tip-arrow, 50%);
+  margin-left: -5px;
+  border: 5px solid transparent; border-top-color: var(--color-ink-heading);
+}
+.mp-tip-bubble.is-open { opacity: 1; transform: translateY(0); }
+
+/* Spread. The diagram is the explanation, so it sits beside the choices
+   permanently instead of behind a toggle. */
+.mp-spread { margin-top: 16px; padding-top: 14px; border-top: 2px solid var(--color-sky-100); }
+.mp-section-title { font-size: 0.95rem; font-weight: 800; color: var(--color-ink-heading); }
+.mp-spread-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 10px; }
+@media (min-width: 560px) { .mp-spread-grid { grid-template-columns: minmax(0, 1fr) 200px; align-items: start; } }
+.mp-spread-choices { display: flex; flex-direction: column; gap: 4px; }
+.mp-spread-choice { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; border: 1.5px solid transparent; font-size: 0.8rem; color: var(--color-ink-body); cursor: pointer; transition: background 150ms ease-out, border-color 150ms ease-out; }
+.mp-spread-choice:hover { background: var(--color-sky-50); }
+.mp-spread-choice input { accent-color: var(--color-primary); }
+.mp-spread-choice:has(input:checked) { background: var(--color-sky-50); border-color: var(--color-sky-200); font-weight: 700; color: var(--color-sky-700); }
+.mp-spread-choice:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* Every candidate connector is always drawn and only its weight changes with
+   `data-spread` — an SVG `d` cannot be transitioned, so morphing the line
+   would mean redrawing it per frame in JS. */
+.mp-demo { border: 2px solid var(--color-sky-100); border-radius: 14px; background: var(--color-surface-card); padding: 8px 10px 10px; }
+.mp-demo-svg { display: block; width: 100%; height: auto; }
+.mp-demo-caption { font-size: 0.72rem; color: var(--color-ink-body); line-height: 1.35; min-height: 3.2em; }
+.mp-demo-line { fill: none; stroke: var(--color-slate-300); stroke-width: 2.5; stroke-linecap: round; transition: stroke 220ms ease-out, stroke-opacity 220ms ease-out, stroke-width 220ms ease-out; }
+.mp-demo-line-fixed { stroke: var(--color-green-300); }
+/* The rejected route stays faintly dashed rather than vanishing — seeing the
+   option the matcher turned down is what makes the chosen one mean something. */
+.mp-demo-line-even, .mp-demo-line-stack { stroke-opacity: 0.28; stroke-dasharray: 3 5; }
+.mp-demo[data-spread="even"] .mp-demo-line-even,
+.mp-demo[data-spread="stack"] .mp-demo-line-stack { stroke: var(--color-primary); stroke-opacity: 1; stroke-width: 3; stroke-dasharray: none; }
+.mp-demo[data-spread="mixed"] .mp-demo-line-even,
+.mp-demo[data-spread="mixed"] .mp-demo-line-stack { stroke: var(--color-sky-300); stroke-opacity: 0.85; stroke-dasharray: 4 5; }
+.mp-demo-node { stroke-width: 2.5; transition: fill 220ms ease-out, stroke 220ms ease-out; }
+.mp-demo-learner { fill: var(--color-sky-100); stroke: var(--color-primary); }
+.mp-demo-strong { fill: var(--color-green-100); stroke: var(--color-accent); }
+.mp-demo-idle { fill: var(--color-gray-100); stroke: var(--color-ink-faint); }
+.mp-demo[data-spread="stack"] .mp-demo-idle { fill: var(--color-amber-100); stroke: var(--color-amber-600); }
+
+.mp-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px 18px; border-top: 2px solid var(--color-sky-50); }
+
+/* The Auto-Match preview reuses the modal shell above, wider, since each row
+   is a four-column comparison. Rows share one grid with the sticky column
+   header so learner, volunteer and match line up down the whole list however
+   long a name is. A row is a static surface (pale border, no shadow) holding
+   its own controls: a checkbox to skip the move, a select to change it. */
+.mp-card-wide { max-width: 820px; }
+.mp-preview-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.mp-preview-stat {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 999px; border: 1.5px solid var(--color-line);
+  background: var(--color-gray-50); color: var(--color-ink-muted); font-size: 0.75rem; font-weight: 700;
+}
+.mp-preview-stat[hidden] { display: none; }
+.mp-preview-stat-new { background: var(--color-sky-50); color: var(--color-sky-700); border-color: var(--color-sky-200); }
+.mp-preview-body { padding-top: 0; overflow-x: hidden; }
+
+.mp-preview-grid {
+  display: grid; align-items: center; column-gap: 12px;
+  grid-template-columns: 18px minmax(0, 1fr) 16px minmax(0, 1.1fr) 7.5rem;
+}
+.mp-preview-colhead {
+  position: sticky; top: 0; z-index: 1;
+  padding: 10px 14px 8px; background: white;
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint);
+}
+.mp-preview-col-match { text-align: end; }
+
+.mp-preview-list { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; }
+.mp-preview-row {
+  row-gap: 6px; padding: 10px 14px; border-radius: 16px;
+  background: var(--color-surface-card); border: 2px solid var(--color-sky-100);
+  transition: opacity 150ms ease-out, border-color 150ms ease-out, background 150ms ease-out;
+}
+.mp-preview-row-off { opacity: 0.45; }
+.mp-preview-row-over { background: var(--color-rose-50); border-color: var(--color-rose-200); }
+.mp-preview-check { width: 18px; height: 18px; accent-color: var(--color-accent); cursor: pointer; margin: 0; }
+.mp-preview-person { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mp-preview-name { font-size: 0.875rem; font-weight: 700; color: var(--color-ink-heading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-preview-sub { font-size: 0.72rem; color: var(--color-ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-preview-avatar-empty { background: white; border: 2px dashed var(--color-gray-300); }
+.mp-preview-select { flex: 1; min-width: 0; padding-block: 7px; font-size: 0.84rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-preview-arrow { width: 16px; height: 16px; color: var(--color-blue-300); }
+[dir="rtl"] .mp-preview-arrow { transform: scaleX(-1); }
+.mp-preview-chip { justify-self: end; white-space: nowrap; }
+.mp-preview-chip[hidden] { display: none; }
+.mp-preview-warn { grid-column: 2 / -1; font-size: 0.75rem; font-weight: 600; color: var(--color-rose-700); }
+.mp-preview-warn[hidden] { display: none; }
+.mp-preview-blocked { margin-inline-end: auto; align-self: center; font-size: 0.78rem; font-weight: 600; color: var(--color-rose-700); }
+.mp-preview-blocked[hidden] { display: none; }
+
+/* Phone: the volunteer drops under the learner, full width; the arrow goes,
+   since the stacking already reads as "this one gets that one". */
+@media (max-width: 640px) {
+  .mp-preview-grid { grid-template-columns: 18px minmax(0, 1fr) auto; }
+  .mp-preview-colhead > :nth-child(3), .mp-preview-colhead > :nth-child(4) { display: none; }
+  .mp-preview-row .mp-preview-arrow { display: none; }
+  .mp-preview-row .mp-preview-learner-cell { grid-column: 2; grid-row: 1; }
+  .mp-preview-row .mp-preview-chip { grid-column: 3; grid-row: 1; }
+  .mp-preview-row .mp-preview-volunteer-cell { grid-column: 2 / -1; grid-row: 2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-overlay, .mp-card, .mp-demo-line, .mp-demo-node, .mp-tip-bubble { animation: none; transition: none; }
+}

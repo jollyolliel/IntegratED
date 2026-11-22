@@ -1,0 +1,10 @@
+{#- One batch of the teacher's worksheet library grid: a card per worksheet, amber when it is
+    recommended for the pair in `?learner=`. `routes/teacher/worksheets.py` renders it alone for
+    a load-more / search fetch (`X-Fragment`). -#}
+{#import "@components/worksheet_card.jx" as WorksheetCard #}
+{#def worksheets, matched_pairs, recommended_ids=() #}
+{%- for ws in worksheets %}
+<WorksheetCard ws={{ ws }} primary_url={{ url_for('teacher.teacher_worksheet_preview', worksheet_id=ws.id) }}
+  primary_label={{ t('teacher.worksheets.preview') }} matched_pairs={{ matched_pairs }}
+  highlighted={{ ws.id in recommended_ids }} />
+{%- endfor %}

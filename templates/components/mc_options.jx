@@ -1,0 +1,238 @@
+{#- Multiple-choice answer buttons (`mc-option`): the styles and the MCOptions JS API.
+    Place once per page, before any script that calls MCOptions.
+  JS API
+  ──────
+  MCOptions.render(container, options, onSelect[, selected])
+    container  — HTMLElement to render buttons into
+    options    — string[]
+    onSelect   — function(value) called on selection
+    selected   — (optional) pre-selected value string
+
+  MCOptions.markResult(container, isCorrect)
+    Marks selected button correct (green, all locked) or wrong (red, locked;
+    other buttons stay clickable so user can retry).
+
+  MCOptions.clearResult(container)
+    Removes all state classes and re-enables all buttons (use on new question).
+
+  MCOptions.getSelected(container)
+    Returns data-value of the selected button, or null.
+
+  Customization
+  ─────────────
+  Default: 100% width, stacked, 14px 18px padding, 0.95rem font, 14px radius.
+  Width    — set width on the container element, or override .mc-option { width: ... }
+  Padding  — override .mc-option { padding: ... }
+  Font     — override .mc-option { font-size: ... }
+  Radius   — override .mc-option { border-radius: ... }
+  Gap      — set gap on the container (default: use a flex-col gap-2/gap-3 class)
+  Colors   — re-point the per-state vars, never the border/shadow directly:
+             --mc-edge (border + shadow at rest), --mc-edge-hi (hover/press),
+             --mc-fill / --mc-fill-hi / --mc-fill-press (backgrounds).
+  ────────────────────────────────────────────────────────────────────────
+-#}
+<style>
+  /* Each state (base / selected / correct / wrong) only re-points these four
+     vars; the hover + press rules below read them, so border and shadow can
+     never drift apart or fall back to the unselected sky on hover. */
+  .mc-option {
+    --mc-edge: var(--color-sky-200); /* border + shadow at rest */
+    --mc-edge-hi: var(--color-sky-300); /* border + shadow while hovered/pressed */
+    --mc-fill: white; /* background at rest */
+    --mc-fill-hi: var(--color-sky-50); /* background while hovered */
+    --mc-fill-press: var(--color-sky-100); /* background while pressed */
+
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 14px 18px;
+    background: var(--mc-fill);
+    color: var(--color-ink-heading);
+    border: 2.5px solid var(--mc-edge);
+    border-radius: 14px;
+    box-shadow: 3px 3px 0 var(--mc-edge);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition:
+      transform 150ms ease-out,
+      box-shadow 150ms ease-out,
+      border-color 150ms,
+      background 150ms;
+  }
+  /* Clay motion: lift 1.5px and deepen the shadow 3px -> 5px on hover, then
+     sink 1.5px and flatten it to 1px on press. Same offsets as .btn-lang. */
+  .mc-option:hover:not(:disabled) {
+    transform: translate(-1.5px, -1.5px);
+    box-shadow: 5px 5px 0 var(--mc-edge-hi);
+    border-color: var(--mc-edge-hi);
+    background: var(--mc-fill-hi);
+  }
+  .mc-option:active:not(:disabled) {
+    transform: translate(1.5px, 1.5px);
+    box-shadow: 1px 1px 0 var(--mc-edge-hi);
+    border-color: var(--mc-edge-hi);
+    background: var(--mc-fill-press);
+  }
+  /* Selected stays sky-600 through hover and press — no lighter hover tint. */
+  .mc-option.selected {
+    --mc-edge: var(--color-primary);
+    --mc-edge-hi: var(--color-primary);
+    --mc-fill: var(--color-sky-50);
+    --mc-fill-hi: var(--color-sky-100);
+    --mc-fill-press: var(--color-sky-200);
+  }
+  .mc-option.correct {
+    --mc-edge: var(--color-accent-dark);
+    --mc-edge-hi: var(--color-accent-dark);
+    --mc-fill: var(--color-green-50);
+    --mc-fill-hi: var(--color-green-100);
+    --mc-fill-press: var(--color-green-200);
+    color: var(--color-accent-dark);
+    font-weight: 700;
+  }
+  .mc-option.wrong {
+    --mc-edge: var(--color-danger);
+    --mc-edge-hi: var(--color-danger);
+    --mc-fill: var(--color-red-50);
+    --mc-fill-hi: var(--color-red-100);
+    --mc-fill-press: var(--color-red-200);
+    color: var(--color-danger);
+  }
+  /* pointer-events:none stops :hover/:active firing at all, so a locked button
+     can't lift or press (same treatment as .btn-clay:disabled). */
+  .mc-option:disabled {
+    cursor: default;
+    opacity: 0.85;
+    transform: none;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mc-option {
+      transition: box-shadow 150ms, border-color 150ms, background 150ms;
+      transform: none !important;
+    }
+  }
+
+  /* Emoji-only answers are the picture the learner reads, so draw them big and centred. */
+  .mc-option-emoji {
+    padding-block: 8px;
+  }
+  .mc-option-emoji .mc-option-text {
+    flex: 1;
+    text-align: center;
+    font-size: 3.25rem;
+    line-height: 1.15;
+    /* balances the A-F label on the left so the emoji sits in the true centre */
+    margin-inline-end: 2.5rem;
+  }
+
+  .mc-option-label {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    border: 2px solid var(--mc-edge);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--color-sky-300);
+    flex-shrink: 0;
+    margin-right: 0.75rem;
+    transition: border-color 150ms, background 150ms, color 150ms;
+  }
+  .mc-option.selected .mc-option-label {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: white;
+  }
+  .mc-option.correct .mc-option-label {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: white;
+  }
+  .mc-option.wrong .mc-option-label {
+    border-color: var(--color-danger);
+    background: var(--color-red-50);
+    color: var(--color-danger);
+  }
+</style>
+
+<script>
+  const MCOptions = {
+    _labels: ["A", "B", "C", "D", "E", "F"],
+
+    render(container, options, onSelect, selected = null) {
+      container.innerHTML = "";
+      options.forEach((opt, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.value = opt;
+        btn.className = "mc-option";
+        this._select(btn, selected === opt);
+        btn.innerHTML = `<span class="mc-option-label">${this._labels[idx] || idx + 1}</span><span class="mc-option-text"></span>`;
+        btn.querySelector(".mc-option-text").textContent = opt;
+        if (this._isEmojiOnly(opt)) btn.classList.add("mc-option-emoji");
+        btn.addEventListener("click", () => {
+          if (btn.disabled) return;
+          container.querySelectorAll(".mc-option").forEach((b) => {
+            if (
+              !b.classList.contains("wrong") &&
+              !b.classList.contains("correct")
+            ) {
+              this._select(b, false);
+            } else {
+              b.setAttribute("aria-pressed", "false");
+            }
+          });
+          this._select(btn, true);
+          onSelect(opt);
+        });
+        container.appendChild(btn);
+      });
+    },
+
+    markResult(container, isCorrect) {
+      container.querySelectorAll(".mc-option").forEach((btn) => {
+        if (btn.classList.contains("selected")) {
+          btn.classList.remove("selected");
+          btn.classList.add(isCorrect ? "correct" : "wrong");
+          btn.disabled = true;
+        }
+        if (isCorrect) btn.disabled = true;
+      });
+    },
+
+    clearResult(container) {
+      container.querySelectorAll(".mc-option").forEach((btn) => {
+        btn.classList.remove("correct", "wrong");
+        this._select(btn, false);
+        btn.disabled = false;
+      });
+    },
+
+    // True when the option is only pictographs (no letters or digits), so it can be drawn large.
+    _isEmojiOnly(text) {
+      const s = String(text).trim();
+      return (
+        s !== "" &&
+        /\p{Extended_Pictographic}/u.test(s) &&
+        !/[\p{L}\p{N}]/u.test(s)
+      );
+    },
+
+    // aria-pressed marks the current choice for a screen reader: it stays on through markResult
+    // and moves to the next button picked, even off a graded one.
+    _select(btn, on) {
+      btn.classList.toggle("selected", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    },
+
+    getSelected(container) {
+      const sel = container.querySelector(".mc-option.selected");
+      return sel ? sel.dataset.value : null;
+    },
+  };
+</script>

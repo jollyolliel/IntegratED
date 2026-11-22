@@ -1,0 +1,58 @@
+{#- An illustration for a `<JourneyLoader>`, drawn in the clay-sticker style of `static/svg/`
+    (navy outline, a shaded base under an offset light fill, white highlights, sparkles):
+    - `quiz`: a folded map searched by a magnifier; a dotted route leads to a dropped pin.
+    Inline so the parts (`jsc-*` classes) can move: inside a playing `<JourneyLoader>` they
+    animate, anywhere else the scene rests on its finished pose. Decorative — `aria-hidden`.
+    Called `<JourneyScene name="quiz" class="w-28 h-28" />`. Styles: `static/css/components/journey.css`. -#}
+{#def name=None #}
+{%- set name = prop("JourneyScene", "name", name) -%}
+{#- Clip-path ids must be unique on the page: a page can show the same scene twice (the placement
+    test's loader and its result card). -#}
+{%- set uid = "jsc" ~ (range(100000, 999999) | random) -%}
+{%- set ink = "#1E276A" -%}
+{%- macro clay(id, tag, geom, light, dark, shift=8, width=6) -%}
+<clipPath id="{{ uid }}-{{ id }}"><{{ tag }} {{ geom | safe }}/></clipPath>
+<{{ tag }} {{ geom | safe }} fill="{{ dark }}"/>
+<g clip-path="url(#{{ uid }}-{{ id }})"><{{ tag }} {{ geom | safe }} fill="{{ light }}" transform="translate(-{{ shift }} -{{ shift }})"/></g>
+<{{ tag }} {{ geom | safe }} fill="none" stroke="{{ ink }}" stroke-width="{{ width }}" stroke-linejoin="round" stroke-linecap="round"/>
+{%- endmacro -%}
+{#- A four-point sparkle, the same curve as the stars in static/svg/. -#}
+{%- macro sparkle(cx, cy, r, fill, cls="jsc-twinkle") -%}
+{%- set k = r * 0.28 -%}
+<path class="{{ cls }}" d="M{{ cx }} {{ cy - r }} C{{ cx }} {{ cy - k }} {{ cx + k }} {{ cy }} {{ cx + r }} {{ cy }} C{{ cx + k }} {{ cy }} {{ cx }} {{ cy + k }} {{ cx }} {{ cy + r }} C{{ cx }} {{ cy + k }} {{ cx - k }} {{ cy }} {{ cx - r }} {{ cy }} C{{ cx - k }} {{ cy }} {{ cx }} {{ cy - k }} {{ cx }} {{ cy - r }} Z" fill="{{ fill }}" stroke="{{ ink }}" stroke-width="3" stroke-linejoin="round"/>
+{%- endmacro -%}
+{%- macro dot(cx, cy, r, fill, cls="jsc-twinkle") -%}
+<circle class="{{ cls }}" cx="{{ cx }}" cy="{{ cy }}" r="{{ r }}" fill="{{ fill }}" stroke="{{ ink }}" stroke-width="4"/>
+{%- endmacro -%}
+<svg {{ attrs.render(class="journey-scene journey-scene-" ~ name) }} viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+  {#- A folded map: three panels, the middle one in shade. -#}
+  {{ clay("p1", "path", 'd="M28 60 L74 48 L74 164 L28 176 Z"', "#FFFFFF", "#CDD0E4", 6) }}
+  {{ clay("p2", "path", 'd="M74 48 L126 60 L126 176 L74 164 Z"', "#E8FCFF", "#B9E6FB", 6) }}
+  {{ clay("p3", "path", 'd="M126 60 L172 48 L172 164 L126 176 Z"', "#FFFFFF", "#CDD0E4", 6) }}
+  <ellipse cx="50" cy="92" rx="13" ry="9" fill="#22A7F0" stroke="{{ ink }}" stroke-width="4"/>
+  <path d="M42 89 A7 5 0 0 1 49 86" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="156" cy="138" r="10" fill="#3CC47C" stroke="{{ ink }}" stroke-width="4"/>
+  <circle cx="146" cy="148" r="8" fill="#3CC47C" stroke="{{ ink }}" stroke-width="4"/>
+  <path d="M90 74 Q100 66 110 74" fill="none" stroke="#3CC47C" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="44" cy="150" r="7" fill="#3CC47C" stroke="{{ ink }}" stroke-width="4"/>
+  {%- for x, y in [(55.1, 148.3), (64.3, 141.7), (71.7, 133.3), (79.8, 125.4), (90.4, 121.7), (101.7, 122.5), (112.5, 119.4), (121.3, 112.3)] %}
+  <circle class="jsc-route" style="--i: {{ loop.index0 }}" cx="{{ x }}" cy="{{ y }}" r="3.4" fill="{{ ink }}"/>
+  {%- endfor %}
+  <ellipse class="jsc-ripple" cx="140" cy="100" rx="16" ry="5.5" fill="none" stroke="{{ ink }}" stroke-width="3"/>
+  <g class="jsc-pin">
+    <ellipse cx="140" cy="100" rx="10" ry="3.5" fill="{{ ink }}" opacity="0.2"/>
+    {{ clay("pin", "path", 'd="M140 100 C131 88 123 82 123 72 A17 17 0 0 1 157 72 C157 82 149 88 140 100 Z"', "#E03D6B", "#B82A57", 6) }}
+    <circle cx="140" cy="72" r="6" fill="#FFFFFF" stroke="{{ ink }}" stroke-width="4"/>
+    <path d="M129 68 A12 12 0 0 1 135 61" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+  </g>
+  <g class="jsc-magnifier" data-jsc-leave>
+    <path d="M14 14 L30 30" stroke="{{ ink }}" stroke-width="15" stroke-linecap="round"/>
+    <path d="M14 14 L30 30" stroke="#F29F16" stroke-width="6" stroke-linecap="round"/>
+    <circle r="19" fill="#E8FCFF" fill-opacity="0.6" stroke="{{ ink }}" stroke-width="6"/>
+    <path d="M-10 -5 A11 11 0 0 1 -4 -11" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  {{ sparkle(26, 34, 12, "#FFC83D") }}
+  {{ dot(178, 182, 4, "#E03D6B") }}
+  {{ sparkle(170, 30, 12, "#FFC83D", "jsc-pop") }}
+  {{ sparkle(184, 92, 9, "#FFFFFF", "jsc-pop") }}
+</svg>

@@ -1,0 +1,63 @@
+{#- The school admin's home: the school's headline totals, quick links to its people, attendance,
+    donations and settings, then its most recent donations. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/page_header.jx" as PageHeader #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/quick_action.jx" as QuickAction #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/shell/main.jx" as Main #}
+{#def school, learner_count, volunteer_count, teacher_count, total_hours, total_donations, recent_donations,
+    pending_announcement=None #}
+<Page title={{ school.name ~ " — School Admin" }} announcement={{ pending_announcement }}>
+  <Main>
+    <PageHeader boxed badge={{ t('school_admin.dashboard.eyebrow') }} title={{ school.name }}
+      subtitle={{ school.mission_statement }} />
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <StatTile icon="users" label={{ t('school_admin.dashboard.stat_learners') }} value={{ learner_count }} />
+      <StatTile tone="green" icon="user-group" label={{ t('school_admin.dashboard.stat_volunteers') }} value={{ volunteer_count }} />
+      <StatTile tone="amber" icon="building-office" label={{ t('school_admin.dashboard.stat_teachers') }} value={{ teacher_count }} />
+      <StatTile icon="book-open" label={{ t('school_admin.dashboard.stat_hours_logged') }} value={{ total_hours }} />
+      <StatTile tone="rose" icon="heart" label={{ t('school_admin.dashboard.stat_donations') }} value={{ "$%.2f" | format(total_donations) }} />
+    </div>
+
+    <div class="mb-3">
+      <SectionBadge>{{ t('school_admin.dashboard.quick_actions') }}</SectionBadge>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <QuickAction href={{ url_for('school_admin.people') }} icon="user-group"
+        title={{ t('school_admin.dashboard.people_heading') }} description={{ t('school_admin.dashboard.people_desc') }} />
+      <QuickAction tone="green" href={{ url_for('school_admin.attendance') }} icon="clipboard-document-check"
+        title={{ t('school_admin.dashboard.attendance_heading') }} description={{ t('school_admin.dashboard.attendance_desc') }} />
+      <QuickAction tone="rose" href={{ url_for('school_admin.donations') }} icon="heart"
+        title={{ t('school_admin.dashboard.donations_heading') }} description={{ t('school_admin.dashboard.donations_desc') }} />
+      <QuickAction tone="amber" href={{ url_for('school_admin.settings') }} icon="cog-6-tooth"
+        title={{ t('school_admin.dashboard.settings_heading') }} description={{ t('school_admin.dashboard.settings_desc') }} />
+    </div>
+
+    {%- if recent_donations %}
+    <div class="mb-3">
+      <SectionBadge>{{ t('school_admin.dashboard.recent_donations') }}</SectionBadge>
+    </div>
+    <Table>
+      <thead>
+        <tr>
+          <th>{{ t('school_admin.dashboard.col_donor') }}</th>
+          <th>{{ t('school_admin.dashboard.col_amount') }}</th>
+          <th>{{ t('school_admin.dashboard.col_date') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for d in recent_donations %}
+        <tr>
+          <td class="font-medium text-sky-900">{{ d.donor_name or t('school_admin.dashboard.anonymous') }}</td>
+          <td><span class="font-bold text-accent">${{ "%.2f"|format(d.amount / 100) }}</span></td>
+          <td class="text-ink-faint">{{ d.created_at.strftime('%b %d, %Y') }}</td>
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </Table>
+    {%- endif %}
+  </Main>
+</Page>

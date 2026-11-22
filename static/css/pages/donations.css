@@ -1,0 +1,183 @@
+/* Donation flow + success page.
+   Used by: pages/donations.jx, pages/donation_success.jx. */
+
+/* pages/donations.jx — sky hero: floating clay discs around the heading and the programme's numbers */
+.donate-hero { position: relative; padding-block: clamp(56px, 7vw, 104px) calc(40px + clamp(40px, 5vw, 72px)); background-color: var(--color-primary); background-image: radial-gradient(rgb(var(--color-primary-light-rgb) / 0.22) 2px, transparent 2.5px); background-size: 26px 26px; color: var(--color-surface); text-align: center; overflow: hidden; }
+.donate-hero-inner { position: relative; z-index: 1; max-width: 860px; margin-inline: auto; padding-inline: clamp(20px, 6vw, 56px); }
+.donate-hero-badge { width: 84px; margin: 0 auto 18px; }
+.donate-hero-title { font-size: clamp(2.6rem, 5.2vw, 5rem); line-height: 1.03; letter-spacing: -0.02em; text-wrap: balance; color: var(--color-surface); margin-bottom: 18px; }
+.donate-hero-lead { font-size: clamp(1.1rem, 1.25vw, 1.4rem); line-height: 1.6; color: var(--color-sky-50); max-width: 36em; margin: 0 auto 36px; }
+.donate-hero-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; max-width: 34rem; margin-inline: auto; }
+.donate-hero-num { display: block; font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 2.2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.donate-hero-label { display: block; margin-top: 4px; font-weight: 700; font-size: 0.88rem; color: var(--color-ink-body); }
+.donate-hero-float { position: absolute; display: grid; place-items: center; aspect-ratio: 1; border-radius: 50%; background: var(--color-surface); border: var(--clay-border-width) solid var(--color-primary-dark); box-shadow: 5px 5px 0 var(--color-primary-dark); animation: donate-hero-bob 6s ease-in-out infinite; }
+.donate-hero-float img { width: 62%; }
+.donate-hero-f1 { width: 120px; top: 14%; inset-inline-start: 5%; rotate: -8deg; }
+.donate-hero-f2 { width: 84px; top: 52%; inset-inline-start: 12%; rotate: 6deg; animation-delay: -2s; }
+.donate-hero-f3 { width: 68px; bottom: 18%; inset-inline-start: 3%; rotate: -4deg; animation-delay: -4s; }
+.donate-hero-f4 { width: 112px; top: 12%; inset-inline-end: 5%; rotate: 7deg; animation-delay: -1s; }
+.donate-hero-f5 { width: 76px; top: 48%; inset-inline-end: 13%; rotate: -6deg; animation-delay: -3s; }
+.donate-hero-f6 { width: 92px; bottom: 16%; inset-inline-end: 3%; rotate: 5deg; animation-delay: -5s; }
+.donate-hero-spark { position: absolute; width: 28px; opacity: 0.9; }
+.donate-hero-s1 { top: 9%; inset-inline-start: 22%; rotate: 12deg; }
+.donate-hero-s2 { bottom: 30%; inset-inline-end: 22%; width: 22px; rotate: -10deg; }
+.donate-hero-wave { position: absolute; bottom: -1px; inset-inline: 0; width: 100%; height: 40px; fill: var(--color-surface-page); }
+@keyframes donate-hero-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
+@media (prefers-reduced-motion: reduce) { .donate-hero-float { animation: none; } }
+@media (max-width: 1099px) { .donate-hero-f2, .donate-hero-f5, .donate-hero-spark { display: none; } .donate-hero-f1, .donate-hero-f4 { top: 4%; } .donate-hero-f3, .donate-hero-f6 { bottom: 8%; } }
+@media (max-width: 767px) { .donate-hero-float { display: none; } .donate-hero-stats { grid-template-columns: minmax(0, 1fr); max-width: 16rem; } }
+
+.donation-step-card {
+  background: white;
+  border: 2px solid var(--color-sky-200);
+  border-radius: 24px;
+  box-shadow: 4px 4px 0 var(--color-sky-100);
+}
+.step-head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.step-circle {
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.9rem;
+  background: var(--color-primary); color: white;
+  border: 2px solid var(--color-primary-dark);
+  box-shadow: 2px 2px 0 var(--color-primary-dark);
+}
+.step-circle-amber {
+  background: var(--color-amber-600);
+  border-color: var(--color-amber-800);
+  box-shadow: 2px 2px 0 var(--color-amber-800);
+}
+
+/* Step 1 — each school is a <Card clickable> (components/cards.css owns its shape, shadow and
+   motion); the chosen one only re-points the card's own colour vars to sky-600. */
+.school-grid { display: grid; gap: 16px; }
+@media (min-width: 640px) { .school-grid { grid-template-columns: 1fr 1fr; } }
+.school-tile[aria-pressed="true"] { --qa-border: var(--color-primary); --qa-hover: var(--color-primary-dark); }
+.school-tile:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+.school-pic { position: relative; display: grid; place-items: center; height: 220px; background-color: var(--color-sky-50); background-image: radial-gradient(rgb(var(--color-primary-rgb) / 0.12) 2px, transparent 2.5px); background-size: 22px 22px; }
+.school-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.school-art { width: 36%; }
+.school-plate { position: absolute; inset-inline: 12px; bottom: 12px; padding: 10px 14px; border-radius: 14px; background: var(--color-surface); border: var(--clay-border-width-thin) solid var(--color-card-sky-border); }
+.school-name { display: block; font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.2rem; line-height: 1.15; color: var(--color-ink-heading); }
+.school-mission { display: block; margin-top: 2px; font-size: 0.85rem; line-height: 1.45; color: var(--color-ink-body); }
+.school-check { position: absolute; top: 12px; inset-inline-end: 12px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--color-accent); color: var(--color-surface); border: 2.5px solid var(--color-accent-dark); }
+.school-check.hidden { display: none; }
+.school-empty { border-radius: 20px; display: grid; place-items: center; padding: 32px; text-align: center; min-height: 220px; border: 2px dashed var(--color-primary-light); color: var(--color-ink-muted); font-weight: 600; }
+
+/* Step 2 — amount tiles. Each state only re-points the --pick-* vars, so border and shadow
+   can't drift apart; hover/press derive from the clay geometry tokens. */
+.amount-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.amount-btn {
+  --pick-edge: var(--color-sky-200);
+  --pick-edge-hi: var(--color-sky-300);
+  --pick-fill: white;
+  --pick-fill-hi: var(--color-sky-50);
+  --pick-fill-press: var(--color-sky-100);
+
+  min-height: 48px; padding: 12px 8px; border-radius: 14px;
+  border: 2.5px solid var(--pick-edge);
+  box-shadow: var(--clay-offset) var(--clay-offset) 0 var(--pick-edge);
+  font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.15rem;
+  font-variant-numeric: tabular-nums; text-align: center;
+  background: var(--pick-fill); color: var(--color-primary); cursor: pointer;
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out,
+              border-color 150ms, background 150ms, color 150ms;
+}
+.amount-btn:hover {
+  transform: translate(calc(-1 * var(--clay-lift)), calc(-1 * var(--clay-lift)));
+  box-shadow: calc(var(--clay-offset) + var(--clay-lift)) calc(var(--clay-offset) + var(--clay-lift)) 0 var(--pick-edge-hi);
+  border-color: var(--pick-edge-hi);
+  background: var(--pick-fill-hi);
+}
+.amount-btn:active {
+  transform: translate(var(--clay-press), var(--clay-press));
+  box-shadow: calc(var(--clay-offset) - var(--clay-press)) calc(var(--clay-offset) - var(--clay-press)) 0 var(--pick-edge-hi);
+  border-color: var(--pick-edge-hi);
+  background: var(--pick-fill-press);
+}
+.amount-btn:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+/* Active keeps the solid sky-600 fill (it reads as the chosen amount at a
+   glance in a 6-up grid) but locks its edge so hover/press can't drift. */
+.amount-btn.active {
+  --pick-edge: var(--color-primary-dark);
+  --pick-edge-hi: var(--color-primary-dark);
+  --pick-fill: var(--color-primary);
+  --pick-fill-hi: var(--color-sky-700);
+  --pick-fill-press: var(--color-primary-dark);
+  color: white;
+}
+@media (prefers-reduced-motion: reduce) {
+  .amount-btn, .school-tile {
+    transition: box-shadow 150ms, border-color 150ms, background 150ms;
+    transform: none !important;
+  }
+}
+.amount-custom { position: relative; }
+.amount-custom span { position: absolute; inset-inline-start: 16px; top: 50%; translate: 0 -50%; font-weight: 800; font-size: 1.15rem; color: var(--color-primary); pointer-events: none; }
+.amount-custom input { min-height: 48px; font-size: 1rem; }
+.amount-impact { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 12px 16px; border-radius: 16px; background: var(--color-green-50); border: var(--clay-border-width-thin) solid var(--color-card-green-border); font-weight: 700; color: var(--color-accent-dark); }
+.amount-impact.hidden { display: none; }
+.amount-impact img { width: 32px; height: 32px; flex: none; }
+
+/* Step 3 — optional donor details */
+.details-fields { display: grid; gap: 18px; max-width: 34rem; }
+.details-fields input.donation-input { min-height: 52px; font-size: 1rem; }
+.details-fields textarea.donation-input { font-size: 1rem; }
+.details-optional { font-size: 0.85rem; font-weight: 600; color: var(--color-ink-muted); margin-inline-start: 6px; }
+
+.donation-input {
+  width: 100%; background: var(--color-surface-card);
+  border: 2px solid var(--color-sky-200); border-radius: 12px;
+  padding: 11px 16px; font-size: 0.95rem; color: var(--color-ink-heading);
+  transition: border-color 150ms; outline: none;
+}
+/* Leaves room for the absolutely-positioned "$" prefix. Lives here, not as a
+   Tailwind `ps-*` on the tag: this partial loads after the utilities, so
+   `.donation-input`'s padding shorthand would beat the utility. */
+.donation-input-currency { padding-inline-start: 2.25rem; }
+.donation-input:focus { border-color: var(--color-primary); }
+.donation-input:-webkit-autofill,
+.donation-input:-webkit-autofill:hover,
+.donation-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface-card) inset !important;
+  -webkit-text-fill-color: var(--color-ink-heading) !important;
+  caret-color: var(--color-ink-heading);
+}
+
+/* Give — the summary sentence that unlocks the submit */
+.give-card { text-align: center; }
+.give-art { display: block; width: 72px; margin: 0 auto 10px; }
+.give-summary { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.8rem; line-height: 1.25; color: var(--color-ink-heading); text-wrap: balance; margin-bottom: 20px; }
+.give-summary.hidden + .give-wait { display: block; }
+.give-wait { display: none; margin-bottom: 20px; font-weight: 700; color: var(--color-ink-muted); }
+.give-amount { color: var(--color-accent); font-variant-numeric: tabular-nums; }
+.give-school { color: var(--color-primary-dark); }
+.give-note { margin-top: 10px; font-size: 0.8rem; color: var(--color-ink-muted); }
+.donation-submit-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 28px; font-weight: 700; font-size: 1.05rem; width: 100%;
+  background: var(--color-accent); color: white;
+  border: 2.5px solid var(--color-accent-dark); border-radius: 16px;
+  box-shadow: 3px 3px 0 var(--color-accent-dark);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+  cursor: pointer;
+}
+.donation-submit-btn:hover:not(:disabled) { transform: translate(-1.5px,-1.5px); box-shadow: 4.5px 4.5px 0 var(--color-accent-dark); }
+.donation-submit-btn:active:not(:disabled) { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--color-accent-dark); }
+.donation-submit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.give-btn { padding-block: 18px; font-size: 1.15rem; }
+.give-btn:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+@keyframes confetti-fall {
+  0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+.confetti-piece {
+  position: fixed; width: 8px; height: 8px; border-radius: 2px; top: -20px;
+  animation: confetti-fall linear forwards; pointer-events: none; z-index: 999;
+}
+.success-card {
+  background: white;
+  border-radius: 24px;
+  border: 2px solid var(--color-emerald-200);
+  box-shadow: 4px 4px 0 var(--color-emerald-100);
+}

@@ -1,0 +1,5 @@
+{#- A small count beside a label. -#}
+{#import "@components/base/badge.jx" as Badge #}
+{#def tone=None #}
+{%- set tone = prop("CountPill", "tone", tone) -%}
+<Badge tone={{ tone }} class="inline" attrs={{ attrs }}>{{ content }}</Badge>

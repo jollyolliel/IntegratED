@@ -1,0 +1,4 @@
+{#- Rendered worksheet markdown, in the worksheet heading and body type. -#}
+{#def tag=None #}
+{%- set tag = prop("WorksheetProse", "tag", tag) -%}
+<{{ tag }} {{ attrs.render(class="worksheet-prose") }}>{{ content }}</{{ tag }}>

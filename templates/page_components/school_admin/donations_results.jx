@@ -1,0 +1,41 @@
+{#- The donations table and its pager: the swap region on
+    `pages/school_admin/donations.jx`. `routes/school_admin.py` renders it alone for an
+    `X-Fragment` request. -#}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/pagination.jx" as Pagination #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#def school, donations, page, page_count #}
+<div data-swap-region>
+{%- if donations %}
+<Table>
+  <thead>
+    <tr>
+      <th>{{ t('school_admin.donations.col_date') }}</th>
+      <th>{{ t('school_admin.donations.col_donor') }}</th>
+      <th>{{ t('school_admin.donations.col_email') }}</th>
+      <th>{{ t('school_admin.donations.col_amount') }}</th>
+      <th>{{ t('school_admin.donations.col_message') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {%- for d in donations %}
+    <tr>
+      <td class="text-ink-faint">{{ d.created_at.strftime('%b %d, %Y') }}</td>
+      <td class="font-medium text-sky-900">{{ d.donor_name or t('school_admin.donations.anonymous') }}</td>
+      <td class="text-ink-faint">{{ d.donor_email or '—' }}</td>
+      <td><span class="font-bold text-accent">${{ "%.2f"|format(d.amount / 100) }}</span></td>
+      <td class="text-ink-faint max-w-xs truncate">{{ d.message or '—' }}</td>
+    </tr>
+    {%- endfor %}
+  </tbody>
+</Table>
+<Pagination endpoint="school_admin.donations" page={{ page }} total_pages={{ page_count }} />
+{%- else %}
+{#- Green, not the default sky: money. #}
+<EmptyState class="py-16 border-card-green-border">
+  <Icon name="heart" size="10" class="text-green-200 mx-auto mb-3" aria-hidden="true" />
+  <p class="text-ink-faint text-sm italic">{{ t('school_admin.donations.no_donations').replace('{name}', school.name) }}</p>
+</EmptyState>
+{%- endif %}
+</div>

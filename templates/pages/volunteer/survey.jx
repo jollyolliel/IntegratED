@@ -1,0 +1,276 @@
+{#- The volunteer's onboarding survey (step 2 of 2), and the same form refilled for a redo, with the
+    name locked to the saved one. The script ties each language's level radios to its checkbox and
+    checks every required group before submit. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/step_indicator.jx" as StepIndicator #}
+{#import "@components/form_heading.jx" as FormHeading #}
+{#import "@components/language_row.jx" as LanguageRow #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/choice.jx" as Choice #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def has_completed, languages, survey #}
+{%- set motivations = [
+  ("Help learn language", "motivation_help_language"),
+  ("Make new friend", "motivation_new_friend"),
+  ("Tech collaboration", "motivation_tech"),
+  ("Learn cultures", "motivation_cultures"),
+] %}
+{%- set personalities = ["Outgoing & Social", "Quiet & Thoughtful", "Creative & Expressive", "Logical & Analytical", "Kind & Supportive", "Adventurous & Curious"] %}
+{%- set traits = ["Patient", "Problem-solver", "Goal-oriented", "Collaborative"] %}
+{%- set hobbies = ["Sports", "Music", "Arts & Crafts", "Reading & Writing", "Cooking & Baking", "Video Games", "Outdoor Activities", "Science & Tech", "Nature & Gardening", "Movies & TV", "Traveling", "Photography"] %}
+{%- set language_names = ["English", "Arabic", "Greek", "Spanish", "French", "German", "Chinese", "Italian"] %}
+{%- set techs = ["Coding", "Web Design", "Game Development", "Video Editing", "Graphic Design", "Digital Marketing", "Basic Computer Skills", "AI & Robotics"] %}
+{%- set activities = ["Language Practice", "Tech Projects", "Playing Games", "Creative Projects", "Mathematics", "Storytelling"] %}
+{#- The choice grids sit 1rem under their prompt, as before Field's tighter label margin. -#}
+{%- set grid = "grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2.5" %}
+<Page title={{ t('volunteer.survey.title') }} styles="survey">
+  <Main width="2xl">
+
+    {%- if not has_completed %}
+    <StepIndicator total={{ 2 }} current={{ 2 }} />
+
+    <header class="mb-10">
+      <h1 class="display-font text-3xl font-extrabold text-sky-950 mb-2">{{ t('volunteer.survey.heading') }}</h1>
+      <p class="text-sky-400 leading-relaxed">
+        {{ t('volunteer.survey.subheading') }}
+      </p>
+    </header>
+    {%- else %}
+    <header class="mb-10">
+      <h1 class="display-font text-3xl font-extrabold text-sky-950 mb-2">{{ t('volunteer.survey.heading_completed') }}</h1>
+      <p class="text-sky-400 leading-relaxed">
+        {{ t('volunteer.survey.subheading_completed') }}
+      </p>
+    </header>
+    {%- endif %}
+
+    <form
+      id="surveyForm"
+      action="{{ url_for('volunteer.volunteer_survey') }}"
+      method="POST"
+      class="space-y-8"
+      novalidate
+    >
+
+      <div class="survey-card">
+        <FormHeading>{{ t('volunteer.survey.section_personal') }}</FormHeading>
+        <div class="space-y-5">
+          <Field label={{ t('volunteer.survey.full_name') }} for_id="name" required>
+            {#- `!`: survey.css loads after the utilities and sets the input's own colour. -#}
+            <input type="text" name="name" id="name" autocomplete="name"
+              {%- if has_completed %} class="survey-input cursor-not-allowed !text-ink-muted" value="{{ current_user.name }}" readonly
+              {%- else %} class="survey-input" placeholder="{{ t('volunteer.survey.name_placeholder') }}" required{% endif %} />
+          </Field>
+          <Field label={{ t('volunteer.survey.age') }} for_id="age" required>
+            <input
+              type="number"
+              name="age"
+              id="age"
+              min="1"
+              max="120"
+              required
+              class="survey-input sm:max-w-[160px]"
+              inputmode="numeric"
+              value="{{ survey['age'] if has_completed else '' }}"
+            />
+          </Field>
+          <Field label={{ t('volunteer.survey.motivation_prompt') }} required
+            error={{ t('volunteer.survey.error_motivation') }} error_id="error-motivation">
+            <div class="{{ grid }}">
+              {%- for value, key in motivations %}
+              <Choice name="motivation" value={{ value }} label={{ t('volunteer.survey.' ~ key) }}
+                checked={{ has_completed and value in survey['motivation'] }} />
+              {%- endfor %}
+            </div>
+          </Field>
+        </div>
+      </div>
+
+      <div class="survey-card">
+        <FormHeading>{{ t('volunteer.survey.section_personality') }}</FormHeading>
+        <div class="space-y-8">
+          <Field label={{ t('volunteer.survey.personality_prompt') }} required
+            error={{ t('volunteer.survey.error_personality') }} error_id="error-personality">
+            <div class="{{ grid }}">
+              {%- for p in personalities %}
+              <Choice type="radio" name="personality" value={{ p }} label={{ p }} required
+                checked={{ has_completed and p == survey['personality'] }} />
+              {%- endfor %}
+            </div>
+          </Field>
+
+          <Field label={{ t('volunteer.survey.traits_prompt') }}
+            error={{ t('volunteer.survey.error_traits') }} error_id="error-traits">
+            <div class="{{ grid }}">
+              {%- for trait in traits %}
+              <Choice name="traits" value={{ trait }} label={{ trait }} checked={{ has_completed and trait in survey['traits'] }} />
+              {%- endfor %}
+            </div>
+          </Field>
+        </div>
+      </div>
+
+      <div class="survey-card">
+        <FormHeading>{{ t('volunteer.survey.section_interests') }}</FormHeading>
+        <Field error={{ t('volunteer.survey.error_hobbies') }} error_id="error-hobbies">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {%- for h in hobbies %}
+            <Choice name="hobbies" value={{ h }} label={{ h }} checked={{ has_completed and h in survey['hobbies'] }} />
+            {%- endfor %}
+            <Choice name="hobbies" value="Other" class="sm:col-span-2"><span class="text-ink-muted">{{ t('volunteer.survey.other_none') }}</span></Choice>
+          </div>
+        </Field>
+      </div>
+
+      <div class="survey-card">
+        <FormHeading>{{ t('volunteer.survey.section_languages') }}</FormHeading>
+        <Field error={{ t('volunteer.survey.error_languages') }} error_id="error-languages">
+          <div class="space-y-3">
+            {%- for lang in language_names %}
+            <LanguageRow value={{ lang }} levels={{ ["Beginner", "Intermediate", "Advanced"] }}
+              checked={{ has_completed and lang in languages }}
+              level={{ languages[lang] if has_completed and lang in languages else none }} />
+            {%- endfor %}
+            <LanguageRow value="None" label={{ t('volunteer.survey.other_none_languages') }} muted id="lang-none-volunteer" />
+          </div>
+        </Field>
+      </div>
+
+      <div class="survey-card">
+        <FormHeading>{{ t('volunteer.survey.section_technical') }}</FormHeading>
+        <div class="space-y-8">
+          <Field label={{ t('volunteer.survey.digital_skills_prompt') }}
+            error={{ t('volunteer.survey.error_tech_interest') }} error_id="error-tech_interest">
+            <div class="{{ grid }}">
+              {%- for tech in techs %}
+              <Choice name="tech_interest" value={{ tech }} label={{ tech }} checked={{ has_completed and tech in survey['tech_interest'] }} />
+              {%- endfor %}
+              <Choice name="tech_interest" value="None" class="sm:col-span-2"><span class="text-ink-muted">{{ t('volunteer.survey.none_not_interested') }}</span></Choice>
+            </div>
+          </Field>
+
+          <Field label={{ t('volunteer.survey.match_activities_prompt') }} class="pt-4 border-t-2 border-sky-50"
+            error={{ t('volunteer.survey.error_match_activities') }} error_id="error-match_activities">
+            <div class="{{ grid }}">
+              {%- for act in activities %}
+              <Choice name="match_activities" value={{ act }} label={{ act }} checked={{ has_completed and act in survey['match_activities'] }} />
+              {%- endfor %}
+              <Choice name="match_activities" value="Other" class="sm:col-span-2"><span class="text-ink-muted">{{ t('volunteer.survey.other_none') }}</span></Choice>
+            </div>
+          </Field>
+        </div>
+      </div>
+
+      <div class="pt-4 pb-8">
+        <Button type="submit" size="lg" icon_end="check" class="w-full">{{ t('volunteer.survey.submit') }}</Button>
+      </div>
+    </form>
+  </Main>
+
+  <script>
+    (function () {
+      const form = document.getElementById("surveyForm");
+      const groups = [
+        "motivation",
+        "traits",
+        "hobbies",
+        "languages",
+        "tech_interest",
+        "match_activities",
+        "personality",
+      ];
+
+      // Toggle language levels
+      const langChecks = document.querySelectorAll(".lang-check");
+      langChecks.forEach((check) => {
+        const lang = check.value;
+        const levelRadios = document.querySelectorAll(
+          `input[name="language_level_${lang}"]`,
+        );
+
+        const updateLevels = () => {
+          levelRadios.forEach((radio) => {
+            radio.disabled = !check.checked;
+            radio.required = check.checked;
+            if (!check.checked) {
+              radio.checked = false;
+            } else if (
+              radio.value === "Beginner" &&
+              ![...levelRadios].some((r) => r.checked)
+            ) {
+              radio.checked = true;
+            }
+          });
+        };
+
+        check.addEventListener("change", updateLevels);
+        updateLevels();
+      });
+
+      form.addEventListener("submit", function (e) {
+        let firstInvalid = null;
+
+        const nameInput = form.querySelector('input[name="name"]');
+        const ageInput = form.querySelector('input[name="age"]');
+
+        if (!nameInput.value.trim()) {
+          nameInput.style.borderColor = '#DC2626';
+          if (!firstInvalid) firstInvalid = nameInput;
+        } else {
+          nameInput.style.borderColor = '';
+        }
+
+        if (!ageInput.value || ageInput.value < 1) {
+          ageInput.style.borderColor = '#DC2626';
+          if (!firstInvalid) firstInvalid = ageInput;
+        } else {
+          ageInput.style.borderColor = '';
+        }
+
+        groups.forEach((name) => {
+          const checked = document.querySelectorAll(
+            `input[name="${name}"]:checked`,
+          );
+          const errorEl = document.getElementById("error-" + name);
+          if (checked.length === 0) {
+            if (errorEl) errorEl.classList.remove("hidden");
+            if (!firstInvalid)
+              firstInvalid = document.querySelector(`input[name="${name}"]`);
+          } else {
+            if (errorEl) errorEl.classList.add("hidden");
+          }
+        });
+
+        // Validate language levels
+        const selectedLangs = document.querySelectorAll('input[name="languages"]:checked');
+        selectedLangs.forEach((langCheck) => {
+          const lang = langCheck.value;
+          if (lang === "None") return;
+          const levelChecked = document.querySelector(
+            `input[name="language_level_${lang}"]:checked`,
+          );
+          if (!levelChecked) {
+            const errorEl = document.getElementById("error-languages");
+            if (errorEl) errorEl.classList.remove("hidden");
+            if (!firstInvalid) firstInvalid = langCheck;
+          }
+        });
+
+        if (firstInvalid) {
+          e.preventDefault();
+          firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+
+      groups.forEach((name) => {
+        document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+          input.addEventListener("change", () => {
+            const errorEl = document.getElementById("error-" + name);
+            if (errorEl) errorEl.classList.add("hidden");
+          });
+        });
+      });
+    })();
+  </script>
+</Page>

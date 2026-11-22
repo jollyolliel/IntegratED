@@ -1,0 +1,15 @@
+{#- The Worksheets area's two views as a tab strip under the page header: the assigned-worksheets
+    tracker and the library. `active` is "assigned" or "library"; `outstanding` is the count on
+    the Assigned tab (none hides it). Plain links — each view is its own page. -#}
+{#def active, outstanding=None #}
+<nav {{ attrs.render(class="ws-tabs mb-8", aria_label=t('teacher.worksheet_tabs.label')) }}>
+  <a href="{{ url_for('teacher.teacher_worksheet_assignments') }}"
+     class="ws-tab {{ 'ws-tab-active' if active == 'assigned' }}" {% if active == 'assigned' %}aria-current="page"{% endif %}>
+    {{- t('teacher.worksheet_tabs.assigned') -}}
+    {%- if outstanding %}<span class="ws-tab-count">{{ outstanding }}</span>{% endif -%}
+  </a>
+  <a href="{{ url_for('teacher.teacher_worksheets') }}"
+     class="ws-tab {{ 'ws-tab-active' if active == 'library' }}" {% if active == 'library' %}aria-current="page"{% endif %}>
+    {{- t('teacher.worksheet_tabs.library') -}}
+  </a>
+</nav>

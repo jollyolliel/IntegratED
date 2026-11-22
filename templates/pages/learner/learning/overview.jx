@@ -1,0 +1,186 @@
+{#- One lesson before its game: the lesson's overview article (KaTeX maths rendered on load), the
+    button that starts the lesson's game, and a sidebar of the topic's lessons with one progress
+    tick per lesson. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/shell/main.jx" as Main #}
+{#def lesson, topic_lessons, completed_lesson_ids, completed_count, total_lessons, percentage #}
+{%- set head %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+      ],
+      throwOnError: false,
+    })"
+  ></script>
+{%- endset %}
+<Page title={{ lesson.title ~ ' — IntegratED' }} styles="learning-nav" head={{ head }}>
+    <Main>
+
+      <!-- Breadcrumb -->
+      <nav class="flex mb-8" aria-label="{{ t('learner.overview.breadcrumb_label') }}">
+        <ol class="flex items-center flex-wrap gap-1">
+          <li>
+            <a href="{{ url_for('learner.learner_subject_topics', subject_id=lesson.topic.subject_id) }}" class="breadcrumb-link">
+              {{ lesson.topic.subject.name }}
+            </a>
+          </li>
+          <li><span class="breadcrumb-sep">/</span></li>
+          <li>
+            <a href="{{ url_for('learner.learner_topic_lessons', topic_id=lesson.topic.id) }}" class="breadcrumb-link">
+              {{ lesson.topic.title }}
+            </a>
+          </li>
+          <li><span class="breadcrumb-sep">/</span></li>
+          <li><span class="breadcrumb-current">{{ lesson.title }}</span></li>
+        </ol>
+      </nav>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- Main article -->
+        <article class="lg:col-span-8">
+          <!-- Article header card -->
+          <div class="overview-card mb-8">
+            <h1 class="display-font text-3xl md:text-4xl font-extrabold text-sky-950 leading-tight mb-3">
+              Understanding {{ lesson.title }}
+            </h1>
+            <div class="flex items-center gap-2 text-sm text-sky-400 font-medium">
+              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              {{ t('learner.overview.min_read', minutes=((lesson.overview_markdown|length)/200)|round|int) }}
+            </div>
+          </div>
+
+          <!-- Article content -->
+          <div class="overview-card article-prose mb-8">
+            {{ lesson.overview_markdown | markdown | safe }}
+          </div>
+
+          {%- if current_user.xp_boost_pending and lesson.id not in completed_lesson_ids %}
+          <!-- A golden potion boost is waiting: finishing this lesson spends it for double XP -->
+          <div class="overview-boost mb-4">
+            <img src="{{ url_for('static', filename='svg/potion-gold.svg') }}" alt="" width="200" height="200" class="w-12 h-12 flex-shrink-0" />
+            <span class="flex-1 min-w-0">
+              <span class="block display-font text-xl font-extrabold text-amber-700 leading-none" dir="ltr">&times;2 XP</span>
+              <span class="block text-sm text-amber-900 mt-1">{{ t('learner.overview.boost_ready') }}</span>
+            </span>
+          </div>
+          {%- endif %}
+
+          <!-- Action button row -->
+          <div class="flex justify-between items-center pt-2">
+            <a href="{{ url_for('learner.learner_topic_lessons', topic_id=lesson.topic.id) }}" class="inline-flex items-center gap-2 text-sky-500 font-semibold text-sm hover:text-sky-700 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+              Back to topics
+            </a>
+
+            {% if lesson.game_type == 'rocket' %}
+            <button
+              onclick="window.location.href = '{{ url_for('learner.learner_rocket', lesson_id=lesson.id) }}';"
+              class="overview-btn-accent"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              {{ t('learner.rocket.start_button') }}
+            </button>
+            {% elif lesson.game_type == 'word_storm' %}
+            <button
+              onclick="window.location.href = '{{ url_for('learner.learner_word_storm', lesson_id=lesson.id) }}';"
+              class="overview-btn-accent"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+              {{ t('learner.word_storm.start_button') }}
+            </button>
+            {% elif lesson.game_type == 'match_up' %}
+            <button
+              onclick="window.location.href = '{{ url_for('learner.learner_match_up', lesson_id=lesson.id) }}';"
+              class="overview-btn-accent"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
+              {{ t('learner.match_up.start_button') }}
+            </button>
+            {% elif lesson.game_type == 'garden_grow' %}
+            <button
+              onclick="window.location.href = '{{ url_for('learner.learner_garden_grow', lesson_id=lesson.id) }}';"
+              class="overview-btn-accent"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              {{ t('learner.garden_grow.start_button') }}
+            </button>
+            {% elif lesson.game_type == 'potion_workshop' %}
+            <button
+              onclick="window.location.href = '{{ url_for('learner.learner_potion_workshop', lesson_id=lesson.id) }}';"
+              class="overview-btn-accent"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+              {{ t('learner.potion_workshop.start_button') }}
+            </button>
+            {% else %}
+            <button
+              onclick="window.location.href = '{{ url_for('learner.learner_questions', lesson_id=lesson.id) }}';"
+              class="overview-btn-accent"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              {{ t('learner.overview.start_quiz') }}
+            </button>
+            {% endif %}
+          </div>
+        </article>
+
+        <!-- Sidebar -->
+        <aside class="lg:col-span-4 space-y-6">
+          <div class="overview-card sticky top-24">
+            <h3 class="display-font text-base font-bold text-sky-900 mb-4">{{ t('learner.overview.in_this_topic') }}</h3>
+            <nav class="space-y-1.5">
+              {% for item in topic_lessons %}
+              {% set is_done = item.id in completed_lesson_ids %}
+              {% set is_current = item.id == lesson.id %}
+              <a
+                href="{{ url_for('learner.learner_overview', lesson_id=item.id) }}"
+                class="lesson-row{{ ' is-done' if is_done else '' }}{{ ' is-current' if is_current else '' }}"
+                {% if is_current %}aria-current="true"{% endif %}
+              >
+                <span class="lesson-row-mark" aria-hidden="true">
+                  {% if is_done %}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+                  {% endif %}
+                </span>
+                <span class="lesson-row-title">{{ item.title }}</span>
+                {% if is_done %}
+                <span class="sr-only">— {{ t('learner.overview.lesson_completed') }}</span>
+                {% elif is_current %}
+                <span class="sr-only">— {{ t('learner.overview.lesson_current') }}</span>
+                {% endif %}
+              </a>
+              {% endfor %}
+            </nav>
+
+            <div class="mt-6 pt-5 border-t-2 border-sky-50">
+              <p class="text-xs text-sky-400 uppercase tracking-widest font-bold mb-3">{{ t('learner.overview.your_progress') }}</p>
+              <!-- One tick per lesson, in the same order as the list above -->
+              <div
+                class="progress-ticks"
+                role="img"
+                aria-label="{{ t('learner.overview.progress_summary', done=completed_count, total=total_lessons, percent=percentage) }}"
+              >
+                {% for item in topic_lessons %}
+                <span class="progress-tick{{ ' is-done' if item.id in completed_lesson_ids else '' }}{{ ' is-current' if item.id == lesson.id else '' }}"></span>
+                {% endfor %}
+              </div>
+              <p class="progress-readout" aria-hidden="true">
+                <span class="progress-percent">{{ percentage }}%</span>
+                {{ t('learner.overview.lessons_done', done=completed_count, total=total_lessons) }}
+              </p>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </Main>
+</Page>

@@ -1,0 +1,4 @@
+{#- An outline heroicon, stroke 2, sized by `size` (clay_primitives.ICON_SIZES). Horizontal
+    arrows and chevrons get `icon-flip-rtl` so they point the reading direction in RTL. -#}
+{#def name, size=None #}
+{{ icon(name, size, **attrs.as_dict) }}

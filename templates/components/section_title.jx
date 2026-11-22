@@ -1,0 +1,10 @@
+{#- A sub-section heading within a page: icon box, h2, and an optional count pill. -#}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/count_pill.jx" as CountPill #}
+{#def icon, tone=None, count=None #}
+{%- set tone = prop("SectionTitle", "tone", tone) -%}
+<div {{ attrs.render(class="section-title") }}>
+  <IconBox icon={{ icon }} tone={{ tone }} size="sm" />
+  <h2>{{ content }}</h2>
+  {%- if count is not none %}<CountPill tone={{ tone }}>{{ count }}</CountPill>{% endif %}
+</div>

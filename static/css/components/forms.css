@@ -1,0 +1,257 @@
+/* Icon masks — the heroicons chevron-down / check paths, as maskable
+   images so pseudo-elements (::picker-icon, ::checkmark) can carry an SVG. */
+:root {
+  --clay-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  --clay-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E");
+}
+
+/* ---- Inputs ---- */
+/* .clay-input: Every text / number / date field */
+.clay-input {
+  width: 100%; padding: 10px 14px;
+  background: var(--color-surface-card); color: var(--color-ink-heading);
+  border: 2px solid var(--color-sky-200); border-radius: 12px;
+  font-size: 0.9rem; transition: border-color 150ms, box-shadow 150ms;
+}
+.clay-input:focus { border-color: var(--color-primary); outline: none; }
+/* .clay-input-lg: The larger 1rem field of the sign-in card (`<Input size="lg">`) */
+.clay-input-lg { padding: 12px 16px; font-size: 1rem; }
+/* .password-field: The wrapper `<Input type="password">` puts round its field and show/hide button */
+.password-field .clay-input { padding-inline-end: 48px; }
+/* .password-toggle: The show/hide button at the end of a password field; aria-pressed while shown */
+.password-toggle {
+  position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border: 0; border-radius: 10px;
+  background-color: transparent; color: var(--color-ink-muted); cursor: pointer;
+  transition: color 150ms, background-color 150ms;
+}
+.password-toggle:hover { color: var(--color-primary); background-color: var(--color-primary-tint); }
+.password-toggle:active { color: var(--color-primary-dark); background-color: var(--color-primary-tint); }
+.password-toggle:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.password-toggle[aria-pressed="true"] { color: var(--color-primary); }
+.clay-input:-webkit-autofill,
+.clay-input:-webkit-autofill:hover,
+.clay-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface-card) inset !important;
+  -webkit-text-fill-color: var(--color-ink-heading) !important;
+  caret-color: var(--color-ink-heading);
+}
+
+/* Every single-choice `<select>`, styled from the element: no class. Its first child is
+   `<button><selectedcontent></selectedcontent></button>` (docs/ui-design/page-behaviour.md). A listbox
+   (`multiple`) keeps the browser look unless its page styles it. `:where` keeps the
+   specificity of a bare `select`, so a page class or utility still wins. */
+select:where(:not([multiple])) {
+  width: 100%; padding: 10px 14px;
+  background: var(--color-surface-card); color: var(--color-ink-heading);
+  border: 2px solid var(--color-sky-200); border-radius: 12px;
+  font-size: 0.9rem; outline: none; transition: border-color 150ms;
+}
+select:where(:not([multiple])):focus { border-color: var(--color-primary); }
+
+/* ---- Customizable select (Chromium 135+) ----
+   Opt in to base appearance so the closed button, the picker panel and every
+   <option> become styleable elements instead of an OS popup. Browsers without
+   `appearance: base-select` skip the whole block and keep the native picker —
+   the <button><selectedcontent></selectedcontent></button> first child that
+   every select carries is ignored by their parser, so nothing leaks.
+   Chevron and checkmark are masked SVGs (no glyphs, no emoji), same paths as
+   the header nav dropdown. */
+@supports (appearance: base-select) {
+  select:where(:not([multiple])),
+  select:where(:not([multiple]))::picker(select) { appearance: base-select; }
+
+  /* Closed button — same box as the plain input, plus row layout for the icon */
+  select:where(:not([multiple])) {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    text-align: start; font-family: inherit; line-height: 1.4;
+    cursor: pointer; transition: border-color 150ms, background 150ms;
+  }
+  select:where(:not([multiple])):hover:not(:disabled) { background: var(--color-sky-50); border-color: var(--color-sky-300); }
+  select:where(:not([multiple])):open { border-color: var(--color-primary); background: var(--color-sky-50); }
+  select:where(:not([multiple])):disabled { opacity: 0.55; cursor: not-allowed; background: var(--color-gray-100); }
+  /* Long labels ellipsis instead of pushing the chevron out of the box */
+  select:where(:not([multiple])) selectedcontent {
+    display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  /* Unpicked placeholder option reads as muted, like an empty input */
+  select:where(:not([multiple])):has(option[value=""]:checked) selectedcontent { color: var(--color-ink-faint); }
+
+  select:where(:not([multiple]))::picker-icon {
+    content: ''; flex-shrink: 0;
+    width: 16px; height: 16px;
+    background-color: var(--color-primary);
+    -webkit-mask: var(--clay-chevron) center / contain no-repeat;
+    mask: var(--clay-chevron) center / contain no-repeat;
+    transition: rotate 180ms ease-out;
+  }
+  select:where(:not([multiple])):open::picker-icon { rotate: 180deg; }
+
+  /* Picker panel — container of clickable rows, so static pale shadow (Law 1) */
+  select:where(:not([multiple]))::picker(select) {
+    box-sizing: border-box;
+    min-width: anchor-size(width);
+    margin-block-start: 6px;
+    padding: 6px;
+    background: var(--color-surface);
+    border: 2px solid var(--color-sky-200); border-radius: 14px;
+    box-shadow: 4px 4px 0 var(--color-sky-100);
+    max-height: 17rem;
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    transform-origin: top center;
+    transition:
+      opacity 150ms ease-out,
+      transform 160ms ease-out,
+      display 160ms allow-discrete,
+      overlay 160ms allow-discrete;
+  }
+  select:where(:not([multiple])):open::picker(select) { opacity: 1; transform: none; }
+  @starting-style {
+    select:where(:not([multiple])):open::picker(select) { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  }
+
+  select:where(:not([multiple])) option {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px; border-radius: 10px;
+    font-size: 0.9rem; font-weight: 600; color: var(--color-ink-body);
+    cursor: pointer;
+    transition: background 150ms ease-out, color 150ms ease-out;
+  }
+  select:where(:not([multiple])) option:hover,
+  select:where(:not([multiple])) option:focus { background: var(--color-sky-50); color: var(--color-sky-700); outline: none; }
+  select:where(:not([multiple])) option:checked { background: var(--color-sky-50); color: var(--color-primary); font-weight: 700; }
+  select:where(:not([multiple])) option:disabled { color: var(--color-ink-faint); cursor: not-allowed; background: transparent; }
+  /* Reserve the tick's width on every row so labels never shift on select */
+  select:where(:not([multiple])) option::checkmark {
+    content: ''; flex-shrink: 0; order: -1;
+    width: 14px; height: 14px;
+    background-color: var(--color-primary);
+    -webkit-mask: var(--clay-check) center / contain no-repeat;
+    mask: var(--clay-check) center / contain no-repeat;
+    opacity: 0;
+  }
+  select:where(:not([multiple])) option:checked::checkmark { opacity: 1; }
+
+  select:where(:not([multiple])) optgroup {
+    padding: 6px 0 0; border: none; background: none;
+    font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--color-primary);
+  }
+  select:where(:not([multiple])) optgroup legend { padding: 4px 12px; }
+
+  /* Clay scrollbar on the picker panel — same recipe as .clay-table-wrap /
+     .clay-scroll in tables.css (no track, floating sky-200 pill, steppers
+     zeroed, end margins past the 14px corner radius). It is repeated here
+     rather than appended to those selector lists because ::picker(select) is
+     an invalid selector outside Chromium 135+, and ONE invalid selector drops
+     the whole comma list — adding it there would silently kill the table
+     scrollbar in Firefox and Safari. No scrollbar-width/scrollbar-color
+     counterpart is needed: only engines with base-select reach this block, and
+     all of them understand ::-webkit-scrollbar (see tables.css note 1). */
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar { width: 14px; height: 14px; background: transparent; }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-button {
+    display: none; width: 0; height: 0; background: transparent; background-image: none;
+  }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-button:single-button { display: none; width: 0; height: 0; }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-button:double-button { display: none; width: 0; height: 0; }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-button:start:decrement { display: none; width: 0; height: 0; }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-button:end:increment { display: none; width: 0; height: 0; }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-track { background: transparent; }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-track:vertical { margin: 18px 0; }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-track:horizontal { margin: 0 18px; }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-thumb {
+    background: var(--color-sky-200);
+    border: 4px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+  }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-thumb:vertical { min-height: 40px; }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-thumb:horizontal { min-width: 40px; }
+  /* Drag state is one step darker only (sky-300) — the table's sky-600 reads as
+     a flash on a surface this small. `background-color`, never the `background`
+     shorthand: the shorthand resets background-clip to border-box, the pill
+     paints over its own transparent border and appears to double in width. */
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-thumb:active { background-color: var(--color-sky-300); }
+  select:where(:not([multiple]))::picker(select)::-webkit-scrollbar-corner { background: transparent; }
+
+  @media (prefers-reduced-motion: reduce) {
+    select:where(:not([multiple]))::picker(select) {
+      transform: none;
+      transition: opacity 1ms linear, display 1ms allow-discrete, overlay 1ms allow-discrete;
+    }
+    select:where(:not([multiple]))::picker-icon { transition: none; }
+  }
+}
+
+/* Textarea (same spec as clay-input + resize) */
+/* .clay-textarea: Every `<textarea>` */
+.clay-textarea {
+  width: 100%; padding: 10px 14px;
+  background: var(--color-surface-card); color: var(--color-ink-heading);
+  border: 2px solid var(--color-sky-200); border-radius: 12px;
+  font-size: 0.9rem; transition: border-color 150ms, box-shadow 150ms;
+  resize: vertical; outline: none;
+}
+.clay-textarea:focus { border-color: var(--color-primary); }
+
+/* Inline validation error */
+/* .error-msg: Field validation message */
+.error-msg { color: var(--color-danger); font-size: 0.8rem; font-weight: 600; margin-top: 8px; }
+
+/* ---- Survey / Form Components ---- */
+/* Section heading with sky rule — used in survey + form card headers */
+/* .section-heading: Heading inside a form card */
+.section-heading {
+  font-size: 0.75rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--color-primary); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-heading::after { content: ''; flex: 1; height: 2px; background: var(--color-sky-100); border-radius: 1px; }
+
+/* Clay radio/checkbox rows — large tap targets for survey use */
+/* .choice-label: Radio / checkbox row wrapper */
+.choice-label {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; background: var(--color-surface-card);
+  border: 2px solid var(--color-sky-100); border-radius: 14px;
+  cursor: pointer; transition: border-color 150ms, background 150ms, box-shadow 150ms;
+  min-height: 52px;
+}
+.choice-label:hover { border-color: var(--color-sky-300); background: var(--color-sky-50); }
+.choice-label input[type="radio"],
+.choice-label input[type="checkbox"] {
+  width: 20px; height: 20px; flex-shrink: 0;
+  accent-color: var(--color-primary); cursor: pointer;
+}
+.choice-label:has(input:checked) { border-color: var(--color-primary); background: var(--color-sky-50); }
+/* .choice-text: Label text inside a choice row */
+.choice-text { font-size: 0.95rem; font-weight: 600; color: var(--color-ink-heading); }
+
+/* Language row (language selector with level sub-options) */
+/* .lang-row: Language self-assessment row (survey) */
+.lang-row {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 16px; background: var(--color-surface-card);
+  border: 2px solid var(--color-sky-100); border-radius: 14px;
+  transition: border-color 150ms;
+}
+.lang-row:has(.lang-check:checked) { border-color: var(--color-primary); background: var(--color-sky-50); }
+input.lang-check { width: 20px; height: 20px; accent-color: var(--color-primary); cursor: pointer; }
+/* .lang-level-group: Level radios inside a lang-row */
+.lang-level-group { display: flex; gap: 8px; flex-wrap: wrap; }
+/* .lang-level-label: One level option in a lang-level-group */
+.lang-level-label {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; background: white;
+  border: 2px solid var(--color-sky-200); border-radius: 10px;
+  font-size: 0.8rem; font-weight: 600; color: var(--color-ink-muted);
+  cursor: pointer; transition: border-color 150ms, background 150ms;
+}
+.lang-level-label:has(input:checked) { border-color: var(--color-accent); background: var(--color-green-50); color: var(--color-accent-dark); }
+.lang-level-label input { width: 14px; height: 14px; accent-color: var(--color-accent); }
+@media (min-width: 768px) {
+  .lang-row { flex-direction: row; align-items: center; justify-content: space-between; }
+}

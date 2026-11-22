@@ -1,0 +1,316 @@
+{#- The public landing page: the hero (the promise beside the next step for a visitor: join with an invite code, sign in,
+    support), the mission band, who it's for, a session
+    timeline, the try-a-question demo (real lesson questions, answered through <McOptions>), the
+    learner-first design points, the games, community numbers, the latest articles and the ways to
+    get involved. Its `lp-*` classes are in static/css/pages/landing.css; what it shares with About
+    and Schools in public.css. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@page_components/public/article_row.jx" as ArticleRow #}
+{#import "@page_components/landing/lesson_demo.jx" as LessonDemo #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+{#def stats, latest_articles, demo_questions #}
+{%- set head %}
+  <meta name="description" content="{{ t('index.meta_description') }}" />
+{%- endset %}
+{%- set art = url_for('static', filename='svg/') %}
+{%- set photos = url_for('static', filename='img/') %}
+{%- set sparkle_d = "M12 0C12 7 17 12 24 12C17 12 12 17 12 24C12 17 7 12 0 12C7 12 12 7 12 0Z" %}
+<Page title={{ t('index.title') }} styles="public landing" head={{ head }}>
+  <main class="flex-1">
+    <!-- ━━ HERO — the promise, and a door for each kind of visitor ━━ -->
+    <section class="hero-section lp-hero">
+      <div class="lp-hero-grid">
+        <div>
+          <h1 class="lp-hero-title pub-display display-font font-extrabold text-ink-heading">{{ t('index.hero_title_1') }}
+            <span class="lp-mark">{{ t('index.hero_title_2') }}</span>
+          </h1>
+          <p class="pub-lead text-ink-body lp-hero-lead">{{ t('index.hero_lead') }}</p>
+          <a class="lp-hero-lesson" href="#try-it" data-cta="see_lesson" data-cta-location="hero">{{ t('index.hero_see_lesson_first') }}<Icon name="arrow-down" size="6" /></a>
+        </div>
+        <nav class="lp-doors" aria-label="{{ t('index.doors_label') }}">
+          {%- if not current_user.is_authenticated %}
+          <Card tone="green" href={{ url_for('auth.register') }} data-cta="join_with_code" data-cta-location="hero">
+            <span class="lp-door is-lead">
+              <span class="lp-door-art lp-door-chat lp-tint-green"><img src="{{ art }}chat.svg" alt="" /></span>
+              <span>
+                <span class="lp-door-title display-font">{{ t('index.door_code_title') }}</span>
+                <span class="lp-door-text">{{ t('index.door_code_text') }}</span>
+              </span>
+              <Icon name="arrow-right" size="6" class="lp-door-arrow" />
+            </span>
+          </Card>
+          {%- endif %}
+          <div class="lp-door-pair">
+            {%- set doors = [] %}
+            {%- if not current_user.is_authenticated %}
+              {%- set doors = doors + [('sky', 'tick', 'door_signin', url_for('auth.login'), 'sign_in')] %}
+            {%- endif %}
+            {%- set doors = doors + [('amber', 'heart', 'door_support', url_for('base.donations'), 'donate')] %}
+            {%- for tone, picture, key, href, cta in doors %}
+            <Card tone={{ tone }} href={{ href }} data-cta={{ cta }} data-cta-location="hero">
+              <span class="lp-door">
+                <span class="lp-door-art lp-door-{{ picture }} lp-tint-{{ tone }}"><img src="{{ art }}{{ picture }}.svg" alt="" /></span>
+                <span>
+                  <span class="lp-door-title display-font">{{ t('index.' ~ key ~ '_title') }}</span>
+                  <span class="lp-door-text">{{ t('index.' ~ key ~ '_text') }}</span>
+                </span>
+                <Icon name="arrow-right" size="6" class="lp-door-arrow" />
+              </span>
+            </Card>
+            {%- endfor %}
+          </div>
+        </nav>
+      </div>
+    </section>
+
+    <!-- ━━ MISSION ━━ -->
+    <section class="lp-mission py-20 md:py-28 relative overflow-hidden">
+      <div class="container mx-auto px-4 relative z-10">
+        <div class="grid lg:grid-cols-5 gap-12 items-center max-w-7xl mx-auto">
+          <div class="lg:col-span-3 text-center lg:text-start reveal">
+            <p class="lp-kicker mb-4">{{ t('index.mission_badge') }}</p>
+            <p class="pub-h2 display-font font-extrabold text-ink-heading mb-6">{{ t('index.mission_statement') }}</p>
+            <p class="pub-lead text-ink-body max-w-2xl mx-auto lg:mx-0">{{ t('index.mission_detail') }}</p>
+          </div>
+          <div class="lg:col-span-2 reveal delay-200">
+            <img class="lp-mission-art" src="{{ art }}globe.svg" alt="" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ━━ WHO IT'S FOR ━━ -->
+    <section class="lp-who pub-dots">
+      <div class="container mx-auto px-4">
+        <div class="text-center max-w-3xl mx-auto mb-14 reveal">
+          <SectionBadge>{{ t('index.who_badge') }}</SectionBadge>
+          <h2 class="pub-h2 display-font font-extrabold text-ink-heading">{{ t('index.who_heading') }}</h2>
+        </div>
+        <div class="lp-who-row" tabindex="0" role="region" aria-label="{{ t('index.who_badge') }}">
+          {%- for tone, tint, picture, tag_colour, key in [
+            ('amber', 'lp-tint-amber', 'backpack', 'text-amber-700', 'who_learners'),
+            ('sky', 'lp-tint-sky', 'chat', 'text-primary-dark', 'who_volunteers'),
+            ('green', 'lp-tint-green', 'clipboard', 'text-accent-dark', 'who_teachers')
+          ] %}
+          <Card tone={{ tone }} class={{ "lp-who-card !p-6 md:!p-8 reveal delay-" ~ loop.index * 100 }}>
+            <div class="lp-who-art {{ tint }}"><img src="{{ art }}{{ picture }}.svg" alt="" /></div>
+            <h3 class="lp-h3 display-font font-bold text-ink-heading">{{ t('index.' ~ key ~ '_title') }}</h3>
+            <p class="lp-who-tag {{ tag_colour }}">{{ t('index.' ~ key ~ '_tag') }}</p>
+            <p class="lp-body text-ink-muted">{{ t('index.' ~ key ~ '_text') }}</p>
+          </Card>
+          {%- endfor %}
+        </div>
+      </div>
+    </section>
+
+    <!-- ━━ A SESSION TOGETHER ━━ -->
+    <section class="py-20 md:py-28 bg-surface-page overflow-hidden">
+      <div class="container mx-auto px-4">
+        <div class="grid lg:grid-cols-12 gap-14 lg:gap-16 items-center max-w-7xl mx-auto">
+          <div class="lg:col-span-5 reveal">
+            <div class="lp-session-photo">
+              <figure>
+                <img src="{{ photos }}photo-session.jpg" alt="{{ t('index.photo_session_alt') }}" loading="lazy" width="720" height="900" />
+              </figure>
+              <div class="lp-session-badge lp-session-badge-a" aria-hidden="true"><img src="{{ art }}heart.svg" alt="" /></div>
+              <div class="lp-session-badge lp-session-badge-b" aria-hidden="true"><img src="{{ art }}star.svg" alt="" /></div>
+            </div>
+          </div>
+          <div class="lg:col-span-7">
+            <div class="text-center lg:text-start mb-10 reveal">
+              <SectionBadge>{{ t('index.session_badge') }}</SectionBadge>
+              <h2 class="pub-h2 display-font font-extrabold text-ink-heading mb-4">{{ t('index.session_heading') }}</h2>
+              <p class="pub-lead text-ink-muted">{{ t('index.session_lead') }}</p>
+            </div>
+            <ol class="lp-timeline">
+              {%- for tone, tint, picture in [
+                ('sky', 'lp-tint-sky', 'session-hello'),
+                ('green', 'lp-tint-green', 'session-lesson'),
+                ('amber', 'lp-tint-amber', 'session-speak'),
+                ('rose', 'lp-tint-rose', 'session-celebrate')
+              ] %}
+              <li class="lp-tl-step" style="--i: {{ loop.index0 }}">
+                <span class="lp-tl-num display-font {{ tint }}">{{ loop.index }}</span>
+                <Card tone={{ tone }} class="lp-tl-card !p-4 md:!p-5">
+                  <div class="lp-tl-art {{ tint }}"><img src="{{ art }}{{ picture }}.svg" alt="" /></div>
+                  <div>
+                    <h3 class="display-font text-2xl font-bold text-ink-heading mb-1">{{ t('index.session_' ~ loop.index ~ '_title') }}</h3>
+                    <p class="lp-body text-ink-muted">{{ t('index.session_' ~ loop.index ~ '_text') }}</p>
+                  </div>
+                </Card>
+              </li>
+              {%- endfor %}
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ━━ SEE A LESSON ━━ -->
+    <LessonDemo demo_questions={{ demo_questions }} />
+
+    <!-- ━━ DESIGNED AROUND OUR LEARNERS ━━ -->
+    <section class="py-20 md:py-28 bg-surface-page">
+      <div class="container mx-auto px-4">
+        <div class="grid lg:grid-cols-12 gap-12 items-center max-w-7xl mx-auto">
+          <div class="lg:col-span-4 text-center lg:text-start reveal">
+            <SectionBadge>{{ t('index.design_badge') }}</SectionBadge>
+            <h2 class="pub-h2 display-font font-extrabold text-ink-heading mb-4">{{ t('index.design_heading') }}</h2>
+            <p class="pub-lead text-ink-muted">{{ t('index.design_lead') }}</p>
+          </div>
+          <div class="lg:col-span-8 grid sm:grid-cols-2 gap-6">
+            {%- for tone, tint, picture, key in [
+              ('sky', 'lp-tint-sky', 'speaker', 'feature_audio'),
+              ('green', 'lp-tint-green', 'globe', 'feature_languages'),
+              ('amber', 'lp-tint-amber', 'letters', 'feature_abc'),
+              ('rose', 'lp-tint-rose', 'star', 'feature_retry')
+            ] %}
+            <Card tone={{ tone }} class={{ "md:!p-7 flex flex-col gap-5 reveal delay-" ~ loop.index * 100 }}>
+              <div class="lp-feature-art {{ tint }}"><img src="{{ art }}{{ picture }}.svg" alt="" /></div>
+              <div>
+                <h3 class="lp-h3 display-font font-bold text-ink-heading mb-2">{{ t('index.' ~ key ~ '_title') }}</h3>
+                <p class="lp-body text-ink-muted">{{ t('index.' ~ key ~ '_text') }}</p>
+              </div>
+            </Card>
+            {%- endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ━━ GAMES ━━ -->
+    <section class="pt-24 md:pt-32 pb-20 md:pb-28 lp-games">
+      <div aria-hidden="true">
+        {%- for n in range(1, 7) %}
+        <svg class="lp-cloud lp-cloud-{{ n }}" viewBox="0 0 120 60"><path d="M20 52 A16 16 0 0 1 22 24 A22 22 0 0 1 62 14 A18 18 0 0 1 96 28 A12 12 0 0 1 100 52 Z" /></svg>
+        {%- endfor %}
+        <div class="lp-bunting">
+          {%- for s in range(11) %}
+          <span class="lp-swag">
+            <svg class="lp-swag-rope" viewBox="0 0 100 44" preserveAspectRatio="none"><path class="lp-swag-paper" d="M-1 -2 V6 Q50 38 101 6 V-2 Z" /><path class="lp-swag-line" d="M-1 6 Q50 38 101 6" /></svg>
+            {%- for tone in ['rose', 'sky', 'amber', 'green', 'purple'] %}
+            <svg class="lp-flag lp-flag-at-{{ loop.index }} lp-flag-{{ tone }}" viewBox="0 0 40 46"><path d="M3 3 H37 L22.5 40 Q20 45 17.5 40 Z" /></svg>
+            {%- endfor %}
+          </span>
+          {%- endfor %}
+        </div>
+      </div>
+      <div class="container mx-auto px-4 relative">
+        <div class="text-center max-w-3xl mx-auto mb-14 reveal">
+          <SectionBadge>{{ t('index.games_badge') }}</SectionBadge>
+          <h2 class="pub-h2 display-font font-extrabold text-ink-heading mb-4">{{ t('index.games_heading') }}</h2>
+          <p class="pub-lead text-ink-muted">{{ t('index.games_lead') }}</p>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-5 lg:gap-6 max-w-7xl mx-auto">
+          {%- for tone, tint, picture, key in [
+            ('rose', 'lp-tint-rose', 'rocket', 'game_rocket'),
+            ('sky', 'lp-tint-sky', 'lantern', 'game_lantern'),
+            ('amber', 'lp-tint-amber', 'match', 'game_match'),
+            ('green', 'lp-tint-green', 'garden', 'game_garden'),
+            ('purple', 'lp-tint-purple', 'potion', 'game_potion')
+          ] %}
+          <Card tone={{ tone }} class={{ "!p-5 reveal delay-" ~ loop.index * 100 ~ (" col-span-2 lg:col-span-1" if loop.last else "") }}>
+            <div class="lp-game-art {{ tint }}" aria-hidden="true">
+              <span class="lp-game-stage lp-game-{{ picture }}">{%- if picture == 'lantern' %}<svg class="lp-game-fig" viewBox="0 0 120 150"><use href="{{ url_for('static', filename='svg/games/word_storm/lanterns.svg') }}#lantern-a" /></svg>{%- else %}<img class="lp-game-fig" src="{{ art }}{{ picture }}.svg" alt="" />{%- endif %}<span class="lp-game-bit"></span><span class="lp-game-bit"></span><span class="lp-game-bit"></span></span>
+            </div>
+            <h3 class="display-font text-2xl font-bold text-ink-heading mb-1">{{ t('index.' ~ key ~ '_title') }}</h3>
+            <p class="lp-body text-ink-muted">{{ t('index.' ~ key ~ '_text') }}</p>
+          </Card>
+          {%- endfor %}
+        </div>
+      </div>
+    </section>
+
+    <!-- ━━ OUR COMMUNITY ━━ -->
+    <section class="py-20 md:py-28 bg-surface-page">
+      <div class="container mx-auto px-4 lp-post">
+        <div class="text-center mb-12 reveal">
+          <h2 class="pub-h2 display-font font-extrabold text-ink-heading">{{ t('index.community_heading') }}</h2>
+        </div>
+        <div class="lp-post-frame reveal">
+          <div class="lp-post-card">
+            <div class="lp-post-message">
+              <p class="lp-post-hello">{{ t('index.postcard_hello') }}</p>
+              <ul class="lp-post-lines">
+                {%- for picture, stat, count, colour, key in [
+                  ('backpack', 'learners', stats.learners, 'text-primary', 'stat_learners'),
+                  ('sun', 'hours', stats.hours | round | int, 'text-amber-600', 'stat_hours'),
+                  ('chat', 'pairs', stats.pairs, 'text-accent', 'stat_pairs'),
+                  ('school', 'partner_schools', stats.schools, 'text-rose-500', 'stat_schools')
+                ] %}
+                <li>
+                  <img src="{{ art }}{{ picture }}.svg" alt="" />
+                  <span class="lp-post-num {{ colour }}" data-stat="{{ stat }}" data-counter="{{ count }}">{{ count }}</span>
+                  <span class="lp-post-label">{{ t('index.' ~ key) }}</span>
+                </li>
+                {%- endfor %}
+              </ul>
+            </div>
+            <div class="lp-post-side">
+              <div class="lp-post-top">
+                <div class="lp-post-stamp"><div class="lp-post-stamp-inner"><img src="{{ art }}bridge.svg" alt="" /></div></div>
+              </div>
+              <div class="lp-post-address">
+                <div><small>{{ t('index.postcard_from') }}</small><img src="{{ art }}school.svg" alt="" /><strong>{{ t('index.partner_acs') }}</strong></div>
+                <div><small>{{ t('index.postcard_to') }}</small><img src="{{ art }}house.svg" alt="" /><strong>{{ t('index.partner_home') }}</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ━━ NEWS: only once there is some ━━ -->
+    {%- if latest_articles %}
+    <section class="py-20 md:py-24 bg-white">
+      <div class="container mx-auto px-4">
+        <div class="text-center mb-12">
+          <SectionBadge class="reveal">{{ t('index.articles_badge') }}</SectionBadge>
+          <h2 class="pub-h2 display-font font-extrabold text-ink-heading reveal">{{ t('index.articles_heading') }}</h2>
+        </div>
+        <ul class="article-list max-w-4xl mx-auto reveal">
+          {%- for article in latest_articles %}
+          <li><ArticleRow article={{ article }} /></li>
+          {%- endfor %}
+        </ul>
+      </div>
+    </section>
+    {%- endif %}
+
+    <!-- ━━ GET INVOLVED ━━ -->
+    <section class="lp-involve py-20 md:py-28" id="get-involved">
+      <div class="container mx-auto px-4">
+        {%- if not current_user.is_authenticated %}
+        <div class="text-center max-w-3xl mx-auto mb-14 reveal">
+          <SectionBadge tone="amber">{{ t('index.involve_badge') }}</SectionBadge>
+          <h2 class="pub-h2 display-font font-extrabold text-ink-heading mb-4">{{ t('index.involve_heading') }}</h2>
+          <p class="pub-lead text-ink-muted">{{ t('index.involve_lead') }}</p>
+        </div>
+        <div class="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-7xl mx-auto">
+          {%- for tone, picture, key, href, variant, label, cta in [
+            ('sky', 'chat', 'involve_volunteer', url_for('auth.register') ~ '?role=volunteer', 'accent', 'cta_volunteer', 'volunteer'),
+            ('rose', 'heart', 'involve_support', url_for('base.donations'), 'sky', 'cta_donate', 'donate'),
+            ('amber', 'backpack', 'involve_learn', url_for('auth.register') ~ '?role=learner', 'sky', 'cta_start_learning', 'start_learning')
+          ] %}
+          <Card tone={{ tone }} class={{ "md:!p-8 flex flex-col items-center text-center reveal delay-" ~ loop.index * 100 }}>
+            <img class="lp-involve-art" src="{{ art }}{{ picture }}.svg" alt="" />
+            <h3 class="lp-h3 display-font font-bold text-ink-heading mb-3">{{ t('index.' ~ key ~ '_title') }}</h3>
+            <p class="lp-body text-ink-muted mb-7 flex-1">{{ t('index.' ~ key ~ '_text') }}</p>
+            <Button variant={{ variant }} size="lg" href={{ href }} data-cta={{ cta }} data-cta-location="get_involved">{{ t('index.' ~ label) }}</Button>
+          </Card>
+          {%- endfor %}
+        </div>
+        {%- else %}
+        <div class="text-center max-w-3xl mx-auto reveal">
+          <img class="lp-involve-art mx-auto" src="{{ art }}heart.svg" alt="" />
+          <h2 class="pub-h2 display-font font-extrabold text-ink-heading mb-4">{{ t('index.commitment_heading') }}</h2>
+          <p class="pub-lead text-ink-muted">{{ t('index.commitment_text') }}</p>
+        </div>
+        {%- endif %}
+      </div>
+    </section>
+  </main>
+</Page>

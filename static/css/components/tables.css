@@ -1,0 +1,132 @@
+/* ---- Tables ---- */
+/* Static wrapper (the rows/action buttons inside are the clickable bits) —
+   crisp static recipe: hard offset, shadow one step PALER than the border. */
+/* .clay-table-wrap: Table outer card — scrolls itself on x */
+.clay-table-wrap { background: white; border-radius: 16px; border: 2px solid var(--color-sky-200); box-shadow: 4px 4px 0 var(--color-sky-100); overflow-x: auto; overflow-y: hidden; }
+/* .clay-table: Every data table */
+.clay-table { width: 100%; border-collapse: collapse; }
+.clay-table thead tr { background: var(--color-sky-50); }
+.clay-table thead th { color: var(--color-sky-700); font-weight: 600; padding: 12px 16px; text-align: left; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.clay-table thead th.text-right { text-align: right; }
+.clay-table tbody tr { border-bottom: 1px solid var(--color-sky-100); }
+.clay-table tbody tr:hover { background: var(--color-surface-card); }
+.clay-table tbody td { padding: 12px 16px; color: var(--color-ink-body); font-size: 0.88rem; max-width: 320px; overflow-wrap: anywhere; word-break: break-word; }
+
+/* ---- Pagination ---- */
+/* Every paged table uses this control (macros/ui.html -> ui.pagination):
+   prev arrow, a five-wide window of numbered pages, next arrow. Interactive,
+   so shadow colour matches the border and hover lifts by exactly 1px. */
+/* .clay-pagination: Page-link row under a paged table */
+.clay-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 24px; }
+/* .pagination-link: One page link; `.active` = current page */
+.pagination-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 12px; border-radius: 10px;
+  background: white; border: 2px solid var(--color-sky-200); color: var(--color-primary);
+  font-size: 0.82rem; font-weight: 600; text-decoration: none;
+  box-shadow: 2px 2px 0 var(--color-sky-200);
+  transition: transform 120ms, box-shadow 120ms, background 150ms;
+}
+.pagination-link:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--color-sky-200); background: var(--color-sky-50); }
+.pagination-link:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--color-sky-200); }
+.pagination-link.active { background: var(--color-primary); border-color: var(--color-sky-700); color: white; box-shadow: 2px 2px 0 var(--color-sky-700); }
+.pagination-link.active:hover { box-shadow: 3px 3px 0 var(--color-sky-700); background: var(--color-primary); }
+.pagination-link.active:active { box-shadow: 1px 1px 0 var(--color-sky-700); }
+/* Prev/Next always render (components/pagination.jx) rather than disappearing at the
+   edges, which would shift the control under the cursor — this is the
+   inert state at page 1 / page n, a <span> with no href, so it's already
+   out of tab order. */
+.pagination-link[aria-disabled="true"] { opacity: 0.4; box-shadow: none; cursor: default; }
+/* .pagination-ellipsis: Inert 9-slot-window placeholder in ui.pagination — not a link, no hover/focus */
+.pagination-ellipsis { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; padding: 6px 4px; color: var(--color-slate-400); font-weight: 700; font-size: 0.82rem; }
+
+/* ---- Clay scrollbar ---- */
+/* Replaces the OS default scrollbar on every table container. `.clay-table-wrap`
+   scrolls itself; `.clay-scroll` is the reusable class for any *inner* scroll
+   div (some tables wrap the <table> in their own overflow-x div) or a wide page
+   shell. The ::-webkit-scrollbar pseudo-elements do NOT inherit — that is why
+   the inner divs carry the class explicitly.
+   Look = no track at all, just a floating sky-200 pill that darkens to sky-300
+   on hover and sky-600 while dragged. Three things a naive styled scrollbar
+   gets wrong, all visible on a rounded clay card:
+     1. DO NOT set `scrollbar-width`/`scrollbar-color` here. Blink (Chrome/Edge
+        121+) ignores EVERY ::-webkit-scrollbar rule on an element that sets
+        either standard property, and falls back to its native Fluent bar —
+        merely tinted by `scrollbar-color`. That is how this shipped first: a
+        sky-tinted native bar with a stepper arrow and a track running straight
+        over the corner, with all the rules below silently dead. The standard
+        properties are therefore scoped to engines with no ::-webkit-scrollbar
+        support (i.e. Firefox) in the @supports block at the end of this file.
+     2. Chrome/Edge keep drawing the OS stepper triangles at each end unless
+        ::-webkit-scrollbar-button is explicitly zeroed — and it must be zeroed
+        for every :start/:end + :single-button/:double-button variant, each in
+        its own rule (one unsupported selector in a comma list drops the whole
+        rule).
+     3. Scrollbars are NOT clipped by the container's border-radius, so a
+        painted track runs square across the 16px corner. Fix is a transparent
+        track plus end margins bigger than the radius, so the pill never
+        reaches the curve — nothing square is ever painted. */
+/* .clay-scroll: Any OTHER scroll container (inner div, page shell) */
+.clay-table-wrap::-webkit-scrollbar,
+.clay-scroll::-webkit-scrollbar { width: 14px; height: 14px; background: transparent; }
+
+/* Kill the stepper arrows (see 2 above). Separate rules on purpose. */
+.clay-table-wrap::-webkit-scrollbar-button,
+.clay-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0; height: 0;
+  background: transparent;
+  background-image: none;
+}
+.clay-table-wrap::-webkit-scrollbar-button:single-button,
+.clay-scroll::-webkit-scrollbar-button:single-button { display: none; width: 0; height: 0; }
+.clay-table-wrap::-webkit-scrollbar-button:double-button,
+.clay-scroll::-webkit-scrollbar-button:double-button { display: none; width: 0; height: 0; }
+.clay-table-wrap::-webkit-scrollbar-button:start:decrement,
+.clay-scroll::-webkit-scrollbar-button:start:decrement { display: none; width: 0; height: 0; }
+.clay-table-wrap::-webkit-scrollbar-button:end:increment,
+.clay-scroll::-webkit-scrollbar-button:end:increment { display: none; width: 0; height: 0; }
+
+.clay-table-wrap::-webkit-scrollbar-track,
+.clay-scroll::-webkit-scrollbar-track { background: transparent; }
+/* Hold the pill clear of the corner radius (see 2 above). */
+.clay-table-wrap::-webkit-scrollbar-track:horizontal,
+.clay-scroll::-webkit-scrollbar-track:horizontal { margin: 0 18px; }
+.clay-table-wrap::-webkit-scrollbar-track:vertical,
+.clay-scroll::-webkit-scrollbar-track:vertical { margin: 18px 0; }
+
+/* Transparent border + background-clip = 6px visible pill floating in a 14px
+   hit area, so it stays easy to grab without looking heavy. */
+.clay-table-wrap::-webkit-scrollbar-thumb,
+.clay-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-sky-200);
+  border: 4px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+.clay-table-wrap::-webkit-scrollbar-thumb:horizontal,
+.clay-scroll::-webkit-scrollbar-thumb:horizontal { min-width: 40px; }
+.clay-table-wrap::-webkit-scrollbar-thumb:vertical,
+.clay-scroll::-webkit-scrollbar-thumb:vertical { min-height: 40px; }
+/* No :hover state on purpose — the bar is a static affordance, not a button.
+   (The grow-and-recolour-on-hover behaviour it used to have was Blink's native
+   Fluent scrollbar, not this CSS; see note 1 above.) */
+/* `background-color`, never the `background` shorthand — the shorthand resets
+   background-clip to border-box, so the 6px pill paints over its own 4px
+   transparent border and looks like it doubles in width mid-drag. */
+.clay-table-wrap::-webkit-scrollbar-thumb:active,
+.clay-scroll::-webkit-scrollbar-thumb:active { background-color: var(--color-primary); }
+.clay-table-wrap::-webkit-scrollbar-corner,
+.clay-scroll::-webkit-scrollbar-corner { background: transparent; }
+
+/* Firefox path (see 1 above): only engines that do NOT understand
+   ::-webkit-scrollbar get the standard properties, so setting them can never
+   switch Blink back to its native Fluent bar. Firefox's thin scrollbar has no
+   stepper arrows of its own, so the look already matches. */
+@supports not selector(::-webkit-scrollbar) {
+  .clay-table-wrap,
+  .clay-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-sky-200) transparent;
+  }
+}

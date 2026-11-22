@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 900" width="100" height="900" aria-hidden="true">
+  <!-- Vertical tile of dark asteroids hugging the start edge; repeats as the camera climbs. -->
+  <g fill="#140C33">
+    <path d="M-10 40 C20 22 54 34 58 66 C62 96 34 124 6 118 C-4 116 -10 110 -10 104Z"/>
+    <path d="M-10 300 C10 286 34 292 38 312 C42 332 22 346 -2 342 L-10 340Z"/>
+    <path d="M14 470 C26 462 40 468 42 480 C44 494 30 502 18 498 C8 494 6 478 14 470Z"/>
+    <path d="M-10 610 C26 586 72 604 74 646 C76 690 40 716 4 708 L-10 704Z"/>
+    <path d="M30 830 C38 824 48 828 49 836 C50 846 40 850 33 846 C27 842 26 834 30 830Z"/>
+  </g>
+  <g fill="#2B1D61">
+    <path d="M30 32 C46 38 56 50 58 66 C52 54 42 44 30 40Z"/>
+    <path d="M24 294 C32 298 37 304 38 312 C34 306 29 302 22 300Z"/>
+    <path d="M30 466 C36 468 40 472 42 480 C38 476 34 472 28 471Z"/>
+    <path d="M44 596 C62 606 72 622 74 646 C66 628 56 614 40 604Z"/>
+  </g>
+  <g fill="#0D0824">
+    <ellipse cx="22" cy="78" rx="7" ry="5"/>
+    <ellipse cx="36" cy="100" rx="4" ry="3"/>
+    <ellipse cx="28" cy="650" rx="9" ry="6"/>
+    <ellipse cx="50" cy="676" rx="5" ry="3.5"/>
+  </g>
+</svg>

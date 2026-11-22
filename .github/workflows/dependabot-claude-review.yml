@@ -1,0 +1,129 @@
+name: Dependabot Claude review
+
+# Auto-review Dependabot PRs with Claude: "does this bump break anything?"
+#
+# Runs on pull_request_target (not pull_request) on purpose: a Dependabot-
+# triggered plain `pull_request` run has a read-only token and NO access to repo
+# secrets, so it could neither authenticate Claude nor post a comment.
+# pull_request_target runs in the BASE-branch context, which has the
+# CLAUDE_CODE_OAUTH_TOKEN secret and a write token.
+#
+# SECURITY: because secrets are in scope here, we never check out or execute the
+# PR's head. We check out the trusted base branch for context only, and Claude
+# is restricted (claude_args --allowed-tools) to READ-ONLY tools -- it reads the
+# diff via `gh pr diff`, greps the base tree, and has no way to write to the
+# repo or to GitHub. Posting is done by a separate, trusted workflow step.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+# No `id-token: write`: we pass github_token explicitly (see below), so the
+# action never mints an OIDC token and the permission would be dead weight.
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+  actions: read
+
+jobs:
+  review:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      # Base branch only (trusted) -- gives Claude the codebase to grep against.
+      # The PR's actual change is read via `gh pr diff`, so head is never run.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Claude dependency-bump review
+        id: review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          # github_token is passed explicitly so the action short-circuits its
+          # default auth path (mint a GitHub OIDC token -> exchange it at
+          # api.anthropic.com for a Claude GitHub App token). That exchange is
+          # rejected server-side for pull_request_target events -- every run of
+          # this workflow died on "401 Unauthorized - Invalid OIDC token"
+          # (anthropics/claude-code-action#713, still open upstream).
+          # The job's own GITHUB_TOKEN is scoped to the `permissions:` block
+          # above, which is all the posting step below needs.
+          # Side effect: the comment is authored by github-actions[bot] rather
+          # than claude[bot].
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Dependabot is a bot actor; agent mode rejects non-human actors
+          # unless they are allow-listed here.
+          allowed_bots: "dependabot[bot]"
+
+          # The verdict comes back as structured output rather than Claude
+          # shelling out to `gh pr comment`: a comment body is multi-line prose,
+          # and Claude Code's Bash permission matcher refuses a command whose
+          # argument spans lines even when the command prefix is allow-listed.
+          # The call is denied inside the sandbox, the action still exits 0, and
+          # the PR silently gets no review. Structured output has no shell in the
+          # path at all. (track_progress, the usual alternative, is not usable
+          # here -- the action throws for pull_request_target events.)
+          claude_args: |
+            --allowed-tools "Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob"
+            --json-schema '{"type":"object","properties":{"comment":{"type":"string"}},"required":["comment"]}'
+          prompt: |
+            A Dependabot dependency-update pull request (#${{ github.event.pull_request.number }})
+            has just been opened on this repository — a Flask web app (Python 3.12)
+            for the IntegratED learning platform. Decide whether merging it could
+            break the app.
+
+            Review it read-only — do NOT install packages or run any project code:
+            1. Run `gh pr diff ${{ github.event.pull_request.number }}` to see the
+               change. Dependabot only bumps resolved versions in uv.lock (and a
+               pyproject.toml specifier where one is pinned) or in GitHub Actions
+               workflow files.
+            2. For each bumped package, judge the risk from the size of the version
+               jump (patch / minor / major) and any breaking changes, removed or
+               renamed APIs, or dropped Python 3.12 support in the new release. Grep
+               this repo for how the package is imported and used to see whether a
+               breaking change would actually bite.
+
+            Return your verdict as structured output: a single `comment` field
+            holding the markdown body of the pull request comment. A later step
+            posts it verbatim, so write it as the finished comment — do not wrap
+            it in a code fence and do not add a preamble.
+            - If it looks safe, something like: "✅ This merge should not break
+              anything — it's a routine <patch|minor|major> bump of <package> with
+              no breaking changes that affect this codebase."
+            - If it looks risky, start with "⚠️ This merge may break something:" and
+              give a short bullet list naming the package, the specific breaking
+              change, and where in the code it would bite.
+
+            Keep it to a few sentences. You have no tool that can comment on,
+            approve, merge or close the PR — the `comment` field is the only
+            output that reaches it.
+
+      # Trusted step, outside the sandbox: posts whatever Claude decided. Runs on
+      # `always()` so a Claude failure surfaces as a red check and a visible "no
+      # verdict" comment instead of a green run with nothing posted.
+      - name: Post verdict comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # Claude-authored text -- read through an env var, never interpolated
+          # inline as ${{ }}, so it cannot break the shell or inject commands.
+          STRUCTURED_OUTPUT: ${{ steps.review.outputs.structured_output }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          body=$(printf '%s' "${STRUCTURED_OUTPUT:-}" | jq -r '.comment // empty' 2>/dev/null || true)
+
+          if [ -z "$body" ]; then
+            printf '⚠️ Claude could not review this dependency bump — the review run produced no verdict. [See the run](%s); review this bump manually.\n' \
+              "$RUN_URL" > verdict.md
+            gh pr comment "$PR_NUMBER" --body-file verdict.md
+            echo "::error::Claude dependency review produced no verdict."
+            exit 1
+          fi
+
+          printf '%s\n' "$body" > verdict.md
+          gh pr comment "$PR_NUMBER" --body-file verdict.md

@@ -1,0 +1,118 @@
+{#- After Stripe checkout: an animated check, the amount and school when Stripe gave them, the
+    impact that amount buys, share links, and a confetti burst on load. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/shell/main.jx" as Main #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/card.jx" as Card #}
+{#def school=None, amount=None, tier=None #}
+{%- set head %}
+  <style>
+    .success-hero { margin-bottom: 28px; }
+    .success-hero-art { position: relative; width: calc(120px * 1.6); height: calc(120px * 1.25); margin: 0 auto 18px; }
+    .success-hero-heart { position: absolute; inset: 0; margin: auto; width: 120px; animation: success-heart-beat 1100ms 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+    @keyframes success-heart-beat { 0% { opacity: 0; transform: scale(0.3); } 55% { opacity: 1; transform: scale(1.15); } 75% { transform: scale(0.95); } 100% { transform: scale(1); } }
+    .success-spark { position: absolute; color: var(--color-amber-400); animation: success-spark-twinkle 2.6s 900ms ease-in-out infinite both; }
+    .success-spark-a { top: 2%; inset-inline-start: 6%; width: 28px; }
+    .success-spark-b { top: 18%; inset-inline-end: 2%; width: 20px; color: var(--color-sky-400); animation-delay: 1.4s; }
+    .success-spark-c { bottom: 4%; inset-inline-end: 14%; width: 24px; color: var(--color-rose-400); animation-delay: 1.9s; }
+    @keyframes success-spark-twinkle { 0% { opacity: 0; transform: scale(0); } 20% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.6) rotate(25deg); } 80%, 100% { opacity: 1; transform: scale(1); } }
+    .success-title { font-size: clamp(2.2rem, 5vw, 3rem); line-height: 1.05; color: var(--color-ink-heading); margin-bottom: 14px; }
+    .success-amount-chip { display: inline-flex; align-items: baseline; gap: 10px; padding: 8px 20px; border-radius: 999px; background: var(--color-green-50); border: var(--clay-border-width) solid var(--color-card-green-border); }
+    .success-amount { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 2.2rem; line-height: 1; color: var(--color-accent); font-variant-numeric: tabular-nums; }
+    .success-amount-to { font-size: 1rem; font-weight: 700; color: var(--color-ink-body); }
+    .success-received { font-size: 1.1rem; color: var(--color-ink-body); }
+    .success-impact { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; padding: 18px 20px; border-radius: 18px; text-align: start; background: var(--color-green-50); border: var(--clay-border-width) solid var(--color-card-green-border); box-shadow: 4px 4px 0 var(--color-card-green-shadow); }
+    .success-impact img { width: 80px; height: 80px; flex: none; animation: success-impact-grow 900ms 700ms cubic-bezier(0.2, 0.8, 0.3, 1.2) both; transform-origin: 50% 92%; }
+    @keyframes success-impact-grow { from { opacity: 0; scale: 1 0.2; } 70% { opacity: 1; scale: 1 1.08; } to { scale: 1 1; } }
+    .success-impact-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-accent-dark); margin-bottom: 4px; }
+    .success-impact-text { line-height: 1.6; color: var(--color-ink-body); }
+    @media (max-width: 480px) { .success-impact { gap: 12px; padding: 14px 16px; } .success-impact img { width: 56px; height: 56px; } }
+    @media (prefers-reduced-motion: reduce) { .success-hero-heart, .success-spark, .success-impact img { animation: none; } }
+    .success-share-h2 { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.35rem; color: var(--color-ink-heading); margin-bottom: 4px; }
+    .success-share-lead { font-size: 0.95rem; color: var(--color-ink-body); margin-bottom: 16px; }
+    .success-share-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-bottom: 24px; }
+    .success-share-row > * { white-space: nowrap; }
+    .success-share-row svg { width: 16px; height: 16px; }
+    .success-share-more { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 20px; padding-top: 18px; border-top: 2px dashed var(--color-primary-soft); }
+    .success-share-more a { font-weight: 700; color: var(--color-primary-dark); text-decoration: underline; text-underline-offset: 4px; }
+    .success-share-more a:hover { color: var(--color-primary); }
+  </style>
+{%- endset %}
+<Page head={{ head }} title={{ t('donations.success_page_title') ~ " - IntegratED" }} styles="donations" body_class="min-h-screen flex flex-col overflow-x-hidden">
+  <Main layout="centered" width="lg">
+    <div class="success-card p-8 md:p-10 text-center">
+
+      <div class="success-hero">
+        <div class="success-hero-art" aria-hidden="true">
+          <img class="success-hero-heart" src="{{ url_for('static', filename='svg/heart.svg') }}" alt="" />
+          {%- for cls in ['a', 'b', 'c'] %}
+          <svg class="success-spark success-spark-{{ cls }}" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C12 7 17 12 24 12C17 12 12 17 12 24C12 17 7 12 0 12C7 12 12 7 12 0Z" /></svg>
+          {%- endfor %}
+        </div>
+        <h1 class="success-title display-font font-extrabold">{{ t('donations.success_heading') }}</h1>
+        {%- if amount and school %}
+        <p class="success-amount-chip"><span class="success-amount">${{ "%.0f" | format(amount) }}</span><span class="success-amount-to">{{ t('donations.success_donated_to') }} {{ school }}</span></p>
+        {%- else %}
+        <p class="success-received">{{ t('donations.success_received') }}</p>
+        {%- endif %}
+      </div>
+
+      {%- if tier %}
+      <div class="success-impact">
+        <img src="{{ url_for('static', filename='svg/garden-pot.svg') }}" alt="" />
+        <div>
+          <p class="success-impact-label">{{ t('donations.success_your_impact') }}</p>
+          <p class="success-impact-text" id="impact-msg">{{ t('donations.success_impact_' ~ tier) }}</p>
+        </div>
+      </div>
+      {%- endif %}
+
+      <div>
+        <p class="success-share-h2">{{ t('donations.success_spread_word') }}</p>
+        <p class="success-share-lead">{{ t('donations.success_share_lead') }}</p>
+        {#- Cloud Run terminates TLS, so the scheme comes from X-Forwarded-Proto. #}
+        {%- set share_url = url_for('base.donations', _external=True, _scheme=request.headers.get('X-Forwarded-Proto', request.scheme)) %}
+        <div class="success-share-row">
+          <Button variant="sky" href={{ 'https://twitter.com/intent/tweet?text=' ~ t('donations.success_tweet_text')|urlencode ~ '&url=' ~ share_url|urlencode }} target="_blank" rel="noopener" data-cta="share_x">
+            <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            {{ t('donations.success_share_x') }}
+          </Button>
+          <Button variant="sky" href={{ 'https://www.facebook.com/sharer/sharer.php?u=' ~ share_url|urlencode }} target="_blank" rel="noopener" data-cta="share_facebook">
+            <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            {{ t('donations.success_share_facebook') }}
+          </Button>
+          <Button variant="accent" icon="link" data-cta="share_copy" data-copied={{ t('donations.success_link_copied') }} data-share-url={{ share_url }} onclick="navigator.clipboard && navigator.clipboard.writeText(this.dataset.shareUrl).then(() => { this.querySelector('[data-copy-label]').textContent = this.dataset.copied; })"><span data-copy-label aria-live="polite">{{ t('donations.success_copy_link') }}</span></Button>
+        </div>
+        <div class="success-share-more">
+          <a href="{{ url_for('base.donations') }}">{{ t('donations.success_donate_again') }}</a>
+          <a href="{{ url_for('base.home') }}">{{ t('donations.success_back_home') }}</a>
+        </div>
+      </div>
+
+    </div>
+  </Main>
+
+  <script>
+    // Confetti burst on load — green/sky/amber palette
+    const COLORS = ["#16A34A", "#0284C7", "#D97706", "#A7F3D0", "#BAE6FD", "#FDE68A", "#ffffff"];
+    function burst() {
+      for (let i = 0; i < 60; i++) {
+        const el = document.createElement("div");
+        el.className = "confetti-piece";
+        el.style.left = Math.random() * 100 + "vw";
+        el.style.backgroundColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+        el.style.animationDuration = (1.5 + Math.random() * 2) + "s";
+        el.style.animationDelay = (Math.random() * 0.8) + "s";
+        el.style.borderRadius = Math.random() > 0.5 ? "50%" : "2px";
+        el.style.width  = (6 + Math.random() * 6) + "px";
+        el.style.height = (6 + Math.random() * 6) + "px";
+        document.body.appendChild(el);
+        el.addEventListener("animationend", () => el.remove());
+      }
+    }
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      window.addEventListener("load", () => setTimeout(burst, 400));
+    }
+  </script>
+</Page>

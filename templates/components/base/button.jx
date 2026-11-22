@@ -1,0 +1,17 @@
+{#- Every clay button: btn-clay + one colour [+ btn-flat | btn-large] (docs/ui-design/building-ui.md).
+    `href` renders an <a>, else a <button type="button">. A disabled link drops its href and
+    carries aria-disabled, which buttons.css styles like :disabled. -#}
+{#import "@components/base/icon.jx" as Icon #}
+{#def variant=None, size=None, flat=False, icon=None, icon_end=None, href=None, disabled=False #}
+{%- set classes = [
+  "btn-clay", look("Button", "variant", variant, "colour"), "btn-flat" if flat,
+  look("Button", "size", size, "flat" if flat else "solid"),
+] | select | join(" ") -%}
+{%- if href is not none -%}
+<a {{ attrs.render(class=classes, href=(none if disabled else href), aria_disabled=("true" if disabled else none)) }}>
+{%- else -%}
+{%- do attrs.setdefault(type="button") -%}
+<button {{ attrs.render(class=classes, disabled=(true if disabled else false)) }}>
+{%- endif -%}
+{% if icon %}<Icon name={{ icon }} />{% endif %}{{ content }}{% if icon_end %}<Icon name={{ icon_end }} />{% endif %}
+{%- if href is not none %}</a>{% else %}</button>{% endif %}

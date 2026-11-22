@@ -1,0 +1,8 @@
+id: no-transition-all-class
+language: html
+severity: error
+message: |
+  transition-all animates every property on one curve — use transition-transform / transition-colors (docs/ui-design/visual-language.md).
+rule:
+  matches: class-value
+  regex: '(?:^|[\s}])(?:[\w-]+:)*!?-?transition-all(?:$|[\s{])'

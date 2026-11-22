@@ -1,0 +1,16 @@
+{#- Every clay card (docs/ui-design/visual-language.md). Static by default: one standalone class per tone, pale shadow,
+    no motion. `href` makes it the clickable card as an <a>; `clickable` without one makes it a
+    <button type="button"> (game answer choices), which :disabled dims. A clickable card has no purple or pink.
+    Padding and layout utilities may go on `class`; border, shadow, radius and background may not. -#}
+{#def tone=None, tag=None, href=None, clickable=False #}
+{%- set tag = prop("Card", "tag", tag) -%}
+{%- set clickable = href is not none or clickable -%}
+{%- set cls = look("Card", "tone", tone, "clickable" if clickable else "static") -%}
+{%- if href is not none -%}
+<a {{ attrs.render(class=cls, href=href) }}>{{ content }}</a>
+{%- elif clickable -%}
+{%- do attrs.setdefault(type="button") -%}
+<button {{ attrs.render(class=cls) }}>{{ content }}</button>
+{%- else -%}
+<{{ tag }} {{ attrs.render(class=cls) }}>{{ content }}</{{ tag }}>
+{%- endif %}

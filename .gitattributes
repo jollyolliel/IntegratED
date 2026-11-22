@@ -1,0 +1,29 @@
+# Translation files
+#
+# translations/en.json is the hand-written source of truth — edit it, then run
+# `python scripts/sync_keys.py`, which regenerates every other language file.
+# Those generated files are committed (so the Docker build stays offline and
+# reproducible) but their diffs are noise: one key added to en.json rewrites all
+# 12 of them.
+#
+#   linguist-generated=true  -> GitHub collapses them in PR diffs
+#   -diff                    -> local `git diff` prints "Binary files differ"
+#                               instead of thousands of lines
+#
+# Content is still tracked normally, so `git diff --exit-code` in CI and text
+# merges both keep working. To inspect one by hand: git diff --text <file>
+translations/*.json   linguist-generated=true -diff
+
+# ...except English, which is written by humans and must stay reviewable.
+translations/en.json  linguist-generated=false diff
+
+# Worksheets: the PDFs and the markdown sheets are content, not code. GitHub
+# collapses their diffs in PRs ("Load diff"); local `git diff` is unchanged.
+*.pdf                              linguist-generated=true
+seed/files/content/worksheets/**   linguist-generated=true
+data/worksheets/**                 linguist-generated=true
+
+# Shell scripts run inside the Linux image. With core.autocrlf=true on Windows
+# both checkouts and `git archive` (local-forge/deploy.ps1) would write CRLF,
+# and /bin/sh fails on `set -e\r` before gunicorn starts.
+*.sh  text eol=lf

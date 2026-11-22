@@ -1,0 +1,196 @@
+{#- The volunteer's own profile, read-only: a sidebar with hours and match status, their basic
+    details, their survey answers (or a prompt to take the survey) and their partnership. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/shell/main.jx" as Main #}
+{#def volunteer #}
+{%- set head %}
+  <style>
+    .avatar-img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--color-sky-200); box-shadow: 3px 3px 0 var(--color-sky-200); }
+    .info-label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--color-ink-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .info-value { font-size: 0.95rem; font-weight: 600; color: var(--color-ink-body); }
+    .tag-sky { display: inline-block; background: var(--color-sky-50); color: var(--color-primary); font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--color-sky-200); }
+    .tag-gray { display: inline-block; background: var(--color-gray-100); color: var(--color-ink-muted); font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--color-line); }
+  </style>
+{%- endset %}
+{%- set survey = volunteer.survey_data %}
+{#- Survey answers shown as a row of tags: (key, label key, tag class). -#}
+{%- set tag_answers = [
+  ("motivation", "motivation", "tag-sky"),
+  ("traits", "personality_traits", "tag-gray"),
+  ("hobbies", "hobbies_interests", "tag-gray"),
+] %}
+<Page title={{ t('volunteer.profile.title') }} styles="admin" head={{ head }}>
+  <Main>
+    <BackLink href={{ url_for('volunteer.volunteer_dashboard') }} label="Dashboard" />
+
+    <div class="mb-8">
+      <SectionBadge tag="div">{{ t('volunteer.profile.eyebrow') }}</SectionBadge>
+      <h1 class="display-font text-3xl md:text-4xl font-extrabold text-sky-950 leading-tight">{{ t('volunteer.profile.heading') }}</h1>
+      <p class="text-ink-faint text-sm mt-1">{{ t('volunteer.profile.subheading') }}</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+      <div class="md:col-span-1">
+        <Card class="sticky top-6 text-center">
+          {%- if volunteer.user_picture %}
+          <img src="{{ volunteer.user_picture }}" alt="{{ volunteer.name }}" class="avatar-img mx-auto mb-3" />
+          {%- else %}
+          <div class="avatar-circle-lg">
+            <Icon name="user" size="10" class="text-sky-300" />
+          </div>
+          {%- endif %}
+
+          <h2 class="display-font text-xl font-bold text-sky-950">{{ volunteer.name or 'Volunteer' }}</h2>
+          <p class="text-sm text-ink-faint mt-0.5">{{ volunteer.email }}</p>
+          {%- if volunteer.school %}
+          <p class="text-sm text-ink-faint">{{ volunteer.school.name }}</p>
+          {%- endif %}
+
+          <div class="mt-5 space-y-3 border-t border-sky-50 pt-5 text-start">
+            <div class="stat-mini">
+              <span class="info-label">{{ t('volunteer.profile.hours_volunteered') }}</span>
+              <div class="display-font text-2xl font-extrabold text-primary">{{ "%.1f"|format(volunteer.hours_volunteered) }}</div>
+            </div>
+
+            <div class="{% if volunteer.is_matched %}stat-mini-green{% else %}stat-mini{% endif %}">
+              <span class="info-label">{{ t('volunteer.profile.status') }}</span>
+              {%- if volunteer.is_matched %}
+              <div class="text-base font-bold text-accent-dark">{{ t('volunteer.profile.active_partner') }}</div>
+              {%- else %}
+              <div class="text-base font-bold text-amber-600">{{ t('volunteer.profile.awaiting_match') }}</div>
+              {%- endif %}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div class="md:col-span-2 space-y-6">
+
+        <Card>
+          <div class="flex items-center gap-2 mb-5">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-400 flex-shrink-0"></span>
+            <h3 class="font-bold text-sky-900 text-lg">{{ t('volunteer.profile.basic_information') }}</h3>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <span class="info-label">{{ t('volunteer.profile.full_name') }}</span>
+              <p class="info-value">{{ volunteer.name or t('volunteer.profile.not_set') }}</p>
+            </div>
+            <div>
+              <span class="info-label">{{ t('volunteer.profile.email') }}</span>
+              <p class="info-value">{{ volunteer.email }}</p>
+            </div>
+            {%- if volunteer.school %}
+            <div>
+              <span class="info-label">{{ t('volunteer.profile.school_org') }}</span>
+              <p class="info-value">{{ volunteer.school.name }}</p>
+            </div>
+            {%- endif %}
+          </div>
+        </Card>
+
+        {%- if survey %}
+        <Card>
+          <div class="flex items-center gap-2 mb-5">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-400 flex-shrink-0"></span>
+            <h3 class="font-bold text-sky-900 text-lg">{{ t('volunteer.profile.about_you') }}</h3>
+          </div>
+          <div class="space-y-5 text-sm">
+            {%- if survey.age %}
+            <div>
+              <span class="info-label">{{ t('volunteer.profile.age') }}</span>
+              <p class="info-value">{{ survey.age }}</p>
+            </div>
+            {%- endif %}
+
+            {%- if survey.personality %}
+            <div>
+              <span class="info-label">{{ t('volunteer.profile.personality_type') }}</span>
+              <p class="info-value">{{ survey.personality }}</p>
+            </div>
+            {%- endif %}
+
+            {%- for key, label, tag in tag_answers %}
+            {%- if survey[key] %}
+            <div>
+              <span class="info-label">{{ t('volunteer.profile.' ~ label) }}</span>
+              <div class="mt-1.5 flex flex-wrap gap-2">
+                {%- for item in survey[key] %}
+                <span class="{{ tag }}">{{ item }}</span>
+                {%- endfor %}
+              </div>
+            </div>
+            {%- endif %}
+            {%- endfor %}
+
+            {%- if survey.languages %}
+            <div>
+              <span class="info-label">{{ t('volunteer.profile.languages') }}</span>
+              <div class="mt-2 space-y-1">
+                {%- for lang_obj in survey.languages %}
+                <p class="info-value">
+                  {{ lang_obj.language }} <span class="text-ink-faint font-normal">— {{ lang_obj.level }}</span>
+                </p>
+                {%- endfor %}
+              </div>
+            </div>
+            {%- endif %}
+
+            {%- for key, label in [("practice_method", "practice_methods"), ("match_activities", "match_activities")] %}
+            {%- if survey[key] %}
+            <div>
+              <span class="info-label">{{ t('volunteer.profile.' ~ label) }}</span>
+              <div class="mt-1.5 flex flex-wrap gap-2">
+                {%- for item in survey[key] %}
+                <span class="tag-gray">{{ item }}</span>
+                {%- endfor %}
+              </div>
+            </div>
+            {%- endif %}
+            {%- endfor %}
+          </div>
+        </Card>
+
+        {%- else %}
+        <Card tone="amber" class="text-center py-8">
+          <IconBox icon="clipboard" tone="amber" size="lg" class="mx-auto mb-3" />
+          <p class="text-ink-muted text-sm mb-4">{{ t('volunteer.profile.no_survey_message') }}</p>
+          <Button variant="sky" href={{ url_for('volunteer.volunteer_survey') }} icon_end="arrow-right">
+            {{ t('volunteer.profile.complete_survey') }}
+          </Button>
+        </Card>
+        {%- endif %}
+
+        <Card>
+          <div class="flex items-center gap-2 mb-5">
+            <span class="w-2.5 h-2.5 rounded-full bg-green-400 flex-shrink-0"></span>
+            <h3 class="font-bold text-sky-900 text-lg">{{ t('volunteer.profile.partnership_status') }}</h3>
+          </div>
+          {%- if volunteer.learner_matches %}
+          <div class="bg-green-50 rounded-xl p-4 border-[1.5px] border-card-green-border">
+            <p class="text-accent-dark font-bold text-sm mb-1">{{ t('volunteer.profile.active_partnership') }}</p>
+            <p class="text-gray-600 text-sm">
+              {{ t('volunteer.profile.matched_with') }}
+              {% for l in volunteer.learner_matches %}<strong class="text-sky-900">{{ l.name or l.username }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}
+            </p>
+            <p class="text-xs text-ink-faint font-semibold mt-2">{{ t('volunteer.profile.learner_limit', count=volunteer.learner_matches|length, limit=volunteer.capacity) }}</p>
+          </div>
+          {%- else %}
+          <div class="bg-amber-50 rounded-xl p-4 border-[1.5px] border-card-amber-border">
+            <p class="text-amber-700 font-bold text-sm mb-1">{{ t('volunteer.profile.awaiting_match') }}</p>
+            <p class="text-gray-600 text-sm">{{ t('volunteer.profile.awaiting_match_desc') }}</p>
+          </div>
+          {%- endif %}
+        </Card>
+
+      </div>
+    </div>
+  </Main>
+</Page>

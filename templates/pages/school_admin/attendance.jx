@@ -1,0 +1,27 @@
+{#- The school's attendance ledger, optionally filtered to one teacher, learner or volunteer. The
+    headline totals cover every matching record; the pager swaps only the table
+   . -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@page_components/school_admin/attendance_results.jx" as AttendanceResults #}
+{#import "@components/shell/main.jx" as Main #}
+{#def school, records, record_count, total_hours, page, page_count, page_args #}
+<Page title={{ "Attendance — " ~ school.name }} styles="admin">
+  <Main>
+    <BackLink href={{ url_for('school_admin.dashboard') }} label="Dashboard" />
+
+    <div class="mb-6">
+      <SectionBadge tag="div">{{ t('school_admin.attendance.eyebrow') }}</SectionBadge>
+      <h1 class="display-font text-3xl md:text-4xl font-extrabold text-sky-950 mt-1">{{ school.name }}</h1>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mb-8">
+      <StatTile icon="book-open" label={{ t('school_admin.attendance.stat_total_hours') }} value={{ total_hours }} />
+      <StatTile tone="green" icon="clipboard-document-check" label={{ t('school_admin.attendance.stat_sessions') }} value={{ record_count }} />
+    </div>
+
+    <AttendanceResults records={{ records }} page={{ page }} page_count={{ page_count }} page_args={{ page_args }} />
+  </Main>
+</Page>

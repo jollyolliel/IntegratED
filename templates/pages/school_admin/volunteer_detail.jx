@@ -1,0 +1,105 @@
+{#- One volunteer at the admin's school: profile and match status, headline stats, their matched
+    learners, delete, then a preview of their sessions linking out to the full ledger. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/page_header.jx" as PageHeader #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/status_pill.jx" as StatusPill #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def school, volunteer, attendance_records, attendance_total, total_hours #}
+<Page title={{ (volunteer.name or volunteer.email) ~ " — " ~ school.name }}>
+  <Main>
+    <BackLink href={{ url_for('school_admin.people') }} label="People" />
+
+    <Card tone="green" class="mb-6">
+      <PageHeader class="!mb-0" badge={{ t('school_admin.volunteer_detail.eyebrow') }}
+        title={{ volunteer.name or volunteer.email }} subtitle={{ school.name }}>
+        {% fill lead %}<IconBox icon="user" tone="green" size="xl" />{% endfill %}
+        {%- if volunteer.is_matched %}
+        <StatusPill status="matched">{{ t('school_admin.volunteer_detail.matched') }}</StatusPill>
+        {%- else %}
+        <StatusPill status="unmatched">{{ t('school_admin.volunteer_detail.unmatched') }}</StatusPill>
+        {%- endif %}
+      </PageHeader>
+    </Card>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+      <StatTile icon="check-circle" label={{ t('school_admin.volunteer_detail.stat_matched') }}
+        value={{ t('common.yes') if volunteer.is_matched else t('common.no') }} />
+      <StatTile tone="green" icon="book-open" label={{ t('school_admin.volunteer_detail.stat_hours_volunteered') }}
+        value={{ "%.1f" | format(volunteer.hours_volunteered or 0) }} />
+      <StatTile tone="amber" icon="clipboard-document-check" class="col-span-2 md:col-span-1"
+        label={{ t('school_admin.volunteer_detail.stat_sessions_logged') }} value={{ attendance_total }} />
+    </div>
+
+    {%- if volunteer.learner_matches %}
+    <Card tone="green" class="mb-6">
+      <div class="flex items-center gap-3">
+        <IconBox icon="link" tone="green" size="sm" />
+        <div>
+          <p class="text-xs font-bold text-accent-dark uppercase tracking-wide">
+            {{ t('school_admin.volunteer_detail.matched_learner') }}
+            <span class="text-accent normal-case">({{ volunteer.learner_matches|length }}/{{ volunteer.capacity }})</span>
+          </p>
+          <div class="flex flex-wrap gap-x-3 gap-y-1">
+            {%- for l in volunteer.learner_matches %}
+            <a href="{{ url_for('school_admin.learner_detail', learner_id=l.id) }}"
+               class="font-bold text-primary hover:text-primary-dark hover:underline text-sm">
+              {{ l.name or l.username }}
+            </a>
+            {%- endfor %}
+          </div>
+        </div>
+      </div>
+    </Card>
+    {%- endif %}
+
+    <div class="flex justify-end mb-8">
+      <form action="{{ url_for('school_admin.delete_volunteer', volunteer_id=volunteer.id) }}" method="POST"
+            data-confirm="{{ t('confirm.delete_named', name=volunteer.name or volunteer.email) }}">
+        <Button type="submit" variant="danger" icon="trash">{{ t('school_admin.volunteer_detail.delete_volunteer') }}</Button>
+      </form>
+    </div>
+
+    <div class="mb-3">
+      <SectionBadge>{{ t('school_admin.volunteer_detail.attendance_badge') }} ({{ attendance_total }})</SectionBadge>
+    </div>
+    {%- if attendance_records %}
+    <Table>
+      <thead>
+        <tr>
+          <th>{{ t('school_admin.volunteer_detail.col_date') }}</th>
+          <th>{{ t('school_admin.volunteer_detail.col_learner') }}</th>
+          <th>{{ t('school_admin.volunteer_detail.col_duration') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for r in attendance_records %}
+        <tr>
+          <td class="text-ink-faint">{{ r.date.strftime('%b %d, %Y') }}</td>
+          <td class="font-medium text-sky-900">{{ r.partner.name or r.partner.username if r.partner else '—' }}</td>
+          <td><span class="font-bold text-sky-700">{{ "%.1f"|format(r.duration) }}</span></td>
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </Table>
+    {%- if attendance_total > attendance_records|length %}
+    <div class="text-end mt-2">
+      <Button variant="sky" flat href={{ url_for('school_admin.attendance', volunteer=volunteer.id) }}>
+        {{- t('school_admin.volunteer_detail.view_all', count=attendance_total) -}}
+      </Button>
+    </div>
+    {%- endif %}
+    {%- else %}
+    {#- Green, not the sky EmptyState: volunteer = green, everywhere. #}
+    <div class="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-card-green-border">
+      <p class="text-ink-faint italic text-sm">{{ t('school_admin.volunteer_detail.no_records') }}</p>
+    </div>
+    {%- endif %}
+  </Main>
+</Page>

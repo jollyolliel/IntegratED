@@ -1,0 +1,277 @@
+{#- The public about page: a hero, the mission beside an illustration, the mission-statement band,
+    "who we are" with the get-involved buttons, impact stats and the team wall. The mission and
+    how-we-work copy is editable site content. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+{#def stats, team_members, site_content #}
+{%- set head %}
+<style>
+  .about-hero { position: relative; overflow: hidden; padding-block: clamp(52px, 7vw, 108px) clamp(44px, 6vw, 88px); background: linear-gradient(var(--color-primary-tint), var(--color-surface-page)); text-align: center; }
+  .about-hero-inner { max-width: 60rem; margin-inline: auto; padding-inline: clamp(20px, 6vw, 56px); }
+  .about-hero-title { font-size: clamp(2.6rem, 5.2vw, 5.25rem); line-height: 1.03; letter-spacing: -0.02em; text-wrap: balance; margin-bottom: 20px; color: var(--color-ink-heading); }
+  .about-hero-lead { color: var(--color-ink-body); max-width: 38em; margin-inline: auto; }
+  .about-hero-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: clamp(36px, 4vw, 56px); }
+  .about-hero-sticker { width: 104px; aspect-ratio: 1; border-radius: 28%; background: var(--color-surface); border: var(--clay-border-width) solid var(--about-hero-border); box-shadow: 4px 4px 0 var(--about-hero-shadow); display: grid; place-items: center; rotate: var(--about-hero-r); animation: about-hero-bob 5s ease-in-out infinite; }
+  .about-hero-sticker img { width: 70%; }
+  .about-hero-sticker:nth-child(1) { --about-hero-r: -6deg; --about-hero-border: var(--color-card-amber-border); --about-hero-shadow: var(--color-card-amber-shadow); animation-delay: -0.4s; }
+  .about-hero-sticker:nth-child(2) { --about-hero-r: 4deg; --about-hero-border: var(--color-card-sky-border); --about-hero-shadow: var(--color-card-sky-shadow); animation-delay: -1.4s; margin-top: 18px; }
+  .about-hero-sticker:nth-child(3) { --about-hero-r: -2deg; --about-hero-border: var(--color-card-rose-border); --about-hero-shadow: var(--color-card-rose-shadow); animation-delay: -2.4s; }
+  .about-hero-sticker:nth-child(4) { --about-hero-r: 5deg; --about-hero-border: var(--color-card-green-border); --about-hero-shadow: var(--color-card-green-shadow); animation-delay: -3.2s; margin-top: 18px; }
+  .about-hero-sticker:nth-child(5) { --about-hero-r: -4deg; --about-hero-border: var(--color-card-sky-border); --about-hero-shadow: var(--color-card-sky-shadow); animation-delay: -4.1s; }
+  @keyframes about-hero-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -8px; } }
+  @media (max-width: 639px) { .about-hero-sticker:nth-child(n+4) { display: none; } }
+
+  .about-mission { padding-block: clamp(64px, 8vw, 120px); background: var(--color-surface); }
+  .about-mission-grid { max-width: 1180px; margin-inline: auto; padding-inline: clamp(20px, 6vw, 56px); display: grid; gap: 48px; align-items: center; }
+  @media (min-width: 900px) { .about-mission-grid { grid-template-columns: 1.1fr 1fr; } }
+  .about-mission-h2 { color: var(--color-ink-heading); margin-bottom: 24px; }
+  .about-mission-copy p { font-size: clamp(1.05rem, 1.1vw, 1.2rem); line-height: 1.7; color: var(--color-ink-body); max-width: 36em; }
+  .about-mission-copy p + p { margin-top: 16px; }
+  .about-mission-stage { position: relative; aspect-ratio: 5 / 4; border-radius: 28px; display: grid; place-items: center; background-color: var(--color-sky-50); background-image: radial-gradient(rgb(var(--color-primary-rgb) / 0.12) 2px, transparent 2.5px); background-size: 22px 22px; border: var(--clay-border-width) solid var(--color-card-sky-border); box-shadow: 6px 6px 0 var(--color-card-sky-shadow); overflow: hidden; }
+  .about-mission-pair { width: 72%; animation: about-mission-hello 900ms 200ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+  .about-mission-chip { position: absolute; width: 22%; aspect-ratio: 1; border-radius: 26%; display: grid; place-items: center; background: var(--color-surface); border: var(--clay-border-width) solid var(--about-mission-border); rotate: var(--about-mission-r); }
+  .about-mission-chip img { width: 68%; }
+  .about-mission-chip-a { top: 8%; inset-inline-start: 7%; --about-mission-r: -8deg; --about-mission-border: var(--color-card-amber-border); }
+  .about-mission-chip-b { bottom: 9%; inset-inline-end: 7%; --about-mission-r: 7deg; --about-mission-border: var(--color-card-green-border); }
+  @keyframes about-mission-hello { from { opacity: 0; transform: translateY(24px) scale(0.9); } }
+
+  .about-band { position: relative; background: var(--color-primary); color: var(--color-surface); padding-block: calc(36px + clamp(56px, 7vw, 104px)); overflow: hidden; }
+  .about-band-wave { position: absolute; inset-inline: 0; width: 100%; height: 36px; fill: var(--color-surface); }
+  .about-band-wave-top { top: -1px; rotate: 180deg; }
+  .about-band-wave-bottom { bottom: -1px; }
+  .about-band-inner { position: relative; max-width: 960px; margin-inline: auto; padding-inline: clamp(20px, 6vw, 56px); text-align: center; }
+  .about-band-art { width: 96px; margin: 0 auto 22px; }
+  .about-band-statement { font-size: calc(0.8 * clamp(2rem, 3.6vw, 3.8rem)); line-height: 1.12; text-wrap: balance; color: var(--color-surface); }
+  .about-band-sticker { position: absolute; width: clamp(56px, 6vw, 84px); aspect-ratio: 1; border-radius: 26%; display: grid; place-items: center; background: var(--color-surface); border: var(--clay-border-width) solid var(--color-primary-dark); box-shadow: 4px 4px 0 var(--color-primary-dark); }
+  .about-band-sticker img { width: 68%; }
+  .about-band-sticker-a { top: 22%; inset-inline-start: 6%; rotate: -10deg; }
+  .about-band-sticker-b { bottom: 22%; inset-inline-end: 6%; rotate: 8deg; }
+  @media (max-width: 899px) { .about-band-sticker { display: none; } }
+
+  .about-who { padding-block: clamp(72px, 9vw, 120px); background: var(--color-surface); }
+  .about-who-inner { max-width: 52rem; margin-inline: auto; padding-inline: clamp(20px, 6vw, 56px); display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .about-who-art { width: 92px; margin-bottom: 18px; }
+  .about-who-h2 { color: var(--color-ink-heading); margin-bottom: 16px; }
+  .about-who-inner p { font-size: clamp(1.05rem, 1.15vw, 1.3rem); line-height: 1.65; color: var(--color-ink-body); max-width: 40em; margin-bottom: 32px; }
+  .about-who-actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+
+  .about-impact { padding-block: clamp(64px, 8vw, 112px) clamp(72px, 9vw, 128px); border-top: var(--clay-border-width) solid var(--color-card-sky-border); }
+  .about-impact-inner { max-width: 1180px; margin-inline: auto; padding-inline: clamp(20px, 6vw, 56px); }
+  .about-impact-h2 { font-size: clamp(2.25rem, 3.4vw, 4rem); line-height: 1.08; color: var(--color-ink-heading); text-align: center; margin-bottom: clamp(56px, 6vw, 80px); }
+  .about-impact-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 56px 20px; }
+  @media (min-width: 900px) { .about-impact-grid { grid-template-columns: repeat(4, 1fr); gap: 28px; } }
+  .about-impact-tile { position: relative; text-align: center; padding: calc(88px * 0.62) 16px 22px; background: var(--color-surface); border-radius: 22px; border: var(--clay-border-width) solid var(--about-impact-border); box-shadow: 4px 4px 0 var(--about-impact-shadow); rotate: calc(2deg * var(--about-impact-dir)); }
+  .about-impact-tile:nth-child(odd) { --about-impact-dir: -1; }
+  .about-impact-tile:nth-child(even) { --about-impact-dir: 1; margin-top: 18px; }
+  .about-impact-art { position: absolute; top: calc(88px * -0.45); inset-inline: 0; margin-inline: auto; width: 88px; aspect-ratio: 1; border-radius: 50%; background: var(--color-surface); border: var(--clay-border-width) solid var(--about-impact-border); display: grid; place-items: center; rotate: calc(2deg * var(--about-impact-dir) * -2); }
+  .about-impact-art img { width: 68%; }
+  .about-impact-num { display: block; font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: clamp(2.6rem, 4vw, 3.6rem); line-height: 1; font-variant-numeric: tabular-nums; }
+  .about-impact-label { display: block; margin-top: 6px; font-weight: 700; color: var(--color-ink-heading); }
+  .about-impact-sky { --about-impact-border: var(--color-card-sky-border); --about-impact-shadow: var(--color-card-sky-shadow); }
+  .about-impact-green { --about-impact-border: var(--color-card-green-border); --about-impact-shadow: var(--color-card-green-shadow); }
+  .about-impact-amber { --about-impact-border: var(--color-card-amber-border); --about-impact-shadow: var(--color-card-amber-shadow); }
+  .about-impact-rose { --about-impact-border: var(--color-card-rose-border); --about-impact-shadow: var(--color-card-rose-shadow); }
+
+  .about-team { padding-block: clamp(24px, 3vw, 40px) clamp(64px, 8vw, 112px); }
+  .about-team-inner { max-width: 1180px; margin-inline: auto; padding-inline: clamp(20px, 6vw, 56px); }
+  .about-team-h2 { font-size: clamp(2.25rem, 3.4vw, 4rem); line-height: 1.08; color: var(--color-ink-heading); text-align: center; margin-bottom: clamp(40px, 5vw, 64px); }
+  .about-team-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 36px 28px; align-items: start; }
+  .about-team-card { position: relative; perspective: 1100px; rotate: calc(2deg * var(--about-team-dir, 1)); }
+  .about-team-card:nth-child(odd) { --about-team-dir: -1; }
+  .about-team-card:nth-child(3n) { --about-team-dir: 0.4; }
+  .about-team-flipper { display: grid; transform-style: preserve-3d; transform: translateZ(0px) rotateX(0deg); }
+  .about-team-card.is-flipped .about-team-flipper { transform: translateZ(0px) rotateX(180deg); }
+  .about-team-pin { grid-area: 1 / 1; position: relative; padding: 26px 20px 20px; background: var(--color-surface); border-radius: 18px; border: var(--clay-border-width) solid var(--color-card-sky-border); box-shadow: 4px 4px 0 var(--color-card-sky-shadow); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .about-team-pin::before { content: ""; position: absolute; top: -9px; inset-inline-start: 50%; width: 18px; height: 18px; margin-inline-start: -9px; border-radius: 50%; background: var(--color-rose-400); border: 2.5px solid var(--color-rose-600); }
+  .about-team-pin::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(115deg, transparent 30%, rgb(var(--color-surface-rgb) / 0.55) 50%, transparent 70%) no-repeat; background-size: 250% 100%; background-position: 120% 0; mix-blend-mode: soft-light; }
+  .about-team-photo { aspect-ratio: 1; border-radius: 12px; display: grid; place-items: center; margin-bottom: 16px; background: var(--color-sky-50); border: var(--clay-border-width-thin) solid var(--color-card-sky-border); font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: clamp(3rem, 6vw, 4.5rem); color: var(--color-sky-300); }
+  .about-team-name { font-size: 1.3rem; line-height: 1.15; color: var(--color-ink-heading); }
+  .about-team-role { display: inline-block; margin-top: 6px; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 800; color: var(--color-accent-dark); background: var(--color-green-50); border: 1px solid var(--color-card-green-border); }
+  .about-team-strengths { margin-top: 10px; font-size: 0.92rem; line-height: 1.55; color: var(--color-ink-body); }
+  .about-team-open { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; padding: 2px 0; font-weight: 800; font-size: 0.9rem; color: var(--color-primary-dark); text-decoration: underline; text-underline-offset: 4px; border-radius: 6px; cursor: pointer; }
+  .about-team-open:hover { color: var(--color-primary); }
+  .about-team-back { display: flex; flex-direction: column; transform: rotateX(180deg); background: var(--color-primary-tint); border-color: var(--color-primary-light); }
+  .about-team-back-avatar { width: 72px; aspect-ratio: 1; margin-inline: auto; border-radius: 50%; display: grid; place-items: center; background: var(--color-surface); border: var(--clay-border-width) solid var(--color-card-sky-border); box-shadow: 3px 3px 0 var(--color-card-sky-shadow); font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 2.2rem; color: var(--color-primary); }
+  .about-team-back-name { margin-top: 12px; text-align: center; font-size: 1.3rem; line-height: 1.15; color: var(--color-ink-heading); }
+  .about-team-back .about-team-role { align-self: center; }
+  .about-team-back-bio { margin-top: 16px; margin-bottom: 16px; font-size: 1rem; line-height: 1.65; color: var(--color-ink-body); text-align: center; text-wrap: pretty; }
+  .about-team-close { display: inline-flex; align-items: center; gap: 8px; margin-top: auto; align-self: center; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.9rem; color: var(--color-primary-dark); background: var(--color-surface); border: var(--clay-border-width-thin) solid var(--color-card-sky-border); cursor: pointer; transition: background 150ms; }
+  .about-team-close:hover { background: var(--color-primary-soft); }
+  .about-team-open:focus-visible, .about-team-close:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .about-hero-sticker, .about-mission-pair { animation: none; }
+  }
+</style>
+{%- endset %}
+<Page title={{ t('about.heading') ~ " - IntegratED" }} head={{ head }} styles="public">
+  <main class="flex-1">
+
+    <section class="about-hero">
+      <div class="about-hero-inner">
+        <h1 class="about-hero-title display-font font-extrabold">{{ t('about.heading') }}</h1>
+        <p class="about-hero-lead pub-lead">{{ t('about.description') }}</p>
+        <div class="about-hero-row" aria-hidden="true">
+          {%- for picture in ['backpack', 'chat', 'heart', 'clipboard', 'globe'] %}
+          <span class="about-hero-sticker"><img src="{{ url_for('static', filename='svg/' ~ picture ~ '.svg') }}" alt="" /></span>
+          {%- endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="about-mission">
+      <div class="about-mission-grid">
+        <div class="about-mission-copy">
+          <h2 class="about-mission-h2 pub-h2 display-font font-extrabold">{{ t('about.our_mission') }}</h2>
+          <p>{{ site_content.get('team_statement', 'IntegratED is launching at ACS Athens in Greece, combining cutting-edge technology with proven pedagogical methods.') }}</p>
+          <p>{{ site_content.get('how_we_work', 'Our AI-powered adaptive learning platform personalizes education for each student, while our peer-matching algorithm connects local and refugee students.') }}</p>
+        </div>
+        <div class="about-mission-stage">
+          <img class="about-mission-pair" src="{{ url_for('static', filename='svg/session-hello.svg') }}" alt="" />
+          <span class="about-mission-chip about-mission-chip-a"><img src="{{ url_for('static', filename='svg/letters.svg') }}" alt="" /></span>
+          <span class="about-mission-chip about-mission-chip-b"><img src="{{ url_for('static', filename='svg/garden-pot.svg') }}" alt="" /></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="about-band">
+      <svg class="about-band-wave about-band-wave-top" viewBox="0 0 1440 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40V20C180 0 360 0 540 20S900 40 1080 20 1440 0 1440 20V40Z" /></svg>
+      <span class="about-band-sticker about-band-sticker-a" aria-hidden="true"><img src="{{ url_for('static', filename='svg/letters.svg') }}" alt="" /></span>
+      <span class="about-band-sticker about-band-sticker-b" aria-hidden="true"><img src="{{ url_for('static', filename='svg/book.svg') }}" alt="" /></span>
+      <div class="about-band-inner">
+        <img class="about-band-art" src="{{ url_for('static', filename='svg/heart.svg') }}" alt="" />
+        <h2 class="about-band-statement display-font font-extrabold">{{ site_content.get('mission_statement', 'IntegratED provides essential educational opportunities in Language and Digital Literacy to refugees and underserved populations.') }}</h2>
+      </div>
+      <svg class="about-band-wave about-band-wave-bottom" viewBox="0 0 1440 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40V20C180 0 360 0 540 20S900 40 1080 20 1440 0 1440 20V40Z" /></svg>
+    </section>
+
+    <section class="about-who">
+      <div class="about-who-inner">
+        <img class="about-who-art" src="{{ url_for('static', filename='svg/session-hello.svg') }}" alt="" />
+        <h2 class="about-who-h2 pub-h2 display-font font-extrabold">{{ t('about.who_we_are') }}</h2>
+        <p>{{ site_content.get('team_statement', 'IntegratED is launching at ACS Athens in Greece, combining cutting-edge technology with proven pedagogical methods.') }}</p>
+        <div class="about-who-actions">
+          <Button size="lg" href={{ url_for('auth.register') ~ '?role=volunteer' }} data-cta="volunteer" data-cta-location="about">{{ t('index.cta_volunteer') }}</Button>
+          <Button variant="sky" size="lg" href={{ url_for('base.donations') }} data-cta="donate" data-cta-location="about">{{ t('index.cta_donate') }}</Button>
+        </div>
+      </div>
+    </section>
+
+    <section class="about-impact pub-dots">
+      <div class="about-impact-inner">
+        <h2 class="about-impact-h2 display-font font-extrabold">{{ t('about.our_impact') }}</h2>
+        <div class="about-impact-grid">
+          {%- for tone, picture, count, colour, key in [
+            ('sky', 'school', stats.schools, 'text-primary', 'partner_schools'),
+            ('green', 'backpack', stats.learners, 'text-accent', 'students_enrolled'),
+            ('amber', 'sun', stats.hours | round | int, 'text-amber-600', 'learning_hours'),
+            ('rose', 'chat', stats.pairs, 'text-rose-500', 'active_participants')
+          ] %}
+          <div class="about-impact-tile about-impact-{{ tone }}">
+            <span class="about-impact-art"><img src="{{ url_for('static', filename='svg/' ~ picture ~ '.svg') }}" alt="" /></span>
+            <span class="about-impact-num {{ colour }}">{{ count }}</span>
+            <span class="about-impact-label">{{ t('about.' ~ key) }}</span>
+          </div>
+          {%- endfor %}
+        </div>
+      </div>
+    </section>
+
+    {%- if team_members %}
+    <section class="about-team pub-dots">
+      <div class="about-team-inner">
+        <h2 class="about-team-h2 display-font font-extrabold">{{ t('about.meet_team') }}</h2>
+        <div class="about-team-wall">
+          {%- for member in team_members %}
+          <article class="about-team-card">
+            <div class="about-team-flipper">
+              <div class="about-team-pin about-team-front">
+                <div class="about-team-photo" aria-hidden="true">{{ member.name[:1] }}</div>
+                <h3 class="about-team-name display-font font-extrabold">{{ member.name }}</h3>
+                <span class="about-team-role">{{ member.job }}</span>
+                {%- if member.strengths %}
+                <p class="about-team-strengths">{{ member.strengths }}</p>
+                {%- endif %}
+                {%- if member.bio %}
+                <div><button type="button" class="about-team-open" aria-expanded="false" aria-controls="about-team-back-{{ loop.index }}">{{ t('about.about_label') }} {{ member.name.split(' ')[0] }}</button></div>
+                {%- endif %}
+              </div>
+              {%- if member.bio %}
+              <div class="about-team-pin about-team-back" id="about-team-back-{{ loop.index }}" inert>
+                <span class="about-team-back-avatar" aria-hidden="true">{{ member.name[:1] }}</span>
+                <h3 class="about-team-back-name display-font font-extrabold">{{ member.name }}</h3>
+                <span class="about-team-role">{{ member.job }}</span>
+                <p class="about-team-back-bio">{{ member.bio }}</p>
+                <button type="button" class="about-team-close"><Icon name="arrow-uturn-left" size="4" />{{ t('common.back') }}</button>
+              </div>
+              {%- endif %}
+            </div>
+          </article>
+          {%- endfor %}
+        </div>
+      </div>
+      <script>
+        (function () {
+          const root = document.currentScript.closest(".about-team");
+          const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const track = (name, props) => window.analytics?.trackEvent?.(name, props || {});
+          const cards = Array.from(root.querySelectorAll(".about-team-card"));
+          const duration = 900;
+
+          // Top over bottom, a little past the half turn and back, with light sliding across both faces.
+          function flip(card, toBack) {
+            const inner = card.querySelector(".about-team-flipper");
+            inner.getAnimations().forEach((animation) => animation.finish());
+            const front = card.querySelector(".about-team-front");
+            const back = card.querySelector(".about-team-back");
+            const opener = card.querySelector(".about-team-open");
+            card.classList.toggle("is-flipped", toBack);
+            front.inert = toBack;
+            back.inert = !toBack;
+            opener.setAttribute("aria-expanded", String(toBack));
+            if (!reduceMotion) {
+              const from = toBack ? 0 : 180;
+              const to = toBack ? 180 : 0;
+              const past = to + (toBack ? 14 : -14);
+              inner.animate(
+                [
+                  { transform: `translateZ(0px) rotateX(${from}deg)`, easing: "cubic-bezier(0.5, 0, 0.3, 1)" },
+                  { transform: `translateZ(70px) rotateX(${past}deg)`, offset: 0.72, easing: "cubic-bezier(0.3, 0, 0.3, 1)" },
+                  { transform: `translateZ(0px) rotateX(${to}deg)` },
+                ],
+                { duration: duration },
+              );
+              [front, back].forEach(function (face) {
+                face.animate([{ backgroundPosition: "120% 0" }, { backgroundPosition: "-20% 0" }], {
+                  duration: duration * 0.8,
+                  easing: "ease-in-out",
+                  pseudoElement: "::after",
+                });
+              });
+            }
+            (toBack ? back.querySelector(".about-team-close") : opener).focus({ preventScroll: true });
+          }
+
+          cards.forEach(function (card, index) {
+            const opener = card.querySelector(".about-team-open");
+            if (!opener) return;
+            opener.addEventListener("click", function () {
+              track("about_team_bio_opened", { member: index + 1, style: "tumble" });
+              flip(card, true);
+            });
+            card.querySelector(".about-team-close").addEventListener("click", function () {
+              flip(card, false);
+            });
+          });
+          document.addEventListener("keydown", function (event) {
+            if (event.key !== "Escape" || root.closest("[hidden]")) return;
+            cards.filter((card) => card.classList.contains("is-flipped")).forEach((card) => flip(card, false));
+          });
+        })();
+      </script>
+    </section>
+    {%- endif %}
+
+  </main>
+</Page>

@@ -1,0 +1,52 @@
+{#- The attendance table and its pager: the swap region on
+    `pages/school_admin/attendance.jx`. `routes/school_admin.py` renders it alone for an
+    `X-Fragment` request. -#}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/pagination.jx" as Pagination #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#def records, page, page_count, page_args #}
+<div data-swap-region>
+{%- if records %}
+<Table>
+  <thead>
+    <tr>
+      <th>{{ t('school_admin.attendance.col_date') }}</th>
+      <th>{{ t('school_admin.attendance.col_learner') }}</th>
+      <th>{{ t('school_admin.attendance.col_volunteer') }}</th>
+      <th>{{ t('school_admin.attendance.col_teacher') }}</th>
+      <th>{{ t('school_admin.attendance.col_status') }}</th>
+      <th>{{ t('school_admin.attendance.col_duration') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {%- for r in records %}
+    <tr>
+      <td class="text-ink-faint">{{ r.date.strftime('%b %d, %Y') }}</td>
+      <td>
+        <a href="{{ url_for('school_admin.learner_detail', learner_id=r.user.id) }}" class="font-medium text-primary hover:text-primary-dark hover:underline">
+          {{ r.user.name or r.user.username }}
+        </a>
+      </td>
+      <td>{{ r.partner.name if r.partner else '—' }}</td>
+      <td>{{ r.teacher.name or r.teacher.email if r.teacher else '—' }}</td>
+      <td>
+        {%- if not r.is_present %}
+        <span class="att-pill-absent">{{ t('teacher.attendance.status_absent') }}</span>
+        {%- else %}
+        <span class="att-pill-present">{{ t('teacher.attendance.status_present') }}</span>
+        {%- endif %}
+      </td>
+      <td><span class="font-bold text-sky-700">{{ "%.1f"|format(r.duration) }}</span></td>
+    </tr>
+    {%- endfor %}
+  </tbody>
+</Table>
+<Pagination endpoint="school_admin.attendance" page={{ page }} total_pages={{ page_count }} args={{ page_args }} />
+{%- else %}
+<EmptyState class="py-16">
+  <Icon name="clipboard" size="10" class="text-primary-light mx-auto mb-3" aria-hidden="true" />
+  <p class="text-ink-faint text-sm italic">{{ t('school_admin.attendance.no_records') }}</p>
+</EmptyState>
+{%- endif %}
+</div>

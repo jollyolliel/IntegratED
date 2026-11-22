@@ -1,0 +1,171 @@
+{#- The teacher's worksheet library: header actions, the Assigned / Library tabs, the recommended-for
+    banner when opened from a pair (`?learner=`), stats, the shared library grid, and the upload
+    modal. What has been assigned lives on the Assigned tab (worksheet_assignments.jx). -#}
+{#import "@components/shell/worksheet_library.jx" as WorksheetLibrary #}
+{#import "@components/page_header.jx" as PageHeader #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@page_components/teacher/worksheet_cards.jx" as WorksheetCards #}
+{#import "@page_components/teacher/worksheet_tabs.jx" as WorksheetTabs #}
+{#def worksheets, subjects, upload_curriculum, selected_subject, q, matched_pairs, outstanding_count, recommended_for,
+      recommended_ids, endpoint, has_more, total_worksheets, levels=(), selected_level=None, upload_levels=(),
+      tag_max_length=40 #}
+{%- set head %}
+  <style>
+    .clay-modal { background: white; border-radius: 24px; border: 2px solid var(--color-sky-200); box-shadow: 6px 6px 0 var(--color-sky-100); width: 100%; max-width: 460px; }
+  </style>
+{%- endset %}
+{#- The id lets the library's script update the total after a search. #}
+{%- set total_value %}<span id="ws-stat-total">{{ total_worksheets }}</span>{% endset %}
+{%- set file_label %}{{ t('teacher.worksheets.modal_file_label') }} <span class="font-normal text-ink-faint">({{ t('teacher.worksheets.modal_file_hint') }})</span>{% endset %}
+{%- set topic_label %}{{ t('teacher.worksheets.modal_topic_label') }} <span class="font-normal text-ink-faint">({{ t('teacher.worksheets.modal_topic_hint') }})</span>{% endset %}
+{%- set level_label %}{{ t('teacher.worksheets.modal_level_label') }} <span class="font-normal text-ink-faint">({{ t('teacher.worksheets.modal_level_hint') }})</span>{% endset %}
+{%- set tags_label %}{{ t('teacher.worksheets.modal_tags_label') }} <span class="font-normal text-ink-faint">({{ t('teacher.worksheets.modal_tags_hint') }})</span>{% endset %}
+<WorksheetLibrary title={{ t('teacher.worksheets.title') }} endpoint={{ endpoint }} subjects={{ subjects }}
+  worksheets={{ worksheets }} has_more={{ has_more }} selected_subject={{ selected_subject }} q={{ q }}
+  levels={{ levels }} selected_level={{ selected_level }}
+  search_placeholder={{ t('teacher.worksheets.search_placeholder') }} all_label={{ t('teacher.worksheets.filter_all') }}
+  no_results_text={{ t('teacher.worksheets.no_search_results') }} no_results_sub_text={{ t('teacher.worksheets.no_search_results_sub') }}
+  head={{ head }}>
+  {% fill header %}
+  <PageHeader badge={{ t('teacher.portal_badge') }} title={{ t('teacher.worksheets.page_heading') }} subtitle={{ t('teacher.worksheets.page_subheading') }}>
+    <div class="flex flex-wrap gap-3">
+      <Button variant="sky" icon="arrow-up-tray" onclick="document.getElementById('upload-modal').classList.remove('hidden')">{{ t('teacher.worksheets.upload_btn') }}</Button>
+      <Button href={{ url_for('teacher.teacher_bulk_assign_worksheets') }} icon="plus">{{ t('teacher.worksheets.assign_all_btn') }}</Button>
+    </div>
+  </PageHeader>
+  <WorksheetTabs active="library" outstanding={{ outstanding_count }} />
+  {% endfill %}
+
+  {% fill pre_grid %}
+  {%- if recommended_for %}
+  <Card tone="amber" tag="section" class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <SectionBadge tone="amber">{{ t('teacher.worksheets.recommended_badge') }}</SectionBadge>
+      <p class="text-sm text-gray-600 mt-2">
+        {%- if recommended_for.volunteer %}
+        {{ t('teacher.worksheets.recommended_showing_with_volunteer', learner=recommended_for.learner.name or recommended_for.learner.username, volunteer=recommended_for.volunteer.short_name, topic=recommended_for.topic, subject=recommended_for.subject) }}
+        {%- else %}
+        {{ t('teacher.worksheets.recommended_showing', learner=recommended_for.learner.name or recommended_for.learner.username, topic=recommended_for.topic, subject=recommended_for.subject) }}
+        {%- endif %}
+      </p>
+    </div>
+    <Button variant="sky" icon="arrow-left" href={{ url_for('teacher.teacher_learner_detail', learner_id=recommended_for.learner.id) }} class="shrink-0">{{ t('teacher.worksheets.recommended_back_btn') }}</Button>
+  </Card>
+  {%- endif %}
+
+  <section class="grid grid-cols-3 gap-4 mb-8">
+    <StatTile label={{ t('teacher.worksheets.stat_total') }} value={{ total_value }}
+      sub={{ subjects|length ~ (" subject" if subjects|length == 1 else " subjects") }} />
+    <StatTile tone="green" label={{ t('teacher.worksheets.stat_pairs') }} value={{ matched_pairs|length }} sub={{ t('teacher.worksheets.stat_pairs_sub') }} />
+    <StatTile tone="amber" label={{ t('teacher.worksheets.stat_outstanding') }} value={{ outstanding_count }} sub={{ t('teacher.worksheets.stat_outstanding_sub') }} />
+  </section>
+
+  {% endfill %}
+
+  {% fill cards %}<WorksheetCards worksheets={{ worksheets }} matched_pairs={{ matched_pairs }} recommended_ids={{ recommended_ids }} />{% endfill %}
+
+  {% fill empty %}<EmptyState message={{ t('teacher.worksheets.no_worksheets') ~ ' ' ~ t('teacher.worksheets.no_worksheets_sub') }} />{% endfill %}
+
+  {% fill modals %}
+  <div id="upload-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-heading/50 backdrop-blur-sm">
+    <div class="clay-modal">
+      <div class="flex items-center justify-between p-6 border-b-2 border-primary-soft">
+        <h2 class="display-font text-lg font-bold text-sky-900">{{ t('teacher.worksheets.modal_title') }}</h2>
+        <button type="button" onclick="document.getElementById('upload-modal').classList.add('hidden')"
+                class="w-8 h-8 flex items-center justify-center rounded-lg text-ink-faint hover:text-primary hover:bg-sky-50 transition-colors">
+          <Icon name="x-mark" size="5" aria-hidden="true" />
+        </button>
+      </div>
+
+      <form method="post" action="{{ url_for('teacher.teacher_upload_worksheet') }}" enctype="multipart/form-data" class="p-6 space-y-4">
+        <Field label={{ file_label }}>
+          <div id="drop-area"
+               class="relative flex flex-col items-center justify-center gap-2 rounded-xl p-6 cursor-pointer text-center transition-colors border-2 border-dashed border-primary-light bg-surface-card"
+               onclick="document.getElementById('file-input').click()">
+            <Icon name="arrow-up-tray" size="8" class="text-sky-300" aria-hidden="true" />
+            <p id="drop-label" class="text-sm text-ink-muted font-medium">{{ t('teacher.worksheets.modal_click_to_choose') }}</p>
+            <p class="text-xs text-ink-faint">{{ t('teacher.worksheets.modal_file_size') }}</p>
+            <input id="file-input" name="file" type="file" accept=".pdf,.md" required class="hidden"
+                   onchange="document.getElementById('drop-label').textContent = this.files[0]?.name || 'Click to choose a file'" />
+          </div>
+        </Field>
+
+        <Field label={{ t('teacher.worksheets.modal_title_label') }} for_id="ws-upload-title">
+          <Input id="ws-upload-title" name="title" required placeholder={{ t('teacher.worksheets.new_title_placeholder') }} />
+        </Field>
+
+        <Field label={{ t('teacher.worksheets.modal_subject_label') }} for_id="ws-upload-subject">
+          <select id="ws-upload-subject" name="subject" required>
+            <button><selectedcontent></selectedcontent></button>
+            <option value="" selected disabled>{{ t('teacher.worksheets.modal_subject_placeholder') }}</option>
+            {%- for subject_name in upload_curriculum %}
+            <option value="{{ subject_name }}">{{ subject_name }}</option>
+            {%- endfor %}
+          </select>
+        </Field>
+
+        <Field label={{ topic_label }} for_id="ws-upload-topic">
+          <select id="ws-upload-topic" name="topic">
+            <button><selectedcontent></selectedcontent></button>
+            <option value="" selected>{{ t('teacher.worksheets.modal_topic_none') }}</option>
+          </select>
+        </Field>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label={{ level_label }} for_id="ws-upload-level">
+            <select id="ws-upload-level" name="level">
+              <button><selectedcontent></selectedcontent></button>
+              <option value="" selected>{{ t('teacher.worksheets.modal_level_none') }}</option>
+              {%- for level in upload_levels %}
+              <option value="{{ level }}">{{ t('components.worksheet_card.level', level=level) }}</option>
+              {%- endfor %}
+            </select>
+          </Field>
+
+          <Field label={{ tags_label }} for_id="ws-upload-tags">
+            <Input id="ws-upload-tags" name="tags" placeholder={{ t('teacher.worksheets.modal_tags_placeholder') }} maxlength={{ tag_max_length * 10 }} />
+          </Field>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <Button variant="gray" class="flex-1" onclick="document.getElementById('upload-modal').classList.add('hidden')">{{ t('teacher.worksheets.modal_cancel_btn') }}</Button>
+          <Button type="submit" class="flex-1">{{ t('teacher.worksheets.modal_upload_btn') }}</Button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="application/json" id="ws-upload-curriculum">{{ upload_curriculum | tojson }}</script>
+  <script>
+    document.getElementById('upload-modal').addEventListener('click', function(e) {
+      if (e.target === this) this.classList.add('hidden');
+    });
+
+    // Topic options follow the chosen subject; the first option ("no topic") and the
+    // <button> picker child stay, only the subject's own topics are swapped.
+    (function () {
+      const curriculum = JSON.parse(document.getElementById('ws-upload-curriculum').textContent);
+      const subjectSelect = document.getElementById('ws-upload-subject');
+      const topicSelect = document.getElementById('ws-upload-topic');
+      subjectSelect.addEventListener('change', function () {
+        topicSelect.querySelectorAll('option:not([value=""])').forEach(function (option) { option.remove(); });
+        topicSelect.value = '';
+        (curriculum[subjectSelect.value] || []).forEach(function (title) {
+          topicSelect.add(new Option(title, title));
+        });
+      });
+    })();
+
+    {% if recommended_ids %}
+    document.querySelector('.ws-card-highlighted')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    {% endif %}
+  </script>
+  {% endfill %}
+</WorksheetLibrary>

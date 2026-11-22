@@ -1,0 +1,334 @@
+{#- The end-of-lesson celebration on every game page: a sky stage where the celebrate.svg star
+    pops out of its party popper (trophy.svg after a topic's last lesson) and confetti bursts
+    across the screen, then XP earned and the practice score as two stickers, then the next topic
+    or the way back. `xpBoosted` / `boostEarned` (the completion response's `xp_boosted` /
+    `boost_earned`) add a golden potion row: this XP was doubled / the next lesson's will be.
+    `CompletionOverlay.confetti(el, {count, layer})` is the shared burst. Hidden until
+    `window.CompletionOverlay.show({xpEarned, scoreText, nextLessonData, isLast, leveledUp,
+    newLevel, levelName, newItems, lessonTitle, xpBoosted, boostEarned})` — GameKit.finish maps a
+    completion response onto it; `.reset()` hides and clears it.
+    Needs GSAP on the page. -#}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/base/button.jx" as Button #}
+{#def lesson #}
+{%- set art = url_for('static', filename='svg/') %}
+{%- set sparkle_d = "M12 0C12 7 17 12 24 12C17 12 12 17 12 24C12 17 7 12 0 12C7 12 12 7 12 0Z" %}
+{%- set lesson_name %}<span class="completion-lesson" id="completedLessonName">{{ lesson.title }}</span>{% endset -%}
+<div id="completionScreen" class="hidden fixed inset-0 z-50 flex p-4 overflow-y-auto bg-primary/[0.22] backdrop-blur-[8px]">
+  <Card tone="sky" id="completionCard" class="!p-0 relative overflow-hidden m-auto w-full max-w-md opacity-0" role="dialog" aria-modal="true" aria-labelledby="completionTitle">
+    <div class="completion-stage" aria-hidden="true">
+      <div class="completion-rays"></div>
+      <span class="completion-cloud completion-cloud-a"></span>
+      <span class="completion-cloud completion-cloud-b"></span>
+      <svg class="completion-sparkle completion-sparkle-a" viewBox="0 0 24 24"><path d="{{ sparkle_d }}" /></svg>
+      <svg class="completion-sparkle completion-sparkle-b" viewBox="0 0 24 24"><path d="{{ sparkle_d }}" /></svg>
+      <svg class="completion-sparkle completion-sparkle-c" viewBox="0 0 24 24"><path d="{{ sparkle_d }}" /></svg>
+      <span class="completion-art-bob">
+        <img id="completionArt" class="completion-art" src="{{ art }}celebrate.svg" data-lesson-art="{{ art }}celebrate.svg" data-topic-art="{{ art }}trophy.svg" alt="" width="200" height="200" />
+      </span>
+      <svg class="completion-wave" viewBox="0 0 400 28" preserveAspectRatio="none">
+        <path d="M0 14 C40 0 60 0 100 12 C140 24 160 24 200 12 C240 0 260 0 300 12 C340 24 360 24 400 10 L400 28 L0 28 Z" />
+      </svg>
+    </div>
+
+    <div class="px-5 pb-5 sm:px-7 sm:pb-6 text-center space-y-4">
+      <div class="completion-reveal">
+        <h1 id="completionTitle" class="display-font completion-title font-extrabold text-ink-heading">{{ t("components.completion.great_work") }}</h1>
+        <p class="text-base text-ink-muted mt-1">{{ (t("components.completion.you_completed") | e).replace("{lesson}", lesson_name) }}</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 sm:gap-4">
+        <Card tone="amber" class="completion-sticker relative !p-3 sm:!p-4 flex flex-col items-center">
+          <span id="completionBoostChip" class="completion-boost-chip hidden" role="img" aria-label="{{ t('components.completion.boost_chip') }}" title="{{ t('components.completion.boost_chip') }}">
+            <img src="{{ art }}potion-gold.svg" alt="" width="200" height="200" /><span dir="ltr">&times;2</span>
+          </span>
+          <img class="completion-sticker-art" src="{{ art }}star.svg" alt="" width="200" height="200" />
+          <p id="completionXP" class="display-font text-3xl font-extrabold text-amber-600 leading-none" dir="ltr">+0 XP</p>
+          <p class="text-[11px] uppercase tracking-widest font-extrabold text-amber-800 mt-1.5">{{ t("components.completion.xp_earned") }}</p>
+        </Card>
+        <Card tone="green" class="completion-sticker !p-3 sm:!p-4 flex flex-col items-center">
+          <img class="completion-sticker-art" src="{{ art }}tick.svg" alt="" width="200" height="200" />
+          <p id="completionScore" class="display-font text-3xl font-extrabold text-accent leading-none" dir="ltr">0 / 0</p>
+          <p class="text-[11px] uppercase tracking-widest font-extrabold text-accent-dark mt-1.5">{{ t("components.completion.practice_results") }}</p>
+        </Card>
+      </div>
+
+      {#- Golden potion boost: spent on this lesson, and/or saved for the next one. -#}
+      <div class="completion-reveal space-y-2" id="completionBoosts">
+        <Card tone="amber" id="completionBoostUsed" class="hidden !p-3 flex items-center gap-3 text-start">
+          <img class="completion-boost-art" src="{{ art }}potion-gold.svg" alt="" width="200" height="200" />
+          <span class="flex-1 min-w-0">
+            <span class="block display-font text-xl font-extrabold text-amber-700 leading-none" dir="ltr">&times;2 XP</span>
+            <span class="block text-sm text-amber-900 mt-1">{{ t("components.completion.boost_used") }}</span>
+          </span>
+        </Card>
+        <Card tone="amber" id="completionBoostEarned" class="hidden !p-3 flex items-center gap-3 text-start">
+          <span class="completion-boost-pair flex-shrink-0" aria-hidden="true">
+            <img class="completion-boost-art" src="{{ art }}potion-gold.svg" alt="" width="200" height="200" />
+            <svg class="completion-boost-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <img class="completion-boost-art" src="{{ art }}book.svg" alt="" width="200" height="200" />
+          </span>
+          <span class="flex-1 min-w-0">
+            <span class="block display-font text-xl font-extrabold text-amber-700 leading-none" dir="ltr">&times;2 XP</span>
+            <span class="block text-sm text-amber-900 mt-1">{{ t("components.completion.boost_earned") }}</span>
+          </span>
+        </Card>
+      </div>
+
+      <div id="nextLessonSection" class="completion-reveal space-y-3">
+        <Card tone="green" clickable id="nextLessonCard" class="hidden !p-3 w-full text-start flex items-center gap-3">
+          <img class="w-12 h-12 flex-shrink-0" src="{{ art }}book.svg" alt="" width="200" height="200" />
+          <span class="flex-1 min-w-0">
+            <span class="block text-[11px] uppercase tracking-widest font-extrabold text-accent">{{ t("components.completion.next_topic_heading") }}</span>
+            <span class="display-font font-bold text-lg leading-tight text-ink-heading line-clamp-2 break-words" id="nextLessonTitle">{{ t("components.completion.next_topic") }}</span>
+            <span class="block text-xs text-ink-muted">{{ t("components.completion.next_topic_hint") }}</span>
+          </span>
+          <IconBox icon="arrow-right" tone="green" />
+        </Card>
+        <Button variant="sky" href={{ url_for("learner.learner_dashboard") }} class="w-full">{{ t("components.completion.back_to_dashboard") }}</Button>
+      </div>
+
+      <div id="completedAllSection" class="completion-reveal hidden space-y-3">
+        <Card tone="amber" class="!p-3 flex items-center gap-3 text-start">
+          <img class="w-11 h-11 flex-shrink-0" src="{{ art }}star.svg" alt="" width="200" height="200" />
+          <p class="display-font text-lg font-bold leading-snug text-amber-900">{{ t("components.completion.completed_all") }}</p>
+        </Card>
+        <Button href={{ url_for("learner.learner_topic_lessons", topic_id=lesson.topic_id) }} class="w-full" id="completionReturn">{{ t("components.completion.return_to_lessons") }}</Button>
+        <Button variant="sky" href={{ url_for("learner.learner_dashboard") }} class="w-full">{{ t("components.completion.back_to_dashboard") }}</Button>
+      </div>
+    </div>
+  </Card>
+  <div id="completionConfetti" class="fixed inset-0 pointer-events-none overflow-hidden z-[1]" aria-hidden="true"></div>
+</div>
+
+<style>
+  /* ── The stage: sky glow, turning sun rays, drifting clouds, the art ── */
+  .completion-stage {
+    position: relative; height: 192px; overflow: hidden;
+    background: radial-gradient(circle at 50% 62%, var(--color-sky-100) 0%, var(--color-sky-300) 45%, var(--color-sky-500) 100%);
+  }
+  .completion-rays {
+    position: absolute; left: 50%; top: 58%; width: 640px; height: 640px; margin: -320px 0 0 -320px;
+    background: repeating-conic-gradient(rgb(var(--color-surface-rgb) / 0.28) 0deg 9deg, transparent 9deg 22.5deg);
+    -webkit-mask-image: radial-gradient(circle, black 18%, transparent 58%);
+    mask-image: radial-gradient(circle, black 18%, transparent 58%);
+    animation: completion-spin 40s linear infinite;
+  }
+  @keyframes completion-spin { to { transform: rotate(1turn); } }
+  .completion-cloud {
+    position: absolute; height: 22px; border-radius: 999px; background: var(--color-surface); opacity: 0.85;
+    animation: completion-drift 7s ease-in-out infinite alternate;
+  }
+  .completion-cloud::before {
+    content: ""; position: absolute; bottom: 8px; inset-inline-start: 22%; width: 46%; aspect-ratio: 1;
+    border-radius: 50%; background: inherit;
+  }
+  .completion-cloud-a { width: 74px; top: 34px; inset-inline-start: 7%; }
+  .completion-cloud-b { width: 56px; top: 92px; inset-inline-end: 6%; animation-delay: -3.5s; }
+  @keyframes completion-drift { from { transform: translateX(-10px); } to { transform: translateX(10px); } }
+  .completion-sparkle { position: absolute; fill: currentColor; animation: completion-twinkle 2.4s ease-in-out infinite; }
+  .completion-sparkle-a { width: 22px; top: 20px; inset-inline-end: 24%; color: var(--color-amber-300); }
+  .completion-sparkle-b { width: 15px; top: 70px; inset-inline-start: 22%; color: var(--color-surface); animation-delay: -0.8s; }
+  .completion-sparkle-c { width: 18px; top: 130px; inset-inline-end: 15%; color: var(--color-rose-300); animation-delay: -1.6s; }
+  @keyframes completion-twinkle {
+    0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    50% { transform: scale(0.5) rotate(30deg); opacity: 0.55; }
+  }
+  /* The wrapper bobs (CSS) while GSAP owns the image's own entrance transform. */
+  .completion-art-bob {
+    position: absolute; z-index: 2; left: 50%; bottom: 4px; width: 172px; margin-left: -86px;
+  }
+  .completion-art-bob.is-bobbing { animation: completion-bob 3.2s ease-in-out infinite; }
+  @keyframes completion-bob {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-9px) rotate(2deg); }
+  }
+  .completion-art { display: block; width: 100%; height: auto; }
+  .completion-wave { position: absolute; z-index: 1; left: 0; bottom: -1px; width: 100%; height: 28px; fill: var(--color-surface); }
+
+  /* ── Body ── */
+  .completion-title { font-size: clamp(1.9rem, 7vw, 2.4rem); line-height: 1.1; }
+  /* Highlighter swipe under the lesson name, like the landing page title. */
+  .completion-lesson {
+    font-weight: 800; color: var(--color-ink-heading);
+    background-image: linear-gradient(transparent 60%, var(--color-amber-200) 60%, var(--color-amber-200) 92%, transparent 92%);
+    -webkit-box-decoration-break: clone; box-decoration-break: clone; padding-inline: 2px;
+  }
+  .completion-sticker-art { width: 44px; height: 44px; margin-bottom: 6px; }
+  /* Golden potion boost: a ×2 chip on the XP sticker and the rows under the stickers. */
+  .completion-boost-chip {
+    position: absolute; top: -10px; inset-inline-end: -8px; display: inline-flex; align-items: center; gap: 1px;
+    padding: 2px 8px 2px 3px; border-radius: 999px; background: var(--color-amber-300);
+    border: 2px solid var(--color-amber-600); box-shadow: 0 2px 0 var(--color-amber-600);
+    font-weight: 800; font-size: 0.95rem; color: var(--color-amber-900); line-height: 1;
+  }
+  .completion-boost-chip.hidden { display: none; }
+  .completion-boost-chip img { width: 26px; height: 26px; }
+  .completion-boost-art { width: 44px; height: 44px; flex-shrink: 0; }
+  .completion-boost-pair { display: inline-flex; align-items: center; gap: 2px; }
+  .completion-boost-arrow { width: 18px; height: 18px; color: var(--color-amber-600); }
+  [dir="rtl"] .completion-boost-arrow { transform: scaleX(-1); }
+  /* Confetti: flat paper pieces, set off by CompletionOverlay.confetti (also used by LevelUpModal). */
+  .completion-confetti-piece { position: absolute; left: 0; top: 0; width: 10px; height: 14px; border-radius: 2px; will-change: transform; }
+  .completion-confetti-piece.is-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .completion-confetti-piece.is-strip { width: 6px; height: 20px; border-radius: 3px; }
+
+  @media (max-width: 380px) {
+    .completion-stage { height: 168px; }
+    .completion-art-bob { width: 148px; margin-left: -74px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .completion-rays, .completion-cloud, .completion-sparkle, .completion-art-bob.is-bobbing { animation: none; }
+    .completion-confetti-piece { display: none; }
+  }
+</style>
+
+<script>
+window.CompletionOverlay = {
+  _text: {
+    greatWork: {{ t("components.completion.great_work") | tojson }},
+    moduleComplete: {{ t("components.completion.module_complete") | tojson }},
+  },
+  _timeline: null,
+
+  show(opts) {
+    const {
+      xpEarned = 0,
+      scoreText = '',
+      nextLessonData = null,
+      isLast = false,
+      leveledUp = false,
+      newLevel = 1,
+      levelName = '',
+      newItems = [],
+      lessonTitle = null,
+      xpBoosted = false,
+      boostEarned = false,
+    } = opts;
+    const $ = (id) => document.getElementById(id);
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (lessonTitle !== null) $('completedLessonName').textContent = lessonTitle;
+    if (scoreText) $('completionScore').textContent = scoreText;
+    $('completionBoostChip').classList.toggle('hidden', !xpBoosted);
+    $('completionBoostUsed').classList.toggle('hidden', !xpBoosted);
+    $('completionBoostEarned').classList.toggle('hidden', !boostEarned);
+
+    const art = $('completionArt');
+    const topicDone = isLast || !nextLessonData;
+    art.src = topicDone ? art.dataset.topicArt : art.dataset.lessonArt;
+    let primary;
+    if (topicDone) {
+      $('nextLessonSection').classList.add('hidden');
+      $('completedAllSection').classList.remove('hidden');
+      $('completionTitle').textContent = this._text.moduleComplete;
+      primary = $('completionReturn');
+    } else {
+      primary = $('nextLessonCard');
+      primary.classList.remove('hidden');
+      $('nextLessonTitle').textContent = nextLessonData.title;
+      primary.onclick = () => { window.location.href = '/learner/learn/overview/' + nextLessonData.id; };
+    }
+
+    const screen = $('completionScreen');
+    const card = $('completionCard');
+    const bob = card.querySelector('.completion-art-bob');
+    const reveals = card.querySelectorAll('.completion-reveal');
+    const stickers = card.querySelectorAll('.completion-sticker');
+    const tilts = [-3, 3];
+    const xpEl = $('completionXP');
+    screen.classList.remove('hidden');
+    screen.scrollTop = 0;
+
+    const focusPrimary = () => primary && primary.focus({ preventScroll: true });
+    const levelUp = () => {
+      if (leveledUp && window.showLevelUpModal) window.showLevelUpModal(newLevel, levelName, newItems);
+    };
+
+    if (reduceMotion) {
+      gsap.set(card, { opacity: 1 });
+      stickers.forEach((s, i) => gsap.set(s, { rotation: tilts[i] }));
+      xpEl.textContent = '+' + xpEarned + ' XP';
+      focusPrimary();
+      setTimeout(levelUp, 1500);
+      return;
+    }
+
+    if (this._timeline) this._timeline.kill();
+    const counter = { val: 0 };
+    const tl = gsap.timeline();
+    this._timeline = tl;
+    tl.fromTo(screen, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power1.out' }, 0)
+      .fromTo(card, { opacity: 0, y: 48, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: 'back.out(1.6)' }, 0.05)
+      .fromTo(art, { scale: 0, rotation: -30, y: 40 }, {
+        scale: 1, rotation: 0, y: 0, duration: 1, ease: 'elastic.out(1, 0.55)',
+        onComplete: () => bob.classList.add('is-bobbing'),
+      }, 0.3)
+      .call(() => this.confetti(art), null, 0.45)
+      .fromTo(reveals, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out', stagger: 0.12 }, 0.5)
+      .fromTo(stickers, { opacity: 0, scale: 0.4, rotation: 0 }, {
+        opacity: 1, scale: 1, rotation: (i) => tilts[i], duration: 0.55, ease: 'back.out(2.2)', stagger: 0.14,
+      }, 0.62)
+      .to(counter, {
+        val: xpEarned, duration: 1.2, ease: 'power2.out',
+        onUpdate() { xpEl.textContent = '+' + Math.round(counter.val) + ' XP'; },
+      }, 0.75)
+      .fromTo(xpEl, { scale: 1 }, { scale: 1.2, duration: 0.16, yoyo: true, repeat: 1, ease: 'power1.out' }, 1.95)
+      .fromTo(card.querySelectorAll('#completionBoostChip, #completionBoosts .completion-boost-art'),
+        { scale: 0, rotation: -25 }, { scale: 1, rotation: 0, duration: 0.5, ease: 'back.out(2.4)', stagger: 0.1 }, 1.9)
+      .call(focusPrimary, null, 0.9)
+      .call(() => this.confetti(art, { count: 24 }), null, 1.05);
+
+    if (leveledUp) setTimeout(levelUp, 1800);
+  },
+
+  // Paper confetti bursting up out of `fromEl`, then fluttering down under gravity, into a
+  // full-screen `layer` (this overlay's own by default; the level-up modal passes its own).
+  confetti(fromEl, { count = 56, layer = document.getElementById('completionConfetti') } = {}) {
+    const box = fromEl.getBoundingClientRect();
+    const originX = box.left + box.width * 0.5;
+    const originY = box.top + box.height * 0.45;
+    const floor = window.innerHeight + 40;
+    const colours = ['--color-amber-400', '--color-sky-400', '--color-green-400', '--color-rose-400', '--color-purple-400', '--color-orange-400'];
+    const shapes = ['', 'is-dot', 'is-strip'];
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement('span');
+      piece.className = 'completion-confetti-piece ' + shapes[i % shapes.length];
+      piece.style.background = 'var(' + colours[i % colours.length] + ')';
+      layer.appendChild(piece);
+      const angle = (-90 + (Math.random() - 0.5) * 150) * Math.PI / 180;
+      const speed = 160 + Math.random() * 260;
+      const peakY = originY + Math.sin(angle) * speed;
+      const duration = 1.8 + Math.random() * 1.2;
+      gsap.set(piece, { x: originX, y: originY, rotation: Math.random() * 360 });
+      gsap.to(piece, { x: originX + Math.cos(angle) * speed * 1.4, duration, ease: 'power1.out' });
+      gsap.to(piece, { rotation: '+=' + (360 + Math.random() * 540), rotationX: 360 + Math.random() * 720, duration, ease: 'none' });
+      gsap.timeline({ onComplete: () => piece.remove() })
+        .to(piece, { y: peakY, duration: duration * 0.3, ease: 'power2.out' })
+        .to(piece, { y: floor, duration: duration * 0.7, ease: 'power1.in' })
+        .to(piece, { opacity: 0, duration: 0.3 }, '-=0.3');
+    }
+  },
+
+  reset() {
+    const $ = (id) => document.getElementById(id);
+    if (this._timeline) { this._timeline.kill(); this._timeline = null; }
+    $('completionScreen').classList.add('hidden');
+    gsap.set('#completionCard', { opacity: 0 });
+    gsap.set('#completionCard .completion-sticker', { clearProps: 'transform,opacity' });
+    $('completionCard').querySelector('.completion-art-bob').classList.remove('is-bobbing');
+    const art = $('completionArt');
+    art.src = art.dataset.lessonArt;
+    $('completionConfetti').innerHTML = '';
+    $('completionTitle').textContent = this._text.greatWork;
+    $('completionXP').textContent = '+0 XP';
+    $('completionScore').textContent = '0 / 0';
+    $('nextLessonSection').classList.remove('hidden');
+    $('completedAllSection').classList.add('hidden');
+    $('nextLessonCard').classList.add('hidden');
+    ['completionBoostChip', 'completionBoostUsed', 'completionBoostEarned'].forEach((id) => $(id).classList.add('hidden'));
+  },
+};
+</script>

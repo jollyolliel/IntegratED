@@ -1,0 +1,164 @@
+{#- One worksheet as the teacher sees it: the viewer, and beside it a panel that assigns it to one of
+    their pairs (preselected when the link came from a learner's page) — "Assign & print" opens the
+    stamped PDF in a new tab and keeps the teacher here — who already has it, and its metadata. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/file_type_badge.jx" as FileTypeBadge #}
+{#import "@components/worksheet_viewer.jx" as WorksheetViewer #}
+{#import "@components/worksheet_meta.jx" as WorksheetMeta #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/badge.jx" as Badge #}
+{#import "@components/shell/main.jx" as Main #}
+{#def worksheet, worksheet_html, matched_pairs, preselected_pair, already_assigned=() #}
+<Page title={{ worksheet.title ~ " - IntegratED" }}>
+  <Main>
+    <div class="mb-6">
+      <BackLink href={{ url_for('teacher.teacher_worksheets') }} label={{ t('teacher.worksheet_preview.back') }} />
+      <div class="flex items-center gap-3 mt-1">
+        <h1 class="display-font text-2xl md:text-3xl font-extrabold text-sky-950">{{ worksheet.title }}</h1>
+        <FileTypeBadge type={{ worksheet.file_type }} />
+      </div>
+      <p class="text-sm mt-2 text-ink-heading/60">
+        {{ t('teacher.worksheet_preview.subheading') }}
+      </p>
+    </div>
+
+    <div class="flex flex-col lg:flex-row lg:items-start gap-6">
+      <div class="flex-1 min-w-0">
+        <WorksheetViewer file_type={{ worksheet.file_type }} worksheet_html={{ worksheet_html }}
+          file_url={{ url_for('teacher.teacher_worksheet_file', worksheet_id=worksheet.id) }} />
+      </div>
+
+      <Card tag="section" id="assign-section" class="p-5 w-full lg:w-80 shrink-0 lg:sticky lg:top-24">
+        <h2 class="display-font text-base font-extrabold text-sky-950">{{ t('teacher.worksheet_preview.assign_panel_title') }}</h2>
+        <p class="text-xs mt-1 text-ink-heading/60">{{ t('teacher.worksheet_preview.assign_panel_subheading') }}</p>
+
+        <form method="post" action="{{ url_for('teacher.teacher_assign_single_worksheet', worksheet_id=worksheet.id) }}" class="mt-4 space-y-4" id="ws-assign-form">
+          <label class="block">
+            <span class="block text-xs font-bold text-primary-dark mb-1.5 uppercase tracking-wider">{{ t('teacher.worksheet_preview.pair_label') }}</span>
+            <select name="learner_id" required>
+              <button><selectedcontent></selectedcontent></button>
+              <option value="">{{ t('teacher.worksheet_preview.select_a_pair') }}</option>
+              {%- for pair in matched_pairs %}
+              <option value="{{ pair.learner.id }}"
+                      {% if preselected_pair and preselected_pair.learner.id == pair.learner.id %}selected{% endif %}>
+                {{ pair.learner.name or pair.learner.username }} &amp; {{ pair.volunteer.short_name }}
+              </option>
+              {%- endfor %}
+            </select>
+          </label>
+
+          {%- if preselected_pair %}
+          <div class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-accent-dark font-semibold">
+            {{ t('teacher.worksheet_preview.preselected') }}: {{ preselected_pair.learner.name or preselected_pair.learner.username }}
+          </div>
+          {%- endif %}
+
+          <div class="flex flex-col gap-2 pt-1">
+            <Button type="submit" name="then" value="print" icon="printer" class="w-full">{{ t('teacher.worksheet_preview.btn_assign_print') }}</Button>
+            <Button type="submit" variant="sky" class="w-full">{{ t('teacher.worksheet_preview.btn_assign_only') }}</Button>
+            <p class="text-xs text-ink-faint">{{ t('teacher.worksheet_preview.print_hint') }}</p>
+          </div>
+        </form>
+
+        {#- Who already has this sheet: a repeat is allowed (that is how a sheet is asked for
+            again), but should be a choice. The page's script adds a row after each assign. #}
+        <div id="ws-already-assigned" class="mt-4 pt-4 border-t-2 border-sky-50" {% if not already_assigned %}hidden{% endif %}>
+          <h3 class="text-xs font-bold text-primary-dark uppercase tracking-wider mb-2">{{ t('teacher.worksheet_preview.already_heading') }}</h3>
+          <ul class="space-y-2" data-already-list>
+            {%- for assignment in already_assigned %}
+            <li class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                {%- set volunteer = assignment.pair_volunteer %}
+                <p class="text-sm font-semibold text-sky-900 truncate">
+                  {{- assignment.learner.name or assignment.learner.username }}{% if volunteer %} &amp; {{ volunteer.short_name }}{% endif -%}
+                </p>
+                <p class="text-xs text-ink-faint">
+                  {{- assignment.assigned_at.strftime('%d %b') }} &middot;
+                  {{ t('teacher.worksheet_preview.already_completed') if assignment.completed else t('teacher.worksheet_preview.already_outstanding') -}}
+                </p>
+              </div>
+              <Button variant="sky" flat target="_blank" class="shrink-0"
+                href={{ url_for('teacher.teacher_print_assignments', ids=assignment.id, source='worksheet_page') }}>{{ t('teacher.worksheet_preview.btn_print') }}</Button>
+            </li>
+            {%- endfor %}
+          </ul>
+        </div>
+
+        <div class="mt-4 pt-4 border-t-2 border-sky-50">
+          <WorksheetMeta rows={{ [
+            {"label": t('teacher.worksheet_preview.subject_label'), "value": worksheet.subject},
+            {"label": t('teacher.worksheet_preview.topic_label'), "value": worksheet.topic or t('teacher.worksheet_preview.general_practice')},
+            {"label": t('teacher.worksheet_preview.matched_pairs_label'), "value": matched_pairs|length},
+          ] }} />
+        </div>
+      </Card>
+    </div>
+  </Main>
+
+  {#- A row the script copies for each new assignment; the text is filled in with textContent. #}
+  <template id="ws-already-row">
+    <li class="flex items-center justify-between gap-2">
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-sky-900 truncate" data-row-name></p>
+        <p class="text-xs text-ink-faint">{{ t('teacher.worksheet_preview.assigned_just_now') }}</p>
+      </div>
+      <Button variant="sky" flat target="_blank" class="shrink-0" href="#" data-row-print>{{ t('teacher.worksheet_preview.btn_print') }}</Button>
+    </li>
+  </template>
+
+  <script>
+    (function () {
+      const T = {
+        preparing: {{ t('teacher.worksheet_preview.preparing') | tojson }},
+        error: {{ t('teacher.worksheet_preview.assign_error') | tojson }},
+      };
+      const form = document.getElementById('ws-assign-form');
+      let busy = false;
+
+      // Assign in place. "Assign & print" opens its tab now, inside the click, so no popup
+      // blocker stops it, and points it at the PDF once the assignment exists. With JavaScript
+      // off the form still posts: then=print redirects to the PDF, otherwise back here.
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (busy) return;
+        busy = true;
+        const printing = e.submitter && e.submitter.value === 'print';
+        const buttons = form.querySelectorAll('button[type="submit"]');
+        buttons.forEach((b) => { b.disabled = true; });
+        const tab = printing ? window.open('', '_blank') : null;
+        if (tab) { tab.document.title = T.preparing; tab.document.body.textContent = T.preparing; }
+
+        const body = new FormData(form);
+        if (printing) body.set('then', 'print');
+        try {
+          const res = await fetch(form.action, { method: 'POST', body: body, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data || !data.success) {
+            if (tab) tab.close();
+            window.showToast((data && data.message) || T.error, 'error');
+            return;
+          }
+          if (tab) tab.location.href = data.print_url;
+          else if (printing) window.location.href = data.print_url;  // the browser blocked the tab
+          window.showToast(data.message, 'success');
+
+          const select = form.querySelector('select[name="learner_id"]');
+          const row = document.getElementById('ws-already-row').content.firstElementChild.cloneNode(true);
+          row.querySelector('[data-row-name]').textContent = select.options[select.selectedIndex].text.trim();
+          row.querySelector('[data-row-print]').href = data.print_url;
+          const panel = document.getElementById('ws-already-assigned');
+          panel.querySelector('[data-already-list]').prepend(row);
+          panel.hidden = false;
+        } catch (err) {
+          if (tab) tab.close();
+          window.showToast(T.error, 'error');
+        } finally {
+          busy = false;
+          buttons.forEach((b) => { b.disabled = false; });
+        }
+      });
+    })();
+  </script>
+</Page>

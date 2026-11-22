@@ -1,0 +1,6 @@
+id: no-transition-all
+valid:
+  - ".a { transition: transform 150ms ease-out, box-shadow 150ms ease-out; }"
+invalid:
+  - ".a { transition: all 0.2s; }"
+  - ".a { transition-property: all; }"

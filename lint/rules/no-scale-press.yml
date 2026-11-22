@@ -1,0 +1,13 @@
+id: no-scale-press
+language: css
+severity: error
+message: |
+  A clay press translates into the shadow — scale() shrinks the shadow with the box and reads as receding (docs/ui-design/visual-language.md).
+rule:
+  kind: declaration
+  has: { kind: property_name, regex: '^transform$' }
+  regex: 'scale'
+  inside:
+    kind: rule_set
+    stopBy: end
+    has: { kind: selectors, regex: ':active' }

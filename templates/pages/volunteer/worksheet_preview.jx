@@ -1,0 +1,50 @@
+{#- One worksheet from the library as the volunteer sees it: the viewer, and beside it the subject,
+    topic and (for a PDF) a download button. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/file_type_badge.jx" as FileTypeBadge #}
+{#import "@components/worksheet_viewer.jx" as WorksheetViewer #}
+{#import "@components/worksheet_meta.jx" as WorksheetMeta #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def worksheet, worksheet_html #}
+{%- set file_url = url_for('volunteer.volunteer_worksheet_file', worksheet_id=worksheet.id) %}
+<Page title={{ worksheet.title ~ " - IntegratED" }}>
+  <Main>
+    <BackLink href={{ url_for('volunteer.volunteer_resources') }} label="Back to Resources" />
+
+    <div class="mb-6">
+      <SectionBadge tag="div">{{ t('volunteer.worksheet_preview.eyebrow') }}</SectionBadge>
+      <div class="flex flex-wrap items-center gap-3 mb-1">
+        <h1 class="display-font text-2xl md:text-3xl font-extrabold text-sky-950 leading-tight">{{ worksheet.title }}</h1>
+        <FileTypeBadge type={{ worksheet.file_type }} />
+      </div>
+      <p class="text-ink-faint text-sm mt-1">{{ t('volunteer.worksheet_preview.subheading') }}</p>
+    </div>
+
+    <div class="flex flex-col lg:flex-row lg:items-start gap-6">
+      <div class="flex-1 min-w-0">
+        <WorksheetViewer file_type={{ worksheet.file_type }} worksheet_html={{ worksheet_html }} file_url={{ file_url }} />
+      </div>
+
+      <aside class="w-full lg:w-64 flex-shrink-0 lg:sticky lg:top-24">
+        <Card tone="amber">
+          <h2 class="display-font text-sm font-bold text-amber-800 border-b border-amber-100 pb-2 mb-4">{{ t('volunteer.worksheet_preview.resource_details') }}</h2>
+
+          <WorksheetMeta rows={{ [
+            {"label": t('volunteer.worksheet_preview.subject_label'), "value": worksheet.subject},
+            {"label": t('volunteer.worksheet_preview.topic_label'), "value": worksheet.topic or t('volunteer.worksheet_preview.general_practice')},
+          ] }} />
+
+          {%- if worksheet.file_type == 'pdf' %}
+          <div class="pt-5">
+            <Button href={{ file_url }} target="_blank" icon="arrow-down-tray" class="w-full justify-center">{{ t('volunteer.worksheet_preview.download_pdf') }}</Button>
+          </div>
+          {%- endif %}
+        </Card>
+      </aside>
+    </div>
+  </Main>
+</Page>

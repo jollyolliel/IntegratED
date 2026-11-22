@@ -1,0 +1,10 @@
+# The text of a class="…" attribute (Jinja inside it is plain text to the parser).
+id: class-value
+language: html
+rule:
+  kind: attribute_value
+  inside:
+    kind: quoted_attribute_value
+    inside:
+      kind: attribute
+      has: { kind: attribute_name, regex: '^class$' }

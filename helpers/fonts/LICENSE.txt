@@ -1,0 +1,4 @@
+DejaVu Sans and DejaVu Sans Bold (c) Bitstream, Inc. and the DejaVu authors.
+Free to use, copy, embed and redistribute under the Bitstream Vera / DejaVu
+font license: https://dejavu-fonts.github.io/License.html
+Used by helpers/md_to_pdf.py so worksheet PDFs can print Latin, Greek and Cyrillic.

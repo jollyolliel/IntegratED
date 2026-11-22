@@ -1,0 +1,348 @@
+{#- One of the teacher's learners: where they are in the course, their match and its score, levels,
+    completed topics, account actions, survey answers, recommended and assigned worksheets, and the
+    newest attendance linking out to the history page. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/match_score_chip.jx" as MatchScoreChip #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/shell/main.jx" as Main #}
+{#def learner, match_score, attendance, attendance_total, completed_topics, position, worksheets,
+    outstanding_assignments, completed_assignments, assignment_total, now, recent_completion_days, outstanding_ids=(), max_print_batch=100 #}
+<Page title={{ "Learner Profile - " ~ (learner.name or learner.username) }} styles="admin">
+  <Main>
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <BackLink href={{ url_for('teacher.teacher_people') }} label="Back to People" />
+        <h1 class="display-font text-2xl md:text-3xl font-extrabold text-sky-950 flex items-center gap-3">
+          {{ learner.name or learner.username }}
+          {%- if learner.is_matched %}
+          <span class="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-green-100 text-accent border-[1.5px] border-green-200">Matched</span>
+          {%- else %}
+          <span class="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-100 text-danger border-[1.5px] border-red-200">Unmatched</span>
+          {%- endif %}
+        </h1>
+        {%- if learner.school %}
+        <p class="text-sm md:text-base mt-1 text-ink-heading/60">
+          {{ t('teacher.learner_detail.learner_at', school=learner.school.name) }}
+        </p>
+        {%- endif %}
+      </div>
+      {%- if learner.is_matched and learner.volunteer_match %}
+      <form method="post" action="{{ url_for('teacher.teacher_unmatch_pair', learner_id=learner.id) }}"
+            data-confirm="{{ t('confirm.unmatch_pair', learner=learner.name or learner.username, volunteer=learner.volunteer_match.name or learner.volunteer_match.email) }}">
+        <Button type="submit" variant="danger" icon="user-minus">{{ t('teacher.learner_detail.btn_unmatch') }}</Button>
+      </form>
+      {%- endif %}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="space-y-6">
+        {#- Where the learner is now: the first lesson not yet finished, not the last one behind them. #}
+        <Card tag="section">
+          <h3 class="display-font font-bold text-base text-sky-900 mb-4">{{ t('teacher.learner_detail.section_progress') }}</h3>
+          {%- if position.started %}
+          <div class="space-y-3">
+            <div>
+              <p class="text-xs text-ink-faint font-semibold uppercase tracking-wider mb-0.5">{{ t('teacher.learner_detail.progress_subject') }}</p>
+              <p class="display-font font-extrabold text-sky-900 text-xl">{{ position.subject }}</p>
+            </div>
+            <div class="border-t-[1.5px] border-primary-soft pt-3">
+              <p class="text-xs text-ink-faint font-semibold uppercase tracking-wider mb-0.5">{{ t('teacher.learner_detail.progress_topic') }}</p>
+              <p class="font-bold text-primary-dark">{{ position.topic or t('teacher.learner_detail.progress_all_done') }}</p>
+            </div>
+            <div class="border-t-[1.5px] border-primary-soft pt-3">
+              <p class="text-xs text-ink-faint font-semibold uppercase tracking-wider mb-0.5">{{ t('teacher.learner_detail.progress_lesson') }}</p>
+              <p class="font-bold text-primary-dark">{{ position.lesson or t('teacher.learner_detail.progress_all_done') }}</p>
+            </div>
+          </div>
+          {%- else %}
+          <p class="text-ink-faint text-sm italic">{{ t('teacher.learner_detail.progress_not_started') }}</p>
+          {%- endif %}
+        </Card>
+
+        <Card tone="green" tag="section">
+          <h3 class="display-font font-bold text-base text-sky-900 mb-3">{{ t('teacher.learner_detail.section_match') }}</h3>
+          {%- if learner.is_matched and learner.volunteer_match %}
+          <a href="{{ url_for('teacher.teacher_volunteer_detail', volunteer_id=learner.volunteer_match.id) }}" class="flex items-center gap-3 group">
+            <div class="avatar-circle-sm avatar-circle-green">
+              {{ (learner.volunteer_match.name or learner.volunteer_match.email)[:2]|upper }}
+            </div>
+            <span class="text-sm font-bold text-accent-dark group-hover:text-green-500 transition-colors">
+              {{ t('teacher.learner_detail.matched_with', volunteer=learner.volunteer_match.short_name) }}
+            </span>
+            <MatchScoreChip match={{ match_score }} />
+          </a>
+          {%- else %}
+          <p class="text-ink-faint text-sm italic">{{ t('teacher.learner_detail.no_match') }}</p>
+          {%- endif %}
+        </Card>
+
+        <Card>
+          <h3 class="display-font font-bold text-base text-sky-900 mb-4">{{ t('teacher.learner_detail.section_academic_levels') }}</h3>
+          <div class="space-y-3">
+            {%- for subject, level in learner.subject_levels.items() %}
+            <div class="flex justify-between items-center py-2 border-b border-primary-soft">
+              <span class="text-sm text-ink-muted font-medium">{{ subject }}</span>
+              <span class="display-font text-xl font-extrabold text-sky-700">{{ level }}</span>
+            </div>
+            {%- endfor %}
+            <div class="flex justify-between items-center pt-2">
+              <span class="text-sm text-ink-muted font-medium">Total Hours Learned</span>
+              <span class="display-font text-xl font-extrabold text-accent">{{ "%.1f"|format(learner.hours_learned) }}</span>
+            </div>
+          </div>
+        </Card>
+
+        <Card tone="green">
+          <h3 class="display-font font-bold text-base text-sky-900 mb-4">Completed Topics</h3>
+          {%- if completed_topics %}
+          <ul class="space-y-2 max-h-64 overflow-y-auto pe-1">
+            {%- for topic in completed_topics %}
+            <li class="flex items-start gap-2 text-sm">
+              <Icon name="check" class="text-green-500 mt-0.5 shrink-0" />
+              <span class="text-ink-body">{{ topic.title }}<span class="text-[10px] text-ink-faint block font-semibold uppercase tracking-wider">{{ topic.subject.name }}</span></span>
+            </li>
+            {%- endfor %}
+          </ul>
+          {%- else %}
+          <p class="text-ink-faint text-sm italic">No completed topics yet.</p>
+          {%- endif %}
+        </Card>
+
+        <Card tone="rose">
+          <h3 class="display-font font-bold text-base text-sky-900 mb-4">{{ t('teacher.people.account_heading') }}</h3>
+          <div class="flex flex-col gap-4">
+            <form method="post" action="{{ url_for('teacher.teacher_set_learner_password', learner_id=learner.id) }}"
+                  class="js-ajax-form pw-set-form flex items-end gap-2">
+              <div class="att-field att-field-grow">
+                <label for="learnerPassword">{{ t('teacher.people.btn_password') }}</label>
+                <Input id="learnerPassword" name="password" required data-no-spaces placeholder={{ t('teacher.people.new_password_placeholder') }} />
+              </div>
+              <Button type="submit" flat>{{ t('teacher.people.btn_set') }}</Button>
+            </form>
+            <form method="post" action="{{ url_for('teacher.teacher_delete_learner', learner_id=learner.id) }}"
+                  data-confirm="{{ t('confirm.delete_named', name=learner.name or learner.username) }}">
+              <Button type="submit" variant="danger">{{ t('teacher.people.btn_delete') }}</Button>
+            </form>
+          </div>
+        </Card>
+      </div>
+
+      <div class="lg:col-span-2 space-y-6">
+        <Card>
+          <h3 class="display-font font-bold text-base text-sky-900 mb-5">Survey Data &amp; Profile</h3>
+          {%- if learner.survey_data %}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {%- if learner.survey_data.get('age') %}
+            <div>
+              <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400 mb-1">{{ t('teacher.learner_detail.label_age') }}</p>
+              <p class="text-sm font-semibold text-ink-body">{{ learner.survey_data.get('age') }}</p>
+            </div>
+            {%- endif %}
+            <div>
+              <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400 mb-1">Languages</p>
+              <ul class="text-sm space-y-1">
+                {%- for lang in learner.survey_data.get('languages', []) %}
+                <li class="text-ink-body">&bull; {{ lang.language }} ({{ lang.level }})</li>
+                {%- else %}
+                <li class="text-ink-faint">None provided</li>
+                {%- endfor %}
+              </ul>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400 mb-2">Hobbies &amp; Interests</p>
+              <div class="flex flex-wrap gap-1.5">
+                {%- for hobby in learner.survey_data.get('hobbies', []) %}
+                <span class="tag-chip">{{ hobby }}</span>
+                {%- endfor %}
+                {%- for interest in learner.survey_data.get('tech_interest', []) %}
+                <span class="tag-chip">{{ interest }}</span>
+                {%- endfor %}
+              </div>
+            </div>
+            {%- if learner.survey_data.get('personality') or learner.survey_data.get('traits') %}
+            <div>
+              <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400 mb-2">{{ t('teacher.learner_detail.label_personality') }}</p>
+              <div class="flex flex-wrap gap-1.5">
+                {%- if learner.survey_data.get('personality') %}
+                <span class="tag-chip tag-chip-green">{{ learner.survey_data.get('personality') }}</span>
+                {%- endif %}
+                {%- for trait in learner.survey_data.get('traits', []) %}
+                <span class="tag-chip">{{ trait }}</span>
+                {%- endfor %}
+              </div>
+            </div>
+            {%- endif %}
+            <div class="md:col-span-2">
+              <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400 mb-2">Preferred Practice Methods</p>
+              <div class="flex flex-wrap gap-1.5">
+                {%- for method in learner.survey_data.get('practice_method', []) %}
+                <span class="tag-chip tag-chip-orange">{{ method }}</span>
+                {%- endfor %}
+              </div>
+            </div>
+          </div>
+          {%- else %}
+          <p class="text-ink-faint text-sm italic">No survey data provided yet.</p>
+          {%- endif %}
+        </Card>
+
+        {#- Recommended worksheets, driven by where the learner is going. #}
+        <Card tone="amber" tag="section">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
+            <div>
+              <h3 class="display-font text-lg font-bold text-sky-900">{{ t('teacher.learner_detail.section_recommended') }}</h3>
+              {%- if position.topic %}
+              <p class="text-sm text-ink-muted mt-1">{{ t('teacher.learner_detail.recommended_based_on', topic=position.topic) }}</p>
+              {%- endif %}
+            </div>
+            {%- if position.subject %}
+            <span class="text-xs font-bold text-amber-700 px-3 py-1 rounded-full shrink-0 bg-yellow-100 border-[1.5px] border-amber-200">{{ t('teacher.learner_detail.recommended_subject', subject=position.subject) }}</span>
+            {%- endif %}
+          </div>
+
+          {%- if worksheets %}
+          <div class="flex flex-wrap gap-2 mb-5">
+            {%- for ws in worksheets[:4] %}
+            <span class="text-xs font-semibold text-amber-800 px-2.5 py-1 rounded-full bg-amber-50 border-[1.5px] border-amber-200">{{ ws.title }}</span>
+            {%- endfor %}
+            {%- if worksheets|length > 4 %}
+            <span class="text-xs font-semibold text-amber-600 px-2.5 py-1">{{ t('teacher.learner_detail.recommended_more', count=worksheets|length - 4) }}</span>
+            {%- endif %}
+          </div>
+          {%- else %}
+          <p class="text-ink-faint text-sm italic mb-5">{{ t('teacher.learner_detail.no_recommended') }}</p>
+          {%- endif %}
+
+          <Button href={{ url_for('teacher.teacher_worksheets', subject=position.subject or '', learner=learner.id) }} icon_end="arrow-right">
+            {{- t('teacher.learner_detail.browse_library') -}}
+          </Button>
+        </Card>
+
+        {#- Assigned worksheets: a preview of the newest few (outstanding first, then completed), not
+            the archive; assignment_total names the whole count. #}
+        <Card tag="section" id="assignedWorksheets">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <h3 class="display-font text-lg font-bold text-sky-900">{{ t('teacher.learner_detail.section_worksheets') }} ({{ assignment_total }})</h3>
+            <div class="flex flex-wrap items-center gap-2">
+              {%- if outstanding_ids and outstanding_ids|length <= max_print_batch %}
+              <Button variant="sky" flat icon="printer" target="_blank" data-print-all
+                href={{ url_for('teacher.teacher_print_assignments', ids=outstanding_ids, source='learner_page') }}>
+                {{- t('teacher.learner_detail.btn_print_outstanding', count=outstanding_ids|length) -}}
+              </Button>
+              {%- endif %}
+              {%- if assignment_total %}
+              <Button variant="sky" flat icon_end="arrow-right" href={{ url_for('teacher.teacher_worksheet_assignments', learner=learner.id) }}>
+                {{- t('teacher.learner_detail.worksheets_view_all', total=assignment_total) -}}
+              </Button>
+              {%- endif %}
+            </div>
+          </div>
+
+          {%- if outstanding_assignments or completed_assignments %}
+          <div class="space-y-3" id="assignedList">
+            {%- for assignment in outstanding_assignments %}
+            <div class="assigned-card js-assigned-card">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400">{{ assignment.worksheet.subject }}</p>
+                  <h4 class="font-bold text-sky-900 mt-0.5">{{ assignment.worksheet.title }}</h4>
+                  <p class="text-xs text-ink-faint mt-0.5">{{ t('teacher.learner_detail.assigned_on', date=assignment.assigned_at.strftime('%Y-%m-%d')) }}</p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <form method="post" action="{{ url_for('teacher.teacher_complete_assignment', assignment_id=assignment.id) }}">
+                    <Button type="submit" flat>{{ t('teacher.learner_detail.btn_mark_complete') }}</Button>
+                  </form>
+                  <Button variant="sky" flat target="_blank" href={{ url_for('teacher.teacher_print_assignments', ids=assignment.id, source='learner_page_one') }}>{{ t('teacher.learner_detail.btn_print') }}</Button>
+                </div>
+              </div>
+            </div>
+            {%- endfor %}
+
+            {%- for assignment in completed_assignments %}
+            {%- set days_since = (now - assignment.completed_at).days if assignment.completed_at else None %}
+            {%- set is_fresh = days_since is not none and days_since <= recent_completion_days %}
+            <div class="{{ 'assigned-card-fresh' if is_fresh else 'assigned-card-stale' }} js-assigned-card">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400">{{ assignment.worksheet.subject }}</p>
+                  <h4 class="font-bold text-sky-900 mt-0.5">{{ assignment.worksheet.title }}</h4>
+                  {%- if is_fresh %}
+                  <span class="att-pill-present mt-1">
+                    {%- if days_since == 0 -%}
+                    {{ t('teacher.learner_detail.done_today') }}
+                    {%- elif days_since == 1 -%}
+                    {{ t('teacher.learner_detail.done_yesterday') }}
+                    {%- else -%}
+                    {{ t('teacher.learner_detail.done_days_ago', count=days_since) }}
+                    {%- endif -%}
+                  </span>
+                  {%- else %}
+                  <p class="text-xs text-ink-faint mt-0.5">{{ t('teacher.learner_detail.completed_on', date=assignment.completed_at.strftime('%Y-%m-%d') if assignment.completed_at else '') }}</p>
+                  {%- endif %}
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <form method="post" action="{{ url_for('teacher.teacher_reopen_assignment', assignment_id=assignment.id) }}">
+                    <Button type="submit" variant="gray" flat>{{ t('teacher.learner_detail.btn_reopen') }}</Button>
+                  </form>
+                  <Button variant="sky" flat target="_blank" href={{ url_for('teacher.teacher_print_assignments', ids=assignment.id, source='learner_page_one') }}>{{ t('teacher.learner_detail.btn_print') }}</Button>
+                </div>
+              </div>
+            </div>
+            {%- endfor %}
+          </div>
+          {%- else %}
+          <p class="text-ink-faint text-sm italic">{{ t('teacher.learner_detail.no_worksheets') }}</p>
+          {%- endif %}
+        </Card>
+
+        <Card>
+          <h3 class="display-font font-bold text-base text-sky-900 mb-5">{{ t('teacher.learner_detail.section_attendance') }}</h3>
+          {%- if attendance %}
+          <Table>
+            <thead>
+              <tr>
+                <th>{{ t('teacher.learner_detail.col_date') }}</th>
+                <th>{{ t('teacher.learner_detail.col_status') }}</th>
+                <th>{{ t('teacher.learner_detail.col_duration') }}</th>
+                <th>{{ t('teacher.learner_detail.col_volunteer') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {%- for log in attendance %}
+              <tr>
+                <td class="font-semibold text-sky-900">{{ log.date.strftime('%Y-%m-%d') }}</td>
+                <td>
+                  {%- if log.is_present %}
+                  <span class="att-pill-present">{{ t('teacher.attendance.status_present') }}</span>
+                  {%- else %}
+                  <span class="att-pill-absent">{{ t('teacher.attendance.status_absent') }}</span>
+                  {%- endif %}
+                </td>
+                <td><span class="px-2 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700">{{ "%.1f"|format(log.duration) }}h</span></td>
+                <td class="text-gray-600">
+                  {%- if log.partner %}{{ log.partner.name }}{% else %}<span class="text-ink-faint">&mdash;</span>{% endif -%}
+                </td>
+              </tr>
+              {%- endfor %}
+            </tbody>
+          </Table>
+          {#- The card previews the newest sessions; the archive with its filters lives on the history
+              page, opened with this learner preselected. #}
+          <div class="flex justify-center mt-4">
+            <Button variant="sky" flat href={{ url_for('teacher.teacher_attendance_history', learner=learner.id) }} icon_end="chevron-right">
+              {{- t('teacher.learner_detail.attendance_view_all', total=attendance_total) -}}
+            </Button>
+          </div>
+          {%- else %}
+          <p class="text-ink-faint text-sm italic">{{ t('teacher.learner_detail.no_attendance') }}</p>
+          {%- endif %}
+        </Card>
+      </div>
+    </div>
+  </Main>
+</Page>

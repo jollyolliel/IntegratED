@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 260" preserveAspectRatio="none" aria-hidden="true">
+  <!-- Far ridge of the launch moon. -->
+  <path d="M0 96 C70 60 150 58 230 86 C300 110 360 92 420 82 C500 68 560 44 640 58 C710 70 760 64 800 52 V260 H0Z" fill="#5B3F9C"/>
+  <path d="M0 116 C80 92 160 96 240 112 C300 124 360 116 420 108 C520 96 600 84 680 94 C740 102 780 96 800 90 V260 H0Z" fill="#4A3189"/>
+  <!-- Near ground: the crest at the middle is where the launch pad stands. -->
+  <path d="M0 150 C110 118 240 102 400 100 C560 102 690 118 800 146 V260 H0Z" fill="#37266F"/>
+  <path d="M120 128 C220 110 320 102 400 101 C480 102 580 110 680 126 C580 116 480 108 400 108 C320 108 220 116 120 128Z" fill="#5A3F9E"/>
+  <!-- Craters: dark bowl with a lit lower lip. -->
+  <g>
+    <ellipse cx="170" cy="176" rx="46" ry="11" fill="#2A1C5A"/>
+    <path d="M124 177 C150 190 190 190 216 177 C190 184 150 184 124 177Z" fill="#4C3591"/>
+    <ellipse cx="620" cy="190" rx="54" ry="12" fill="#2A1C5A"/>
+    <path d="M566 191 C598 206 642 206 674 191 C642 199 598 199 566 191Z" fill="#4C3591"/>
+    <ellipse cx="300" cy="222" rx="30" ry="7" fill="#2A1C5A"/>
+    <ellipse cx="500" cy="152" rx="22" ry="4.5" fill="#2E1F62"/>
+    <ellipse cx="740" cy="236" rx="26" ry="6" fill="#2A1C5A"/>
+  </g>
+  <!-- Pebbles. -->
+  <g fill="#4C3591">
+    <ellipse cx="250" cy="140" rx="6" ry="2.6"/>
+    <ellipse cx="560" cy="134" rx="5" ry="2.2"/>
+    <ellipse cx="420" cy="200" rx="7" ry="3"/>
+    <ellipse cx="80" cy="214" rx="5" ry="2.4"/>
+  </g>
+</svg>

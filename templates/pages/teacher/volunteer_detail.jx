@@ -1,0 +1,200 @@
+{#- One of the teacher's volunteers: hours, their learners with each pair's score, the learner limit,
+    delete, survey answers, and the newest sessions linking out to the history page. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/match_score_chip.jx" as MatchScoreChip #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def volunteer, match_scores, attendance, attendance_total, session_partners, max_capacity #}
+<Page title={{ "Volunteer Profile - " ~ (volunteer.name or volunteer.email) }} styles="admin">
+  <Main>
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <BackLink href={{ url_for('teacher.teacher_people') }} label="Back to People" />
+        <h1 class="display-font text-2xl md:text-3xl font-extrabold text-sky-950 flex items-center gap-3">
+          {{ volunteer.short_name }}
+          {%- if volunteer.is_matched %}
+          <span class="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-green-100 text-accent border-[1.5px] border-green-200">Matched</span>
+          {%- else %}
+          <span class="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-green-50 text-accent border-[1.5px] border-green-200 opacity-80">Available</span>
+          {%- endif %}
+        </h1>
+        <p class="text-sm md:text-base mt-1 text-ink-heading/60">
+          {% if volunteer.school %}{{ t('teacher.volunteer_detail.volunteer_from', school=volunteer.school.name) }} &bull; {% endif %}{{ volunteer.email }}
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="space-y-6">
+        <Card tone="green">
+          <h3 class="display-font font-bold text-base text-sky-900 mb-4">Volunteer Stats</h3>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center py-2 border-b border-green-200">
+              <span class="text-sm text-ink-muted font-medium">Total Hours</span>
+              <span class="display-font text-xl font-extrabold text-accent-dark">{{ "%.1f"|format(volunteer.hours_volunteered) }}</span>
+            </div>
+
+            <div class="flex justify-between items-center py-2 border-b border-green-200">
+              <span class="text-sm text-ink-muted font-medium">{{ t('teacher.volunteer_detail.learner_limit') }}</span>
+              <span class="display-font text-xl font-extrabold text-accent-dark">{{ volunteer.learner_matches|length }} / {{ volunteer.capacity }}</span>
+            </div>
+
+            {%- if volunteer.learner_matches %}
+            <div class="pt-2 space-y-2">
+              <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400 mb-3">{{ t('teacher.volunteer_detail.current_learners') }}</p>
+              {%- for l in volunteer.learner_matches %}
+              <a href="{{ url_for('teacher.teacher_learner_detail', learner_id=l.id) }}" class="flex items-center gap-3 group">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-sky-50 text-sky-700 border-2 border-primary-light">
+                  {{ l.name[:2]|upper if l.name else l.username[:2]|upper }}
+                </div>
+                <span class="text-sm font-bold text-sky-700 group-hover:text-sky-500 transition-colors">{{ l.name or l.username }}</span>
+                <MatchScoreChip match={{ match_scores.get(l.id) }} />
+              </a>
+              {%- endfor %}
+            </div>
+            {%- endif %}
+          </div>
+        </Card>
+
+        {#- Learner limit: how many learners this volunteer may hold. #}
+        <Card>
+          <h3 class="display-font font-bold text-base text-sky-900 mb-2">{{ t('teacher.volunteer_detail.learner_limit') }}</h3>
+          <p class="text-xs text-ink-faint mb-4">{{ t('teacher.volunteer_detail.learner_limit_help') }}</p>
+          <form method="post" action="{{ url_for('teacher.teacher_set_volunteer_capacity', volunteer_id=volunteer.id) }}"
+                class="js-ajax-form flex items-center gap-2">
+            <select name="capacity" class="flex-1">
+              <button><selectedcontent></selectedcontent></button>
+              {%- for n in range(1, max_capacity + 1) %}
+              <option value="{{ n }}" {% if n == volunteer.capacity %}selected{% endif %}>{{ n }}</option>
+              {%- endfor %}
+            </select>
+            <Button type="submit" flat>{{ t('teacher.volunteer_detail.save_limit') }}</Button>
+          </form>
+        </Card>
+
+        <Card tone="rose">
+          <h3 class="display-font font-bold text-base text-sky-900 mb-4">{{ t('teacher.people.account_heading') }}</h3>
+          <form method="post" action="{{ url_for('teacher.teacher_delete_volunteer', volunteer_id=volunteer.id) }}"
+                data-confirm="{{ t('confirm.delete_named', name=volunteer.name or volunteer.email) }}">
+            <Button type="submit" variant="danger">{{ t('teacher.people.btn_delete') }}</Button>
+          </form>
+        </Card>
+      </div>
+
+      <div class="lg:col-span-2 space-y-6">
+        <Card>
+          <h3 class="display-font font-bold text-base text-sky-900 mb-5">Survey Data &amp; Profile</h3>
+          {%- if volunteer.survey_data %}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {%- if volunteer.survey_data.get('age') %}
+            <div>
+              <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400 mb-1">{{ t('teacher.volunteer_detail.label_age') }}</p>
+              <p class="text-sm font-semibold text-ink-body">{{ volunteer.survey_data.get('age') }}</p>
+            </div>
+            {%- endif %}
+            <div>
+              <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400 mb-1">Teaching Languages</p>
+              <ul class="text-sm space-y-1">
+                {%- for lang in volunteer.survey_data.get('languages', []) %}
+                <li class="text-ink-body">&bull; <span class="font-semibold">{{ lang.language }}</span> (Proficiency: {{ lang.level }})</li>
+                {%- else %}
+                <li class="text-ink-faint">None provided</li>
+                {%- endfor %}
+              </ul>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400 mb-2">Hobbies &amp; Interests</p>
+              <div class="flex flex-wrap gap-1.5">
+                {%- for hobby in volunteer.survey_data.get('hobbies', []) %}
+                <span class="tag-chip">{{ hobby }}</span>
+                {%- endfor %}
+                {%- for interest in volunteer.survey_data.get('tech_interest', []) %}
+                <span class="tag-chip">{{ interest }}</span>
+                {%- endfor %}
+              </div>
+            </div>
+            {%- if volunteer.survey_data.get('personality') or volunteer.survey_data.get('traits') %}
+            <div>
+              <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400 mb-2">{{ t('teacher.volunteer_detail.label_personality') }}</p>
+              <div class="flex flex-wrap gap-1.5">
+                {%- if volunteer.survey_data.get('personality') %}
+                <span class="tag-chip tag-chip-green">{{ volunteer.survey_data.get('personality') }}</span>
+                {%- endif %}
+                {%- for trait in volunteer.survey_data.get('traits', []) %}
+                <span class="tag-chip">{{ trait }}</span>
+                {%- endfor %}
+              </div>
+            </div>
+            {%- endif %}
+            <div class="md:col-span-2">
+              <p class="text-[10px] uppercase tracking-widest font-bold text-sky-400 mb-2">Match Motivations &amp; Activities</p>
+              <div class="flex flex-wrap gap-1.5">
+                {%- for motivation in volunteer.survey_data.get('motivation', []) %}
+                <span class="tag-chip tag-chip-orange">{{ motivation }}</span>
+                {%- endfor %}
+                {%- for activity in volunteer.survey_data.get('match_activities', []) %}
+                <span class="tag-chip tag-chip-orange">{{ activity }}</span>
+                {%- endfor %}
+              </div>
+            </div>
+          </div>
+          {%- else %}
+          <p class="text-ink-faint text-sm italic">No survey data provided yet.</p>
+          {%- endif %}
+        </Card>
+
+        <Card>
+          <h3 class="display-font font-bold text-base text-sky-900 mb-5">Volunteer Sessions</h3>
+          {%- if attendance %}
+          <Table>
+            <thead>
+              <tr>
+                <th>{{ t('teacher.volunteer_detail.col_date') }}</th>
+                <th>{{ t('teacher.volunteer_detail.col_status') }}</th>
+                <th>{{ t('teacher.volunteer_detail.col_duration') }}</th>
+                <th>{{ t('teacher.volunteer_detail.col_student') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {%- for log in attendance %}
+              <tr>
+                <td class="font-semibold text-sky-900">{{ log.date.strftime('%Y-%m-%d') }}</td>
+                <td>
+                  {%- if log.is_present %}
+                  <span class="att-pill-present">{{ t('teacher.attendance.status_present') }}</span>
+                  {%- else %}
+                  <span class="att-pill-absent">{{ t('teacher.attendance.status_absent') }}</span>
+                  {%- endif %}
+                </td>
+                <td><span class="px-2 py-0.5 rounded-full text-xs font-bold bg-green-50 text-accent">{{ "%.1f"|format(log.duration) }}h</span></td>
+                <td>
+                  {#- The volunteer's own record names nobody once they sat with a group, so the partners
+                      come from the learners' side. #}
+                  {%- for partner in session_partners.get(log.id, []) %}
+                  <a href="{{ url_for('teacher.teacher_learner_detail', learner_id=partner.id) }}" class="text-primary hover:text-primary-dark font-medium transition-colors">{{ partner.name or partner.username }}</a>{% if not loop.last %}<span class="text-gray-300">, </span>{% endif %}
+                  {%- else %}
+                  <span class="text-ink-faint">&mdash;</span>
+                  {%- endfor %}
+                </td>
+              </tr>
+              {%- endfor %}
+            </tbody>
+          </Table>
+          {#- The card previews the newest sessions; the archive with its filters lives on the history
+              page, opened with this volunteer preselected. #}
+          <div class="flex justify-center mt-4">
+            <Button variant="sky" flat href={{ url_for('teacher.teacher_attendance_history', volunteer=volunteer.id) }} icon_end="chevron-right">
+              {{- t('teacher.volunteer_detail.sessions_view_all', total=attendance_total) -}}
+            </Button>
+          </div>
+          {%- else %}
+          <p class="text-ink-faint text-sm italic">No past volunteer sessions logged.</p>
+          {%- endif %}
+        </Card>
+      </div>
+    </div>
+  </Main>
+</Page>

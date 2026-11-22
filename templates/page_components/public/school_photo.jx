@@ -1,0 +1,19 @@
+{#- A school's picture on the public pages, falling back when it has none.
+    variant="directory": its photo, else its initials (`.school-dir-mark`) — /schools cards.
+    variant="logo": its logo, else its initials — the school page's mark.
+    variant="tile": its photo (`.school-photo`), else the school illustration — donation tiles.
+    The caller supplies the frame; this is only what goes inside it. -#}
+{#def school, variant="directory" #}
+{%- if variant == "logo" -%}
+  {%- if school.logo_path -%}
+  <img src="{{ url_for('static', filename=school.logo_path) }}" alt="" />
+  {%- else -%}
+  {{ school.initials }}
+  {%- endif -%}
+{%- elif school.image_path -%}
+  <img{% if variant == "tile" %} class="school-photo"{% endif %} src="{{ url_for('static', filename=school.image_path) }}" alt="{{ school.name }}" loading="lazy" decoding="async" />
+{%- elif variant == "tile" -%}
+  <img class="school-art" src="{{ url_for('static', filename='svg/school.svg') }}" alt="" />
+{%- else -%}
+  <span class="school-dir-mark">{{ school.initials }}</span>
+{%- endif -%}

@@ -1,0 +1,12 @@
+id: no-raw-palette-utility
+language: html
+severity: warning
+message: |
+  This palette shade has a role — use the role utility so a re-theme reaches it.
+note: |
+  sky-600 → primary, sky-800 → primary-dark, sky-200 → primary-light, sky-100 → primary-soft,
+  green-600 → accent, green-700 → accent-dark, red-600 → danger, red-800 → danger-dark,
+  indigo-950 → ink-heading, gray-700 → ink-body, gray-500 → ink-muted, gray-400 → ink-faint, gray-200 → line.
+rule:
+  matches: class-value
+  regex: '(?:^|[\s}])(?:[\w-]+:)*!?-?(?:text|bg|border|ring|fill|stroke|divide|outline|decoration|from|via|to)-(?:sky-(?:100|200|600|800)|green-(?:600|700)|red-(?:600|800)|gray-(?:200|400|500|700)|indigo-950)(?:$|[\s{])'

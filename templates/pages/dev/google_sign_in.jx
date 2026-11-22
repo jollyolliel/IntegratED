@@ -1,0 +1,51 @@
+{#- Dev-only (routes/auth/_oauth.py): stands in for Google's account picker on a local dev server.
+    The email goes through the same sign-in and registration logic as a real Google callback.
+    English only, no translation keys: it is a developer tool. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def google_configured=False #}
+<Page title="Google sign-in (dev) - IntegratED" styles="auth">
+  <Main layout="centered" width="md">
+    <div class="auth-card p-8 md:p-10">
+      <div class="text-center mb-6">
+        <h1 class="display-font text-2xl font-extrabold text-sky-950 mb-1">Google sign-in (dev)</h1>
+        <p class="text-sm text-ink-heading/65">
+          Stands in for Google on this dev server. Signs in or registers as the email you type,
+          with the same domain, invite-code and gmail.com rules as the real sign-in.
+        </p>
+      </div>
+
+      <form action="{{ url_for('auth.dev_google_sign_in') }}" method="POST" class="grid grid-cols-2 gap-3 mb-6">
+        <Button type="submit" variant="gray" name="preset" value="teacher" icon="user-plus">New teacher</Button>
+        <Button type="submit" variant="gray" name="preset" value="volunteer" icon="user-plus">New volunteer</Button>
+        <p class="col-span-2 text-center text-xs text-ink-heading/65">
+          One click registers a new account with a valid email and name at the first school that takes it.
+        </p>
+      </form>
+
+      <form action="{{ url_for('auth.dev_google_sign_in') }}" method="POST" class="space-y-4">
+        <Field label="Email" for_id="email" required={{ True }}>
+          <input type="email" name="email" id="email" autocomplete="email" required autofocus
+                 placeholder="someone@gmail.com" class="auth-input" />
+        </Field>
+        <Field label="Name (optional)" for_id="name">
+          <input type="text" name="name" id="name" autocomplete="name" class="auth-input" />
+        </Field>
+        <Button type="submit" class="mt-2 w-full" icon_end="arrow-right">Continue</Button>
+      </form>
+
+      {% if google_configured %}
+      <div class="mt-4 text-center">
+        <Button href="/login/google?real=1" variant="gray" icon="key">Sign in with real Google</Button>
+      </div>
+      {% endif %}
+
+      <p class="mt-6 text-center text-xs text-ink-heading/65">
+        Only on a development server, from this machine. To sign in as an existing user by role,
+        use <code>/dev/login-as</code>.
+      </p>
+    </div>
+  </Main>
+</Page>

@@ -1,0 +1,20 @@
+{#- Fixture for the i18n scanners: Doc comment words are not text. -#}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/page.jx" as Page #}
+{#def heading_text, items #}
+<Page title={{ t('fixture.page_title') }} styles="admin">
+  {# A template comment is not text either #}
+  <h1 class="text-xl">Hello there</h1>
+  <p>{{ t('fixture.translated_intro') }}</p>
+  <Button variant="sky" label="Back to start" aria-label={{ t('fixture.back_aria') }} />
+  <Button variant="gray" icon="clock">Save changes</Button>
+  <Button flat>{{ t('fixture.translated_button') }}</Button>
+  <Card tone="sky"><img src="{{ url_for('static', filename='x.svg') }}" alt="" /> Caption here</Card>
+  <Card tone="green"><p class="{{ extra }}">Inside a paragraph</p></Card>
+  <td class="py-2 {% if rows > 0 %}text-primary{% endif %}">Total rows</td>
+  <input type="search" placeholder="Search learners" />
+  <div data-live-label="Live variant name"></div>
+  <script>
+    const T = { done: {{ t('fixture.done') | tojson }}, nextLabel: 'Next step' };
+  </script>
+</Page>

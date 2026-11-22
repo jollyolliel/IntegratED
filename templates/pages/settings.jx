@@ -1,0 +1,329 @@
+{#- Account settings for every role: a sticky section nav beside the profile, password (password
+    accounts only), personalisation (learners and volunteers), language, legal and danger-zone
+    sections. One form per action; the route dispatches on the hidden `action`. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/lang_button.jx" as LangButton #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/shell/main.jx" as Main #}
+{%- set password_user = current_user.user_type in ('learner', 'administrator', 'school_admin') %}
+{%- set survey_user = current_user.user_type in ('learner', 'volunteer') %}
+{%- set google_user = current_user.user_type in ('volunteer', 'teacher') %}
+<Page title={{ t('settings.page_title') ~ " — IntegratED" }} styles="admin" body_class="min-h-screen flex flex-col bg-slate-50">
+  <Main width="5xl">
+
+    <div class="mb-8">
+      <SectionBadge>{{ t('settings.page_title') }}</SectionBadge>
+      <h1 class="display-font text-3xl md:text-4xl font-extrabold text-sky-950 mt-1">{{ t('settings.page_title') }}</h1>
+      <p class="text-sm text-ink-muted mt-1">
+        {%- if current_user.user_type == 'learner' %}
+          {{ current_user.username }}
+        {%- elif google_user %}
+          {{ current_user.email }}
+        {%- elif current_user.user_type == 'administrator' %}
+          {{ current_user.username }} · Administrator
+        {%- elif current_user.user_type == 'school_admin' %}
+          {{ current_user.username }} · School Admin
+        {%- endif %}
+      </p>
+    </div>
+
+    <div class="flex flex-col lg:flex-row gap-6">
+
+      <aside class="lg:w-56 flex-shrink-0 lg:sticky lg:top-24 lg:self-start">
+        <Card class="p-3 space-y-1">
+          <a href="#profile" class="settings-nav-link active" data-section="profile">
+            <div class="settings-nav-icon bg-sky-50"><Icon name="user" class="text-primary" /></div>
+            {{ t('settings.section_profile') }}
+          </a>
+          {%- if password_user %}
+          <a href="#security" class="settings-nav-link" data-section="security">
+            <div class="settings-nav-icon bg-green-50"><Icon name="lock-closed" class="text-accent" /></div>
+            {{ t('settings.section_security') }}
+          </a>
+          {%- endif %}
+          {%- if survey_user %}
+          <a href="#personalization" class="settings-nav-link" data-section="personalization">
+            <div class="settings-nav-icon bg-pink-50"><Icon name="adjustments-horizontal" class="text-pink-600" /></div>
+            {{ t('settings.section_personalization') }}
+          </a>
+          {%- endif %}
+          <a href="#language" class="settings-nav-link" data-section="language">
+            <div class="settings-nav-icon bg-amber-50"><Icon name="language" class="text-amber-600" /></div>
+            {{ t('settings.section_language') }}
+          </a>
+          <a href="#legal" class="settings-nav-link" data-section="legal">
+            <div class="settings-nav-icon bg-purple-50"><Icon name="document-text" class="text-purple-600" /></div>
+            {{ t('settings.section_legal') }}
+          </a>
+          <hr class="section-divider" />
+          <a href="#danger" class="settings-nav-link !text-danger" data-section="danger">
+            <div class="settings-nav-icon bg-red-50"><Icon name="trash" class="text-red-500" /></div>
+            {{ t('settings.section_danger') }}
+          </a>
+        </Card>
+      </aside>
+
+      <div class="flex-1 space-y-6">
+
+        <section id="profile">
+          <Card>
+            <div class="flex items-center gap-3 mb-5">
+              <IconBox icon="user" />
+              <div>
+                <h2 class="display-font text-lg font-bold text-sky-900">{{ t('settings.section_profile') }}</h2>
+                <p class="text-xs text-ink-faint">{{ t('settings.account_type_label') }}: <span class="font-semibold text-gray-600 capitalize">{{ current_user.user_type.replace('_', ' ') }}</span></p>
+              </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('base.settings') }}" class="space-y-4">
+              <input type="hidden" name="action" value="update_profile" />
+
+              <Field label={{ t('settings.display_name') }} for_id="name">
+                <Input id="name" name="name" value={{ current_user.name or '' }} placeholder={{ t('settings.name_placeholder') }} />
+              </Field>
+
+              {%- if password_user %}
+              <Field label={{ t('settings.username') }} for_id="username">
+                <Input id="username" name="username" value={{ current_user.username }} data-no-spaces aria-describedby="username-hint" />
+                <p id="username-hint" class="field-hint">{{ t('auth.password_spaces_hint') }}</p>
+              </Field>
+              {%- endif %}
+
+              {%- if google_user %}
+              <Field label={{ t('settings.email') }} for_id="email">
+                <div class="flex items-center gap-2">
+                  {# design: override — a read-only field Google owns: greyed, not editable #}
+                  <Input id="email" value={{ current_user.email }} class="flex-1 bg-slate-50 text-ink-muted cursor-not-allowed" readonly />
+                  <span class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-ink-muted bg-gray-100 border border-line whitespace-nowrap">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    {{ t('settings.google_managed') }}
+                  </span>
+                </div>
+                <p class="field-hint">{{ t('settings.google_managed') }}</p>
+              </Field>
+              {%- endif %}
+
+              <div class="pt-2">
+                <Button type="submit" icon="check">{{ t('settings.save_profile') }}</Button>
+              </div>
+            </form>
+          </Card>
+        </section>
+
+        {%- if password_user %}
+        <section id="security">
+          <Card tone="green">
+            <div class="flex items-center gap-3 mb-5">
+              <IconBox icon="lock-closed" tone="green" />
+              <h2 class="display-font text-lg font-bold text-sky-900">{{ t('settings.section_security') }}</h2>
+            </div>
+
+            <form method="POST" action="{{ url_for('base.settings') }}" class="space-y-4" id="change-password-form" novalidate>
+              <input type="hidden" name="action" value="change_password" />
+
+              <Field label={{ t('settings.current_password') }} for_id="current_password">
+                <Input type="password" id="current_password" name="current_password" placeholder="••••••••" autocomplete="current-password" />
+              </Field>
+              <Field label={{ t('settings.new_password') }} for_id="new_password" error={{ t('auth.val_password') }} error_id="new-password-error">
+                <Input type="password" id="new_password" name="new_password" placeholder="••••••••" autocomplete="new-password" data-no-spaces aria-describedby="new-password-hint new-password-error" />
+                <p id="new-password-hint" class="field-hint">{{ t('settings.password_rules') }} {{ t('auth.password_spaces_hint') }}</p>
+              </Field>
+              <Field label={{ t('settings.confirm_password') }} for_id="confirm_password" error={{ t('auth.val_password_match') }} error_id="confirm-password-error">
+                <Input type="password" id="confirm_password" name="confirm_password" placeholder="••••••••" autocomplete="new-password" data-no-spaces aria-describedby="confirm-password-error" />
+              </Field>
+
+              <div class="pt-2">
+                <Button type="submit" variant="sky" icon="lock-closed">{{ t('settings.change_password') }}</Button>
+              </div>
+            </form>
+          </Card>
+        </section>
+        {%- endif %}
+
+        {%- if survey_user %}
+        <section id="personalization">
+          <Card tone="pink">
+            <div class="flex items-center gap-3 mb-5">
+              <IconBox icon="adjustments-horizontal" tone="pink" />
+              <div>
+                <h2 class="display-font text-lg font-bold text-sky-900">{{ t('settings.section_personalization') }}</h2>
+                <p class="text-xs text-ink-faint">{{ t('settings.section_personalization_description') }}</p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+              <Button variant="sky" target="_blank" icon="document-text"
+                href={{ url_for('learner.learner_survey') if current_user.user_type == 'learner' else url_for('volunteer.volunteer_survey') }}>
+                {{ t('settings.redo_survey_link') }}
+                <Icon name="arrow-top-right-on-square" size="3.5" class="opacity-50" />
+              </Button>
+            </div>
+          </Card>
+        </section>
+        {%- endif %}
+
+        <section id="language">
+          <Card tone="amber">
+            <div class="flex items-center gap-3 mb-5">
+              <IconBox icon="language" tone="amber" />
+              <h2 class="display-font text-lg font-bold text-sky-900">{{ t('settings.section_language') }}</h2>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {%- for code in ['en', 'ar', 'tr', 'es', 'fr', 'uk', 'fa', 'ps', 'so', 'rhg', 'ti', 'sw'] %}
+              <form method="POST" action="{{ url_for('set_language') }}">
+                <input type="hidden" name="lang" value="{{ code }}" />
+                <input type="hidden" name="next" value="{{ url_for('base.settings') }}" />
+                <LangButton type="submit" active={{ ui_lang == code }}>{{ t('lang.' ~ code) }}</LangButton>
+              </form>
+              {%- endfor %}
+            </div>
+          </Card>
+        </section>
+
+        <section id="legal">
+          <Card tone="purple">
+            <div class="flex items-center gap-3 mb-5">
+              <IconBox icon="document-text" tone="purple" />
+              <div>
+                <h2 class="display-font text-lg font-bold text-sky-900">{{ t('settings.section_legal') }}</h2>
+                <p class="text-xs text-ink-faint">{{ t('settings.legal_description') }}</p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+              <Button variant="sky" href={{ url_for('base.terms') }} target="_blank" icon="document-text">
+                {{ t('settings.terms_link') }}
+                <Icon name="arrow-top-right-on-square" size="3.5" class="opacity-50" />
+              </Button>
+              <Button variant="sky" href={{ url_for('base.privacy') }} target="_blank" icon="lock-closed">
+                {{ t('settings.privacy_link') }}
+                <Icon name="arrow-top-right-on-square" size="3.5" class="opacity-50" />
+              </Button>
+            </div>
+          </Card>
+        </section>
+
+        <section id="danger">
+          <Card tone="rose">
+            <div class="flex items-center gap-3 mb-5">
+              <IconBox icon="exclamation-triangle" tone="rose" />
+              <h2 class="display-font text-lg font-bold text-red-700">{{ t('settings.section_danger') }}</h2>
+            </div>
+
+            <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-5">
+              <p class="text-sm font-semibold text-red-700 mb-1">{{ t('settings.delete_account') }}</p>
+              <p class="text-sm text-danger">{{ t('settings.delete_warning') }}</p>
+            </div>
+
+            <Button variant="danger" id="show-delete-form-btn" icon="trash">{{ t('settings.delete_account') }}</Button>
+
+            <form id="delete-account-form" method="POST" action="{{ url_for('base.settings') }}"
+                  class="hidden mt-5 space-y-4 border-t-2 border-red-200 pt-5">
+              <input type="hidden" name="action" value="delete_account" />
+              <div>
+                <label class="field-label !text-danger" for="confirm_delete">{{ t('settings.delete_type_confirm') }}</label>
+                <input type="text" id="confirm_delete" name="confirm_delete"
+                       placeholder="DELETE" class="danger-input"
+                       autocomplete="off" spellcheck="false" />
+                <p class="field-hint !text-danger">{{ t('settings.delete_hint') }}</p>
+              </div>
+              <div class="flex items-center gap-3">
+                <Button type="submit" variant="danger" id="delete-submit-btn" disabled icon="trash">{{ t('settings.delete_button') }}</Button>
+                <Button variant="gray" id="cancel-delete-btn">{{ t('common.cancel') }}</Button>
+              </div>
+            </form>
+          </Card>
+        </section>
+
+      </div>
+    </div>
+  </Main>
+
+  <script>
+    // Sidebar smooth scroll + active state
+    document.querySelectorAll('.settings-nav-link[data-section]').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const target = document.getElementById(link.dataset.section);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.querySelectorAll('.settings-nav-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+      });
+    });
+
+    // Intersection observer to highlight active nav
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('.settings-nav-link[data-section]');
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navLinks.forEach(l => l.classList.remove('active'));
+          const active = document.querySelector(`.settings-nav-link[data-section="${entry.target.id}"]`);
+          if (active) active.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(s => observer.observe(s));
+
+    // Delete account form toggle
+    const showBtn = document.getElementById('show-delete-form-btn');
+    const deleteForm = document.getElementById('delete-account-form');
+    const cancelBtn = document.getElementById('cancel-delete-btn');
+    const confirmInput = document.getElementById('confirm_delete');
+    const submitBtn = document.getElementById('delete-submit-btn');
+
+    showBtn?.addEventListener('click', () => {
+      deleteForm.classList.remove('hidden');
+      showBtn.classList.add('hidden');
+      confirmInput.focus();
+    });
+
+    cancelBtn?.addEventListener('click', () => {
+      deleteForm.classList.add('hidden');
+      showBtn.classList.remove('hidden');
+      confirmInput.value = '';
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.5';
+      submitBtn.style.cursor = 'not-allowed';
+    });
+
+    confirmInput?.addEventListener('input', () => {
+      const valid = confirmInput.value === 'DELETE';
+      submitBtn.disabled = !valid;
+      submitBtn.style.opacity = valid ? '1' : '0.5';
+      submitBtn.style.cursor = valid ? 'pointer' : 'not-allowed';
+    });
+
+    // Change password: a weak or mismatched new password never leaves the browser; the red text
+    // under the field says what to fix, and typing again clears it.
+    const passwordForm = document.getElementById('change-password-form');
+    if (passwordForm) {
+      const checks = [
+        ['new_password', 'new-password-error', (pw) => pw.length >= 8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw)],
+        ['confirm_password', 'confirm-password-error', (pw, form) => pw === form.new_password.value],
+      ];
+      passwordForm.addEventListener('submit', (e) => {
+        const failed = checks.filter(([name, , ok]) => !ok(passwordForm[name].value.trim(), passwordForm));
+        checks.forEach(([name, errorId]) => {
+          const bad = failed.some(([failedName]) => failedName === name);
+          passwordForm[name].setAttribute('aria-invalid', String(bad));
+          document.getElementById(errorId).classList.toggle('hidden', !bad);
+        });
+        if (failed.length) { e.preventDefault(); passwordForm[failed[0][0]].focus(); }
+      });
+      passwordForm.addEventListener('input', (e) => {
+        const check = checks.find(([name]) => name === e.target.name);
+        if (!check) return;
+        e.target.setAttribute('aria-invalid', 'false');
+        document.getElementById(check[1]).classList.add('hidden');
+      });
+    }
+  </script>
+</Page>

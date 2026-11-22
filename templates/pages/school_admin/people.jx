@@ -1,0 +1,39 @@
+{#- The school's rosters: three tables, each with its own pager, in one swap region
+    under the page heading. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@page_components/school_admin/people_results.jx" as PeopleResults #}
+{#import "@components/shell/main.jx" as Main #}
+{#def school, teachers, learners, volunteers, teacher_count, learner_count, volunteer_count,
+      teacher_page, teacher_page_count, learner_page, learner_page_count,
+      volunteer_page, volunteer_page_count, common_args #}
+{%- set head %}
+  <style>
+    /* Teachers amber, volunteers green. The wrapper rule ties with .clay-table-wrap and comes
+       later; the thead rules are more specific than .clay-table's. */
+    .people-table-amber { border-color: var(--color-amber-200); box-shadow: 3px 3px 0 var(--color-amber-200); }
+    .people-table-amber .clay-table thead tr { background: var(--color-amber-50); }
+    .people-table-amber .clay-table thead th { color: var(--color-amber-800); }
+    .people-table-green { border-color: var(--color-emerald-200); box-shadow: 3px 3px 0 var(--color-emerald-200); }
+    .people-table-green .clay-table thead tr { background: var(--color-green-50); }
+    .people-table-green .clay-table thead th { color: var(--color-green-800); }
+  </style>
+{%- endset %}
+<Page title={{ "People — " ~ school.name }} head={{ head }}>
+  <Main>
+    <BackLink href={{ url_for('school_admin.dashboard') }} label="Dashboard" />
+
+    <div class="mb-8">
+      <SectionBadge tag="div">{{ t('school_admin.people.eyebrow') }}</SectionBadge>
+      <h1 class="display-font text-3xl md:text-4xl font-extrabold text-sky-950 mt-1">People — {{ school.name }}</h1>
+    </div>
+
+    <PeopleResults teachers={{ teachers }} learners={{ learners }} volunteers={{ volunteers }}
+      teacher_count={{ teacher_count }} learner_count={{ learner_count }} volunteer_count={{ volunteer_count }}
+      teacher_page={{ teacher_page }} teacher_page_count={{ teacher_page_count }}
+      learner_page={{ learner_page }} learner_page_count={{ learner_page_count }}
+      volunteer_page={{ volunteer_page }} volunteer_page_count={{ volunteer_page_count }}
+      common_args={{ common_args }} />
+  </Main>
+</Page>

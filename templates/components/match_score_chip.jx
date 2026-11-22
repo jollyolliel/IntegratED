@@ -1,0 +1,12 @@
+{#- The matcher's score for one pair, beside the partner's name on the person pages. `match` is the
+    {score, band} the teacher detail routes build; falsy (unmatched) renders nothing. The colour
+    carries the band (`.match-score-*`, static/css/pages/admin.css) and the title carries the words. -#}
+{#import "@components/base/icon.jx" as Icon #}
+{#def match=None #}
+{%- if match -%}
+{%- set band = prop("MatchScoreChip", "band", match.band) -%}
+<span {{ attrs.render(class="match-score-chip match-score-" ~ band, title=t("teacher.match_score.band_" ~ band) ~ " — " ~ t("teacher.match_score.label") ~ " " ~ match.score) }}>
+  <Icon name="star" size="3" />
+  {{ match.score }}
+</span>
+{%- endif %}

@@ -1,0 +1,468 @@
+{#- A teacher's attendance history: filters that refetch the results region in place, and in-row
+    editing of any record. The type-to-filter pickers search the teacher's own roster, shipped
+    with the page. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@page_components/teacher/history_results.jx" as HistoryResults #}
+{#import "@components/shell/main.jx" as Main #}
+{#def records, day_groups, filters, page, page_count, total_sessions, present_sessions, absent_sessions,
+      attendance_rate, total_hours, learner_options, volunteer_options #}
+{%- set range_presets = [('today', t('teacher.attendance_history.range_today')), ('week', t('teacher.attendance_history.range_week')), ('month', t('teacher.attendance_history.range_month')), ('all', t('teacher.attendance_history.range_all'))] %}
+{%- set selected_learner = (learner_options | selectattr('id', 'equalto', filters.learner_id) | first | default(none, true)) if filters.learner_id else none %}
+{%- set selected_volunteer = (volunteer_options | selectattr('id', 'equalto', filters.volunteer_id) | first | default(none, true)) if filters.volunteer_id else none %}
+<Page title={{ t('teacher.attendance_history.title') }} styles="admin">
+  <Main>
+    <BackLink href={{ url_for('teacher.teacher_attendance') }} label={{ t('teacher.attendance_history.back_to_sheet') }} />
+
+    <div class="mb-8">
+      <SectionBadge>{{ t('teacher.attendance_history.page_badge') }}</SectionBadge>
+      <h1 class="display-font text-2xl md:text-3xl font-extrabold text-sky-950 mt-1">{{ t('teacher.attendance_history.page_heading') }}</h1>
+      <p class="text-sm mt-1 text-ink-heading/60">{{ t('teacher.attendance_history.page_subheading') }}</p>
+    </div>
+
+    {#- Filters: every one is an id or a date, so the two people pickers are type-to-filter
+        comboboxes rather than a free-text search. Changing any of them refetches the results
+        below in place; the submit button is the no-JS fallback and hides itself once the script
+        runs. #}
+    <form method="GET" action="{{ url_for('teacher.teacher_attendance_history') }}" class="att-toolbar mb-4" id="historyFilters">
+      <div class="att-field att-field-wide att-combo" data-combo>
+        <label for="filterLearner">{{ t('teacher.attendance_history.filter_learner') }}</label>
+        <Input id="filterLearner" role="combobox" autocomplete="off"
+          aria-expanded="false" aria-controls="filterLearnerList"
+          placeholder={{ t('teacher.attendance_history.option_all_learners') }}
+          value={{ selected_learner.label if selected_learner else '' }}
+          data-combo-input data-combo-source="learners" />
+        <input type="hidden" name="learner" value="{{ filters.learner_id or '' }}" data-combo-value />
+        <ul class="att-combo-list" id="filterLearnerList" role="listbox" hidden data-combo-list></ul>
+      </div>
+      <div class="att-field att-field-wide att-combo" data-combo>
+        <label for="filterVolunteer">{{ t('teacher.attendance_history.filter_volunteer') }}</label>
+        <Input id="filterVolunteer" role="combobox" autocomplete="off"
+          aria-expanded="false" aria-controls="filterVolunteerList"
+          placeholder={{ t('teacher.attendance_history.option_all_volunteers') }}
+          value={{ selected_volunteer.label if selected_volunteer else '' }}
+          data-combo-input data-combo-source="volunteers" />
+        <input type="hidden" name="volunteer" value="{{ filters.volunteer_id or '' }}" data-combo-value />
+        <ul class="att-combo-list" id="filterVolunteerList" role="listbox" hidden data-combo-list></ul>
+      </div>
+      <div class="att-field att-field-wide">
+        <label for="filterStatus">{{ t('teacher.attendance_history.filter_status') }}</label>
+        <select id="filterStatus" name="status">
+          <button><selectedcontent></selectedcontent></button>
+          <option value="">{{ t('teacher.attendance_history.option_all_statuses') }}</option>
+          <option value="present" {% if filters.status == 'present' %}selected{% endif %}>{{ t('teacher.attendance.status_present') }}</option>
+          <option value="absent" {% if filters.status == 'absent' %}selected{% endif %}>{{ t('teacher.attendance.status_absent') }}</option>
+        </select>
+      </div>
+      <div class="att-field att-field-date">
+        <label for="filterFrom">{{ t('teacher.attendance_history.filter_from') }}</label>
+        <Input type="date" id="filterFrom" name="from" value={{ filters.date_from.strftime('%Y-%m-%d') if filters.date_from else '' }} />
+      </div>
+      <div class="att-field att-field-date">
+        <label for="filterTo">{{ t('teacher.attendance_history.filter_to') }}</label>
+        <Input type="date" id="filterTo" name="to" value={{ filters.date_to.strftime('%Y-%m-%d') if filters.date_to else '' }} />
+      </div>
+      <div class="att-toolbar-actions">
+        {%- for value, label in range_presets %}
+        <a href="{{ url_for('teacher.teacher_attendance_history', range=value, learner=filters.learner_id or none, volunteer=filters.volunteer_id or none, status=filters.status or none) }}"
+           class="att-chip {% if filters.range == value %}att-chip-active{% endif %}" data-history-range="{{ value }}">{{ label }}</a>
+        {%- endfor %}
+        <Button variant="gray" flat href={{ url_for('teacher.teacher_attendance_history') }} data-history-reset>{{ t('teacher.attendance_history.btn_reset') }}</Button>
+        <Button variant="sky" flat type="submit" id="historyApply">{{ t('teacher.attendance_history.btn_apply') }}</Button>
+      </div>
+    </form>
+
+    <div id="historyResults">
+      <HistoryResults records={{ records }} day_groups={{ day_groups }} filters={{ filters }} page={{ page }}
+        page_count={{ page_count }} total_sessions={{ total_sessions }} present_sessions={{ present_sessions }}
+        absent_sessions={{ absent_sessions }} attendance_rate={{ attendance_rate }} total_hours={{ total_hours }} />
+    </div>
+  </Main>
+
+  <script>
+    var HISTORY_T = {
+      statusPresent: {{ t('teacher.attendance.status_present') | tojson }},
+      statusAbsent: {{ t('teacher.attendance.status_absent') | tojson }},
+      comboNoMatch: {{ t('teacher.attendance_history.combo_no_match') | tojson }},
+      btnEdit: {{ t('teacher.attendance_history.btn_edit') | tojson }},
+      btnSave: {{ t('teacher.attendance_history.btn_save') | tojson }},
+      btnCancel: {{ t('common.cancel') | tojson }},
+      hoursLabel: {{ t('teacher.attendance_history.col_hours') | tojson }},
+      noteLabel: {{ t('teacher.attendance_history.col_note') | tojson }},
+      notePlaceholder: {{ t('teacher.attendance.note_placeholder') | tojson }},
+      saved: {{ t('teacher.attendance_history.toast_saved') | tojson }},
+      saveError: {{ t('teacher.attendance_history.toast_save_error') | tojson }},
+      noNote: "—",
+    };
+    var HISTORY_URL = "{{ url_for('teacher.teacher_attendance_history') }}";
+    var HISTORY_UPDATE_URL = "{{ url_for('teacher.teacher_update_attendance') }}";
+    // Options for the two comboboxes. They are the teacher's own roster, so the
+    // whole list ships with the page and the filtering is local.
+    var HISTORY_OPTIONS = {
+      learners: {{ learner_options | tojson }},
+      volunteers: {{ volunteer_options | tojson }},
+    };
+    var COMBO_MAX_RESULTS = 6;
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const form = document.getElementById("historyFilters");
+      const results = document.getElementById("historyResults");
+
+      // ---- Results, refetched in place ---------------------------------------
+      // Filtering and paging are server-side (25 rows a page), so "live" means
+      // fetching the same URL and swapping this one block — never a full reload,
+      // which would throw away scroll position and any half-finished row edit.
+      async function loadResults(url) {
+        results.setAttribute("aria-busy", "true");
+        try {
+          const res = await fetch(url, { headers: { "X-Fragment": "1" } });
+          // A redirect (session expired -> login) or non-2xx means the
+          // fragment branch didn't fire as expected — fall back to a real
+          // navigation rather than swapping a login form into this region.
+          if (!res.ok || res.redirected) { window.location.href = url; return; }
+          results.innerHTML = await res.text();
+          // replaceState, deliberately — see the pager swap handler in
+          // components/shell/header.jx for the same reasoning (no back-button stop per filter hop).
+          window.history.replaceState({}, "", url);
+        } catch (err) {
+          window.analytics?.trackError?.(err, { flow: "attendance_history", action: "filter" });
+          window.showToast(HISTORY_T.saveError, "error");
+        } finally {
+          results.removeAttribute("aria-busy");
+        }
+      }
+
+      // The chips' own hrefs are only the no-JS path: they were built from the
+      // filters this page loaded with, and the toolbar is never re-rendered, so
+      // clicking one has to read the fields as they stand now.
+      let activeRange = {{ (filters.range or '') | tojson }};
+
+      function applyFilters() {
+        const params = new URLSearchParams();
+        new FormData(form).forEach(function (value, key) {
+          // An empty filter is "all" — sending it would only clutter the URL.
+          if (String(value).trim() !== "") params.set(key, value);
+        });
+        if (activeRange) params.set("range", activeRange);
+        const query = params.toString();
+        loadResults(query ? HISTORY_URL + "?" + query : HISTORY_URL);
+      }
+
+      function paintChips() {
+        form.querySelectorAll("[data-history-range]").forEach((chip) => {
+          chip.classList.toggle("att-chip-active", !!activeRange && chip.dataset.historyRange === activeRange);
+        });
+      }
+
+      function chooseRange(value) {
+        // A preset only applies when neither date is given, so choosing one
+        // clears the two date fields rather than silently losing to them.
+        activeRange = value;
+        form.querySelectorAll("input[type='date']").forEach((input) => { input.value = ""; });
+        paintChips();
+        applyFilters();
+      }
+
+      // The button only exists for a browser with no JS; the fields apply
+      // themselves the moment they change.
+      document.getElementById("historyApply").hidden = true;
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        applyFilters();
+      });
+      form.addEventListener("change", function (event) {
+        if (!event.target.matches("select, input[type='date']")) return;
+        if (event.target.type === "date") {
+          // An explicit date beats a preset, so the chip stops claiming to be on.
+          activeRange = "";
+          paintChips();
+        }
+        applyFilters();
+      });
+
+      document.addEventListener("click", function (event) {
+        const chip = event.target.closest("[data-history-range]");
+        if (chip) {
+          event.preventDefault();
+          chooseRange(chip.dataset.historyRange);
+          return;
+        }
+        const reset = event.target.closest("[data-history-reset]");
+        if (reset) {
+          event.preventDefault();
+          form.reset();
+          form.querySelectorAll("[data-combo-input], [data-combo-value]")
+            .forEach((field) => { field.value = ""; });
+          form.querySelector("#filterStatus").value = "";
+          chooseRange("");
+          return;
+        }
+        // Pagination lives inside the swapped block, so its links are rebuilt
+        // with the current filters every time and can be followed as they are.
+        const link = event.target.closest("#historyResults a.pagination-link");
+        if (!link) return;
+        event.preventDefault();
+        loadResults(link.href);
+      });
+
+      // ---- Type-to-filter people pickers -------------------------------------
+      document.querySelectorAll("[data-combo]").forEach(function (combo) {
+        const input = combo.querySelector("[data-combo-input]");
+        const value = combo.querySelector("[data-combo-value]");
+        const list = combo.querySelector("[data-combo-list]");
+        const options = HISTORY_OPTIONS[input.dataset.comboSource] || [];
+        let active = -1;
+
+        function score(option, term) {
+          const label = option.label.toLowerCase();
+          if (!term) return 0;
+          if (label.startsWith(term)) return 0;
+          if (label.includes(term)) return 1;
+          return -1;
+        }
+
+        function matches() {
+          const term = input.value.trim().toLowerCase();
+          return options
+            .map((option) => ({ option: option, rank: score(option, term) }))
+            .filter((entry) => entry.rank >= 0)
+            .sort((a, b) => a.rank - b.rank)
+            .slice(0, COMBO_MAX_RESULTS)
+            .map((entry) => entry.option);
+        }
+
+        function close() {
+          list.hidden = true;
+          input.setAttribute("aria-expanded", "false");
+          active = -1;
+        }
+
+        function open() {
+          const found = matches();
+          list.replaceChildren();
+          if (found.length === 0) {
+            const empty = document.createElement("li");
+            empty.className = "att-combo-empty";
+            empty.textContent = HISTORY_T.comboNoMatch;
+            list.appendChild(empty);
+          }
+          found.forEach(function (option, index) {
+            const item = document.createElement("li");
+            item.className = "att-combo-option";
+            item.setAttribute("role", "option");
+            item.dataset.id = option.id;
+            item.textContent = option.label;
+            item.addEventListener("mousedown", function (event) {
+              // mousedown, not click — blur would close the list first.
+              event.preventDefault();
+              select(index);
+            });
+            list.appendChild(item);
+          });
+          list.hidden = false;
+          input.setAttribute("aria-expanded", "true");
+        }
+
+        function highlight() {
+          list.querySelectorAll(".att-combo-option").forEach(function (item, index) {
+            item.classList.toggle("att-combo-option-active", index === active);
+          });
+        }
+
+        function select(index) {
+          const found = matches();
+          const option = found[index];
+          if (!option) return;
+          input.value = option.label;
+          value.value = option.id;
+          close();
+          applyFilters();
+        }
+
+        input.addEventListener("input", function () {
+          // Typing invalidates the previous pick — an empty box means "all".
+          const had = value.value;
+          value.value = "";
+          open();
+          if (had) applyFilters();
+        });
+        input.addEventListener("focus", open);
+        input.addEventListener("blur", close);
+        input.addEventListener("keydown", function (event) {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            if (list.hidden) open();
+            const count = list.querySelectorAll(".att-combo-option").length;
+            if (!count) return;
+            active = (active + (event.key === "ArrowDown" ? 1 : -1) + count) % count;
+            highlight();
+          } else if (event.key === "Enter" && !list.hidden) {
+            event.preventDefault();
+            select(active === -1 ? 0 : active);
+          } else if (event.key === "Escape") {
+            close();
+          }
+        });
+      });
+
+      // ---- Editing, in the row itself -----------------------------------------
+      // A correction is a two-second job, so the row turns into its own form
+      // rather than opening a dialog that hides the day it belongs to. A
+      // volunteer's own row (the group header) and a learner's own row are
+      // both just one Attendance record now — same fields, same save path,
+      // addressed by their own id. No more group propagation.
+      function cell(row, name) {
+        return row.querySelector('[data-cell="' + name + '"]');
+      }
+
+      function renderRead(row) {
+        const hours = row.dataset.duration;
+        cell(row, "hours").textContent = hours === "" ? HISTORY_T.noNote : parseFloat(hours).toFixed(1);
+        cell(row, "notes").textContent = row.dataset.notes || HISTORY_T.noNote;
+        const actions = cell(row, "actions");
+        actions.replaceChildren();
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "btn-clay btn-flat btn-sky";
+        edit.dataset.editRow = "";
+        edit.textContent = HISTORY_T.btnEdit;
+        actions.appendChild(edit);
+        const statusText = row.querySelector("[data-status-text]");
+        if (statusText) {
+          statusText.textContent = row.dataset.status === "absent"
+            ? HISTORY_T.statusAbsent : HISTORY_T.statusPresent;
+        }
+        row.classList.remove("att-row-editing");
+        row.removeAttribute("data-editing");
+      }
+
+      function startEdit(row) {
+        // One row at a time — two open editors are two ways to lose a change.
+        results.querySelectorAll("[data-editing]").forEach((open) => {
+          open.dataset.status = open.dataset.editOriginal;
+          renderRead(open);
+        });
+
+        row.dataset.editOriginal = row.dataset.status;
+        row.dataset.editing = "true";
+        row.classList.add("att-row-editing");
+
+        const hours = document.createElement("input");
+        hours.type = "number";
+        hours.className = "clay-input att-hours";
+        hours.min = "0";
+        hours.max = "12";
+        hours.step = "0.25";
+        hours.value = row.dataset.duration;
+        hours.setAttribute("aria-label", HISTORY_T.hoursLabel + " — " + row.dataset.label);
+        cell(row, "hours").replaceChildren(hours);
+
+        const notes = document.createElement("input");
+        notes.type = "text";
+        notes.className = "clay-input att-note";
+        notes.maxLength = 500;
+        notes.value = row.dataset.notes;
+        notes.placeholder = HISTORY_T.notePlaceholder;
+        notes.setAttribute("aria-label", HISTORY_T.noteLabel + " — " + row.dataset.label);
+        cell(row, "notes").replaceChildren(notes);
+
+        const actions = cell(row, "actions");
+        actions.replaceChildren();
+        const save = document.createElement("button");
+        save.type = "button";
+        save.className = "btn-clay btn-flat btn-accent";
+        save.dataset.saveRow = "";
+        save.textContent = HISTORY_T.btnSave;
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "btn-clay btn-flat btn-gray";
+        cancel.dataset.cancelRow = "";
+        cancel.textContent = HISTORY_T.btnCancel;
+        actions.append(save, cancel);
+        syncHoursInput(row);
+        hours.focus();
+      }
+
+      function syncHoursInput(row) {
+        // An absence has no hours, and neither has an unmarked volunteer.
+        const input = cell(row, "hours").querySelector("input");
+        if (!input) return;
+        const editable = row.dataset.status === "present";
+        input.disabled = !editable;
+        if (!editable) input.value = "";
+      }
+
+      async function saveRow(row) {
+        const hours = cell(row, "hours").querySelector("input");
+        const notes = cell(row, "notes").querySelector("input");
+
+        // The date isn't editable here — the row lives under its day's
+        // separator — so it is resent unchanged.
+        const body = new URLSearchParams();
+        body.set("attendance_id", row.dataset.recordId);
+        body.set("date", row.dataset.date);
+        body.set("status", row.dataset.status);
+        body.set("duration", hours.value);
+        body.set("notes", notes.value.trim());
+
+        try {
+          const res = await fetch(HISTORY_UPDATE_URL, {
+            method: "POST",
+            headers: {
+              "X-Requested-With": "XMLHttpRequest",
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: body.toString(),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.success) {
+            window.showToast(data.message || HISTORY_T.saveError, "error");
+            return;
+          }
+          const record = data.record;
+          row.dataset.status = record.status;
+          row.dataset.duration = record.duration.toFixed(2);
+          row.dataset.notes = record.notes;
+          renderRead(row);
+          window.showToast(HISTORY_T.saved, "success");
+        } catch (err) {
+          window.analytics?.trackError?.(err, { flow: "attendance_history", action: "save_row" });
+          window.showToast(HISTORY_T.saveError, "error");
+        }
+      }
+
+      results.addEventListener("click", function (event) {
+        const editBtn = event.target.closest("[data-edit-row]");
+        if (editBtn) {
+          startEdit(editBtn.closest("tr"));
+          return;
+        }
+        const saveBtn = event.target.closest("[data-save-row]");
+        if (saveBtn) {
+          saveRow(saveBtn.closest("tr"));
+          return;
+        }
+        const cancelBtn = event.target.closest("[data-cancel-row]");
+        if (cancelBtn) {
+          const row = cancelBtn.closest("tr");
+          row.dataset.status = row.dataset.editOriginal;
+          renderRead(row);
+          return;
+        }
+        const mark = event.target.closest("[data-mark-cell]");
+        if (mark) {
+          const row = mark.closest("tr");
+          if (!row.dataset.editing) return;
+          // Present/absent is a closed set — a learner's own row and a
+          // volunteer's own row (the group header) are both always one or
+          // the other, never unmarked.
+          row.dataset.status = mark.dataset.markCell;
+          syncHoursInput(row);
+        }
+      });
+    });
+  </script>
+</Page>

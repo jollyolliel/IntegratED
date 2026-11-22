@@ -1,0 +1,10 @@
+# The text of a style="…" attribute.
+id: style-value
+language: html
+rule:
+  kind: attribute_value
+  inside:
+    kind: quoted_attribute_value
+    inside:
+      kind: attribute
+      has: { kind: attribute_name, regex: '^style$' }

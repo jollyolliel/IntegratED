@@ -1,0 +1,8 @@
+{#- One batch of the volunteer's resource library grid: a card per worksheet, opening its preview.
+    `routes/volunteer.py` renders it alone for a load-more / search fetch (`X-Fragment`). -#}
+{#import "@components/worksheet_card.jx" as WorksheetCard #}
+{#def worksheets #}
+{%- for worksheet in worksheets %}
+<WorksheetCard ws={{ worksheet }} primary_url={{ url_for('volunteer.volunteer_worksheet_preview', worksheet_id=worksheet.id) }}
+  primary_label={{ t('volunteer.resources.view_worksheet') }} />
+{%- endfor %}

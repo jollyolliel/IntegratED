@@ -1,0 +1,8 @@
+id: logical-properties
+valid:
+  - '<div class="ms-4 pe-2 text-start end-0"></div>'
+  - '<div class="mx-auto px-4"></div>'
+invalid:
+  - '<div class="ml-4"></div>'
+  - '<div class="text-left"></div>'
+  - '<div class="md:pr-6"></div>'

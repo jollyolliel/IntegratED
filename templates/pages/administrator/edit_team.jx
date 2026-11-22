@@ -1,0 +1,55 @@
+{#- Add (`member` is None) or edit one "About" page team member. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/textarea.jx" as Textarea #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def member=None #}
+{%- set heading = t('admin.team.edit_heading') if member else t('admin.team.add_heading') %}
+<Page title={{ heading ~ " — Admin" }}>
+  <Main>
+    <div class="max-w-4xl mx-auto">
+      <div class="mb-8">
+        <BackLink href={{ url_for('administrator.dashboard') }} label="Dashboard" />
+        <h1 class="display-font text-4xl font-extrabold text-sky-950 mt-1">{{ heading }}</h1>
+      </div>
+
+      {%- with messages = get_flashed_messages(with_categories=true) %}
+      {%- for category, message in messages %}
+      <div class="mb-4 p-4 rounded-xl text-red-700 font-medium bg-red-50 border-2 border-red-200">{{ message }}</div>
+      {%- endfor %}
+      {%- endwith %}
+
+      <Card>
+        <form method="POST" class="space-y-6">
+          <div class="grid md:grid-cols-2 gap-6">
+            <Field label={{ t('admin.team.full_name_label') }} for_id="name">
+              <Input name="name" id="name" required value={{ member.name if member else '' }} />
+            </Field>
+            <Field label={{ t('admin.team.job_title_label') }} for_id="job">
+              <Input name="job" id="job" value={{ member.job if member else '' }} />
+            </Field>
+          </div>
+
+          <Field label={{ t('admin.team.strengths_label') }} for_id="strengths">
+            <Textarea name="strengths" id="strengths" rows="3">{{ member.strengths if member else '' }}</Textarea>
+          </Field>
+
+          <Field label={{ t('admin.team.bio_label') }} for_id="bio">
+            <Textarea name="bio" id="bio" rows="4">{{ member.bio if member else '' }}</Textarea>
+          </Field>
+
+          <div class="flex justify-end gap-3 pt-4 border-t-2 border-primary-soft">
+            <Button variant="gray" href={{ url_for('administrator.dashboard') }}>{{ t('admin.team.cancel') }}</Button>
+            <Button type="submit" icon_end="check">
+              {{- t('admin.team.save_changes') if member else t('admin.team.add_member') -}}
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  </Main>
+</Page>

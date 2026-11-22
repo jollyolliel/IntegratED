@@ -1,0 +1,272 @@
+{#- The teacher's assigned-worksheets tracker: every sheet their learners have been given, current
+    and past. Summary tiles and the per-pair overview cover everything; the filters narrow only
+    the table below them. Everything marked `data-tracker-refresh` is re-read from the server after
+    a complete/reopen, so the counts never disagree with the table. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/shell/main.jx" as Main #}
+{#import "@components/page_header.jx" as PageHeader #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#import "@components/base/badge.jx" as Badge #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@page_components/teacher/worksheet_tabs.jx" as WorksheetTabs #}
+{#import "@page_components/teacher/assignment_results.jx" as AssignmentResults #}
+{#def summary, pair_rows, all_outstanding_ids, max_print_batch, learner_options, subjects, range_presets,
+      assignments, filters, page_args, page, page_count, page_size, result_count, now, stale_after_days, next_url #}
+{%- macro days_label(days) -%}
+  {%- if days is none -%}{{ t('teacher.worksheet_tracker.not_yet') }}
+  {%- elif days == 0 -%}{{ t('teacher.worksheet_tracker.today') }}
+  {%- elif days == 1 -%}{{ t('teacher.worksheet_tracker.yesterday') }}
+  {%- else -%}{{ t('teacher.worksheet_tracker.days_ago', count=days) }}{%- endif -%}
+{%- endmacro %}
+<Page title={{ t('teacher.worksheet_tracker.title') }} styles="admin">
+  <Main>
+    <PageHeader badge={{ t('teacher.portal_badge') }} title={{ t('teacher.worksheet_tracker.page_heading') }}
+      subtitle={{ t('teacher.worksheet_tracker.page_subheading') }}>
+      <div class="flex flex-wrap gap-3" data-tracker-refresh="actions">
+        {%- if all_outstanding_ids and all_outstanding_ids|length <= max_print_batch %}
+        <Button icon="printer" target="_blank" data-print-all
+          href={{ url_for('teacher.teacher_print_assignments', ids=all_outstanding_ids, source='tracker_all') }}>
+          {{- t('teacher.worksheet_tracker.btn_print_all', count=all_outstanding_ids|length) -}}
+        </Button>
+        {%- endif %}
+        <Button variant="sky" icon="plus" href={{ url_for('teacher.teacher_bulk_assign_worksheets') }}>{{ t('teacher.worksheets.assign_all_btn') }}</Button>
+      </div>
+    </PageHeader>
+
+    <WorksheetTabs active="assigned" outstanding={{ summary.outstanding }} data-tracker-refresh="tabs" />
+
+    <div data-tracker-refresh="summary">
+      <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatTile label={{ t('teacher.worksheet_tracker.stat_outstanding') }}
+          value={{ '<span data-stat="outstanding">%d</span>'|format(summary.outstanding)|safe }}
+          sub={{ t('teacher.worksheet_tracker.stat_outstanding_sub') }} />
+        <StatTile tone="green" label={{ t('teacher.worksheet_tracker.stat_completed_recent') }}
+          value={{ '<span data-stat="completed_recent">%d</span>'|format(summary.completed_recent)|safe }}
+          sub={{ t('teacher.worksheet_tracker.stat_completed_recent_sub') }} />
+        <StatTile tone={{ 'rose' if summary.stale else 'amber' }} label={{ t('teacher.worksheet_tracker.stat_stale') }}
+          value={{ '<span data-stat="stale">%d</span>'|format(summary.stale)|safe }}
+          sub={{ t('teacher.worksheet_tracker.stat_stale_sub', days=stale_after_days) }} />
+        <StatTile label={{ t('teacher.worksheet_tracker.stat_rate') }}
+          value={{ '<span data-stat="completion_rate">%d%%</span>'|format(summary.completion_rate)|safe }}
+          sub={{ t('teacher.worksheet_tracker.stat_rate_sub', total=summary.total) }} />
+      </section>
+
+      {#- Pairs: what each one has waiting, so a teacher can print a pair's stack before a
+          session or spot a pair with nothing to work on. #}
+      <section class="mb-10">
+        <SectionBadge>{{ t('teacher.worksheet_tracker.pairs_badge') }}</SectionBadge>
+        <h2 class="display-font text-xl font-extrabold text-sky-950 mt-1">{{ t('teacher.worksheet_tracker.pairs_heading') }}</h2>
+        <p class="text-sm text-ink-muted mt-1 mb-4">{{ t('teacher.worksheet_tracker.pairs_sub') }}</p>
+        {%- if pair_rows %}
+        <Table>
+          <thead>
+            <tr>
+              <th>{{ t('teacher.worksheet_tracker.col_pair') }}</th>
+              <th>{{ t('teacher.worksheet_tracker.col_outstanding') }}</th>
+              <th>{{ t('teacher.worksheet_tracker.col_oldest') }}</th>
+              <th>{{ t('teacher.worksheet_tracker.col_last_completed') }}</th>
+              <th class="text-end">{{ t('teacher.worksheet_tracker.col_actions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {%- for row in pair_rows %}
+            {%- set learner = row.learner %}
+            <tr {% if row.needs_sheet %}data-needs-sheet="{{ learner.id }}"{% endif %}>
+              <td>
+                <a href="{{ url_for('teacher.teacher_learner_detail', learner_id=learner.id) }}"
+                   class="font-semibold text-primary hover:text-primary-dark transition-colors">{{ learner.name or learner.username }}</a>
+                <p class="text-xs text-ink-faint mt-0.5">
+                  {%- if row.volunteer %}{{ row.volunteer.short_name }}{% else %}{{ t('teacher.worksheet_tracker.no_volunteer') }}{% endif -%}
+                </p>
+              </td>
+              <td>
+                {%- if row.needs_sheet %}
+                <Badge tone="amber">{{ t('teacher.worksheet_tracker.needs_sheet') }}</Badge>
+                {%- elif row.outstanding_ids %}
+                <a href="{{ url_for('teacher.teacher_worksheet_assignments', learner=learner.id, status='outstanding') }}"
+                   class="font-bold text-sky-900 hover:text-primary transition-colors">{{ row.outstanding_ids|length }}</a>
+                {%- else %}
+                <span class="text-ink-faint">0</span>
+                {%- endif %}
+              </td>
+              <td class="whitespace-nowrap {{ 'text-rose-700 font-semibold' if row.oldest_outstanding_days is not none and row.oldest_outstanding_days >= stale_after_days else 'text-ink-muted' }}">
+                {{- days_label(row.oldest_outstanding_days) if row.outstanding_ids else '—' -}}
+              </td>
+              <td class="whitespace-nowrap text-ink-muted">{{ days_label(row.last_completed_days) }}</td>
+              <td>
+                <div class="flex items-center justify-end gap-2">
+                  {%- if row.outstanding_ids and row.outstanding_ids|length <= max_print_batch %}
+                  <Button variant="sky" flat icon="printer" target="_blank"
+                    href={{ url_for('teacher.teacher_print_assignments', ids=row.outstanding_ids, source='tracker_pair') }}>
+                    {{- t('teacher.worksheet_tracker.btn_print_pair', count=row.outstanding_ids|length) -}}
+                  </Button>
+                  {%- endif %}
+                  {%- if row.matched %}
+                  <Button variant={{ 'amber' if row.needs_sheet else 'gray' }} flat icon="magnifying-glass"
+                    href={{ url_for('teacher.teacher_worksheets', learner=learner.id) }}>{{ t('teacher.worksheet_tracker.btn_find_sheet') }}</Button>
+                  {%- endif %}
+                </div>
+              </td>
+            </tr>
+            {%- endfor %}
+          </tbody>
+        </Table>
+        {%- else %}
+        <EmptyState message={{ t('teacher.worksheet_tracker.no_pairs') }} />
+        {%- endif %}
+      </section>
+    </div>
+
+    <section>
+      <SectionBadge tone="amber">{{ t('teacher.worksheet_tracker.list_badge') }}</SectionBadge>
+      <h2 class="display-font text-xl font-extrabold text-sky-950 mt-1 mb-4">{{ t('teacher.worksheet_tracker.list_heading') }}</h2>
+
+      {#- Changing a dropdown applies it at once; Apply is for the search box (and no-JS). #}
+      <form method="get" action="{{ url_for('teacher.teacher_worksheet_assignments') }}" class="att-toolbar mb-4" id="trackerFilters">
+        <div class="att-field att-field-grow">
+          <label for="trackerSearch">{{ t('teacher.worksheet_tracker.filter_search') }}</label>
+          <Input id="trackerSearch" name="q" value={{ filters.q }} placeholder={{ t('teacher.worksheet_tracker.search_placeholder') }} />
+        </div>
+        <div class="att-field">
+          <label for="trackerStatus">{{ t('teacher.worksheet_tracker.filter_status') }}</label>
+          <select id="trackerStatus" name="status" data-auto-apply>
+            <button><selectedcontent></selectedcontent></button>
+            <option value="">{{ t('teacher.worksheet_tracker.status_all') }}</option>
+            <option value="outstanding" {% if filters.status == 'outstanding' %}selected{% endif %}>{{ t('teacher.worksheet_tracker.status_outstanding') }}</option>
+            <option value="completed" {% if filters.status == 'completed' %}selected{% endif %}>{{ t('teacher.worksheet_tracker.status_completed') }}</option>
+          </select>
+        </div>
+        <div class="att-field att-field-wide">
+          <label for="trackerLearner">{{ t('teacher.worksheet_tracker.filter_learner') }}</label>
+          <select id="trackerLearner" name="learner" data-auto-apply>
+            <button><selectedcontent></selectedcontent></button>
+            <option value="">{{ t('teacher.worksheet_tracker.learner_all') }}</option>
+            {%- for learner in learner_options %}
+            <option value="{{ learner.id }}" {% if filters.learner == learner.id %}selected{% endif %}>{{ learner.name or learner.username }}</option>
+            {%- endfor %}
+          </select>
+        </div>
+        {%- if subjects %}
+        <div class="att-field att-field-wide">
+          <label for="trackerSubject">{{ t('teacher.worksheet_tracker.filter_subject') }}</label>
+          <select id="trackerSubject" name="subject" data-auto-apply>
+            <button><selectedcontent></selectedcontent></button>
+            <option value="">{{ t('teacher.worksheet_tracker.subject_all') }}</option>
+            {%- for subject in subjects %}
+            <option value="{{ subject }}" {% if filters.subject == subject %}selected{% endif %}>{{ subject }}</option>
+            {%- endfor %}
+          </select>
+        </div>
+        {%- endif %}
+        <div class="att-field">
+          <label for="trackerRange">{{ t('teacher.worksheet_tracker.filter_range') }}</label>
+          <select id="trackerRange" name="range" data-auto-apply>
+            <button><selectedcontent></selectedcontent></button>
+            <option value="">{{ t('teacher.worksheet_tracker.range_all') }}</option>
+            {%- for preset in range_presets %}
+            <option value="{{ preset }}" {% if filters.range == preset %}selected{% endif %}>{{ t('teacher.worksheet_tracker.range_' ~ preset) }}</option>
+            {%- endfor %}
+          </select>
+        </div>
+        <div class="att-toolbar-actions">
+          <Button variant="gray" flat href={{ url_for('teacher.teacher_worksheet_assignments') }}>{{ t('teacher.worksheet_tracker.btn_reset') }}</Button>
+          <Button variant="sky" flat type="submit">{{ t('teacher.worksheet_tracker.btn_apply') }}</Button>
+        </div>
+      </form>
+
+      <AssignmentResults assignments={{ assignments }} filters={{ filters }} page_args={{ page_args }} page={{ page }} page_count={{ page_count }}
+        page_size={{ page_size }} result_count={{ result_count }} now={{ now }} stale_after_days={{ stale_after_days }}
+        next_url={{ next_url }} />
+    </section>
+  </Main>
+
+  <script>
+    (function () {
+      const T = {
+        selected: {{ t('teacher.worksheet_tracker.selected') | tojson }},
+        noneSelected: {{ t('teacher.worksheet_tracker.none_selected') | tojson }},
+        error: {{ t('teacher.worksheet_tracker.error_generic') | tojson }},
+      };
+
+      // Filters: a dropdown applies itself; the search box waits for Enter or Apply.
+      document.getElementById('trackerFilters').addEventListener('change', function (e) {
+        if (e.target.matches('[data-auto-apply]')) this.requestSubmit();
+      });
+
+      // Everything below is delegated: the results region is swapped on every page turn.
+      const rowBoxes = (form) => form.querySelectorAll('input[name="ids"]');
+      const checkedCount = (form) => form.querySelectorAll('input[name="ids"]:checked').length;
+      function showCount(form) {
+        const label = form.querySelector('[data-selected-count]');
+        if (label) label.innerHTML = '<b class="text-sky-700">' + checkedCount(form) + '</b> ' + T.selected;
+      }
+
+      document.addEventListener('change', function (e) {
+        const form = e.target.closest('[data-assignment-form]');
+        if (!form) return;
+        if (e.target.matches('[data-select-all]')) {
+          rowBoxes(form).forEach((box) => { box.checked = e.target.checked; });
+        }
+        showCount(form);
+      });
+
+      // Re-read every refreshable block and the results region from the current URL, so the
+      // tiles, pair rows, tab count and table all agree after a change.
+      async function refresh() {
+        const res = await fetch(location.href);
+        if (!res.ok || res.redirected) { location.reload(); return; }
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        document.querySelectorAll('[data-tracker-refresh]').forEach(function (el) {
+          const fresh = doc.querySelector('[data-tracker-refresh="' + el.dataset.trackerRefresh + '"]');
+          if (fresh) el.replaceWith(fresh); else el.remove();
+        });
+        const region = document.querySelector('[data-swap-region]');
+        const freshRegion = doc.querySelector('[data-swap-region]');
+        if (region && freshRegion) region.replaceWith(freshRegion);
+      }
+
+      // Not the header's shared js-ajax-form handler (page-behaviour.md): this one form carries
+      // several submit buttons, each posting to its own `formaction` (bulk complete, a row's
+      // complete or reopen), and a success must refresh the tiles and pair rows too, not just
+      // show a toast.
+      document.addEventListener('click', async function (e) {
+        const button = e.target.closest('[data-assignment-form] button[type="submit"]');
+        if (!button) return;
+        const form = button.closest('form');
+        if (button.hasAttribute('data-needs-selection') && !checkedCount(form)) {
+          e.preventDefault();
+          window.showToast(T.noneSelected, 'warning');
+          return;
+        }
+        if (!button.hasAttribute('data-ajax-submit')) return;  // print opens its own tab
+        e.preventDefault();
+        if (button.disabled) return;
+        button.disabled = true;
+        // Bulk complete sends the ticked ids; a row button's own route needs none.
+        const body = button.hasAttribute('data-needs-selection') ? new FormData(form) : new FormData();
+        try {
+          // Not button.formAction: without the attribute it is the page's URL, not the form's.
+          const res = await fetch(button.getAttribute('formaction') || form.action, {
+            method: 'POST', body: body, headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data || !data.success) {
+            window.showToast((data && data.message) || T.error, 'error');
+            button.disabled = false;
+            return;
+          }
+          window.showToast(data.message, 'success');
+          await refresh();
+        } catch (err) {
+          window.showToast(T.error, 'error');
+          button.disabled = false;
+        }
+      });
+    })();
+  </script>
+</Page>

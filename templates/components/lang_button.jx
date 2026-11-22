@@ -1,0 +1,7 @@
+{#- One language in the settings picker grid; the active one carries a check. -#}
+{#import "@components/base/icon.jx" as Icon #}
+{#def active=False #}
+{%- do attrs.setdefault(type="button") -%}
+<button {{ attrs.render(class="btn-lang active" if active else "btn-lang") }}>
+  {%- if active %}<Icon name="check" size="3.5" class="flex-shrink-0" />{% endif %}{{ content -}}
+</button>

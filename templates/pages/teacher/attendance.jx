@@ -1,0 +1,505 @@
+{#- The day's attendance register: every learner the teacher manages, grouped under their volunteer,
+    marked present / absent with hours and a note, then saved in one batch. A day already recorded
+    for the whole roster shows a card instead; corrections happen on the history page. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def roster, session_date, learner_count, recorded_count #}
+<Page title={{ t('teacher.attendance.title') }} styles="admin">
+  <Main>
+    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
+      <div>
+        <SectionBadge>{{ t('teacher.attendance.page_badge') }}</SectionBadge>
+        <h1 class="display-font text-2xl md:text-3xl font-extrabold text-sky-950 mt-1">{{ t('teacher.attendance.page_heading') }}</h1>
+        <p class="text-sm mt-1 text-ink-heading/60">{{ t('teacher.attendance.page_subheading') }}</p>
+      </div>
+      <Button variant="sky" href={{ url_for('teacher.teacher_attendance_history') }} icon="clock" class="shrink-0">
+        {{- t('teacher.attendance.btn_view_history') -}}
+      </Button>
+    </div>
+
+    {#- The card replaces the sheet only once the whole roster for the day is recorded: a partial day
+        keeps the editable table so the remaining learners can still be marked; there's no other
+        way to add their rows. #}
+    {%- set fully_marked = learner_count > 0 and recorded_count == learner_count %}
+
+    <div class="att-toolbar mb-4">
+      <div class="att-field">
+        <label for="sessionDate">{{ t('teacher.attendance.label_session_date') }}</label>
+        <Input type="date" id="sessionDate" value={{ session_date.strftime('%Y-%m-%d') }} />
+      </div>
+      {%- if not fully_marked %}
+      <div class="att-field att-field-narrow">
+        <label for="defaultDuration">{{ t('teacher.attendance.label_default_duration') }}</label>
+        <Input type="number" id="defaultDuration" min="0.25" max="12" step="0.25"
+          value="1" title={{ t('teacher.attendance.hint_default_duration') }} />
+      </div>
+      <div class="att-field att-field-grow">
+        <label for="rosterSearch">{{ t('teacher.attendance.label_search') }}</label>
+        <Input type="search" id="rosterSearch" placeholder={{ t('teacher.attendance.search_placeholder') }} autocomplete="off" />
+      </div>
+      <div class="att-toolbar-actions">
+        <Button flat id="markAllPresent">{{ t('teacher.attendance.btn_all_present') }}</Button>
+        <Button variant="danger" flat id="markAllAbsent">{{ t('teacher.attendance.btn_all_absent') }}</Button>
+        <Button variant="gray" flat id="clearAllMarks">{{ t('teacher.attendance.btn_clear_marks') }}</Button>
+      </div>
+      {%- endif %}
+    </div>
+
+    {%- if not fully_marked %}
+    <div class="att-counts mb-3">
+      <span class="att-count"><b id="tallyPresent" class="text-accent-dark">0</b> {{ t('teacher.attendance.tally_present') }}</span>
+      <span class="att-count"><b id="tallyAbsent" class="text-rose-700">0</b> {{ t('teacher.attendance.tally_absent') }}</span>
+      <span class="att-count"><b id="tallyUnmarked" class="text-ink-muted">{{ learner_count }}</b> {{ t('teacher.attendance.tally_unmarked') }}</span>
+      <span class="att-count"><b id="tallyHours" class="text-sky-700">0</b> {{ t('teacher.attendance.tally_hours') }}</span>
+    </div>
+    {%- endif %}
+
+    {#- A fully recorded day is shown as a card, not the editable sheet: otherwise a teacher re-marks
+        a full day without realising it is already recorded. #}
+    {%- if fully_marked %}
+    <Card tone="green" class="att-marked-card">
+      <IconBox icon="check-circle" tone="green" />
+      <h2 class="display-font text-lg font-extrabold text-sky-950">{{ t('teacher.attendance.already_saved_title') }}</h2>
+      <p>{{ t('teacher.attendance.already_saved') }}</p>
+      <Button variant="sky" href={{ url_for('teacher.teacher_attendance_history') }} class="mt-2">
+        {{- t('teacher.attendance.btn_view_history') -}}
+      </Button>
+    </Card>
+    {%- elif roster %}
+    <div id="rosterRoot">
+      <Table class="att-sheet">
+        <thead>
+          <tr>
+            <th>{{ t('teacher.attendance.col_learner') }}</th>
+            <th class="att-col-mark">{{ t('teacher.attendance.status_present') }}</th>
+            <th class="att-col-mark">{{ t('teacher.attendance.status_absent') }}</th>
+            <th class="att-col-hours">{{ t('teacher.attendance.col_hours') }}</th>
+            <th>{{ t('teacher.attendance.col_note') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#- The sheet is one day's register; the separator states which day so the row grammar
+              matches the history sheet. #}
+          <tr class="att-day-row">
+            <td colspan="5">{{ session_date.strftime('%A %d %b %Y') }}</td>
+          </tr>
+          {%- for group in roster %}
+          {%- set group_key = loop.index %}
+          {%- set volunteer_name = (group.volunteer.name or group.volunteer.email) if group.volunteer else '' %}
+          {%- set vr = group.volunteer_record %}
+          {%- set vol_status = ('present' if vr.is_present else 'absent') if vr else '' %}
+          <tr class="att-group-row" data-group-key="{{ group_key }}"
+              data-volunteer-id="{{ group.volunteer.id if group.volunteer else '' }}"
+              data-volunteer-status="{{ vol_status }}">
+            <td>
+              <div class="att-group-bar">
+                <span class="att-group-name">
+                  {% if group.volunteer %}{{ volunteer_name }}{% else %}{{ t('teacher.attendance.group_no_volunteer') }}{% endif %}
+                </span>
+                <span class="att-group-count">{{ t('teacher.attendance.group_learner_count', n=group.rows|length) }}</span>
+                <Button flat data-group-present>{{ t('teacher.attendance.btn_group_present') }}</Button>
+              </div>
+            </td>
+            {%- if group.volunteer %}
+            <td class="att-col-mark">
+              <button type="button" class="att-radio" data-volunteer-mark="present"
+                      aria-pressed="{{ 'true' if vol_status == 'present' else 'false' }}"
+                      aria-label="{{ t('teacher.attendance.status_present') }} — {{ volunteer_name }}">
+                <span class="att-radio-dot" aria-hidden="true"></span>
+              </button>
+            </td>
+            <td class="att-col-mark">
+              <button type="button" class="att-radio att-radio-absent" data-volunteer-mark="absent"
+                      aria-pressed="{{ 'true' if vol_status == 'absent' else 'false' }}"
+                      aria-label="{{ t('teacher.attendance.status_absent') }} — {{ volunteer_name }}">
+                <span class="att-radio-dot" aria-hidden="true"></span>
+              </button>
+            </td>
+            {#- The volunteer's own hours: their stretch need not equal any learner's, so it is
+                entered, not derived. #}
+            <td class="att-col-hours">
+              <Input type="number" class="att-hours att-volunteer-hours" min="0" max="12" step="0.25"
+                disabled={{ vol_status != 'present' }}
+                value={{ '%.2f'|format(vr.duration) if vr and vr.is_present else '' }}
+                aria-label={{ t('teacher.attendance.col_hours') ~ ' — ' ~ volunteer_name }} />
+            </td>
+            <td>
+              <Input class="att-note att-volunteer-note" maxlength="500"
+                value={{ vr.notes or '' if vr else '' }}
+                placeholder={{ t('teacher.attendance.note_placeholder_absent' if vol_status == 'absent' else 'teacher.attendance.note_placeholder') }}
+                aria-label={{ t('teacher.attendance.col_note') ~ ' — ' ~ volunteer_name }} />
+            </td>
+            {%- else %}
+            <td colspan="4"></td>
+            {%- endif %}
+          </tr>
+          {%- for row in group.rows %}
+          {%- set record = row.record %}
+          {%- set row_status = ('present' if record.is_present else 'absent') if record else '' %}
+          {%- set learner_name = row.learner.name or row.learner.username %}
+          <tr class="att-row {% if record %}att-row-{{ row_status }}{% else %}att-row-unmarked{% endif %}"
+              data-group-key="{{ group_key }}"
+              data-learner-id="{{ row.learner.id }}"
+              data-volunteer-id="{{ row.volunteer.id if row.volunteer else '' }}"
+              data-status="{{ row_status }}"
+              data-name="{{ learner_name|lower }}{% if row.volunteer %} {{ (row.volunteer.name or row.volunteer.email)|lower }}{% endif %}"
+              data-record-id="{{ record.id if record else '' }}">
+            <td class="font-semibold text-sky-900">
+              <a href="{{ url_for('teacher.teacher_learner_detail', learner_id=row.learner.id) }}" class="text-primary hover:text-primary-dark font-semibold transition-colors">{{ learner_name }}</a>
+            </td>
+            <td class="att-col-mark">
+              <button type="button" class="att-radio" data-mark="present"
+                      aria-pressed="{{ 'true' if row_status == 'present' else 'false' }}"
+                      aria-label="{{ t('teacher.attendance.status_present') }} — {{ learner_name }}">
+                <span class="att-radio-dot" aria-hidden="true"></span>
+              </button>
+            </td>
+            <td class="att-col-mark">
+              <button type="button" class="att-radio att-radio-absent" data-mark="absent"
+                      aria-pressed="{{ 'true' if row_status == 'absent' else 'false' }}"
+                      aria-label="{{ t('teacher.attendance.status_absent') }} — {{ learner_name }}">
+                <span class="att-radio-dot" aria-hidden="true"></span>
+              </button>
+            </td>
+            <td class="att-col-hours">
+              <Input type="number" class="att-hours" min="0" max="12" step="0.25"
+                disabled={{ row_status != 'present' }}
+                value={{ '%.2f'|format(record.duration) if record and row_status == 'present' else '' }}
+                aria-label={{ t('teacher.attendance.col_hours') ~ ' — ' ~ learner_name }} />
+            </td>
+            <td>
+              <Input class="att-note" maxlength="500"
+                value={{ record.notes or '' if record else '' }}
+                placeholder={{ t('teacher.attendance.note_placeholder_absent' if row_status == 'absent' else 'teacher.attendance.note_placeholder') }}
+                aria-label={{ t('teacher.attendance.col_note') ~ ' — ' ~ learner_name }} />
+            </td>
+          </tr>
+          {%- endfor %}
+          {%- endfor %}
+          <tr id="rosterNoMatch" class="att-hidden" hidden>
+            <td colspan="5" class="text-center text-ink-muted">{{ t('teacher.attendance.search_no_match') }}</td>
+          </tr>
+        </tbody>
+      </Table>
+    </div>
+
+    <div class="att-savebar">
+      <p class="text-sm text-gray-600" id="saveSummary"></p>
+      <Button id="saveAttendance" icon="check-circle">{{ t('teacher.attendance.btn_save') }}</Button>
+    </div>
+    {%- else %}
+    <EmptyState message={{ t('teacher.attendance.no_participants') }} />
+    {%- endif %}
+  </Main>
+
+  <script>
+    var ATT_T = {
+      nothingMarked: {{ t('teacher.attendance.toast_nothing_marked') | tojson }},
+      needHours: {{ t('teacher.attendance.toast_need_hours') | tojson }},
+      saved: {{ t('teacher.attendance.toast_saved') | tojson }},
+      saveError: {{ t('teacher.attendance.toast_save_error') | tojson }},
+      volunteerNeedsLearner: {{ t('teacher.attendance.toast_volunteer_needs_learner') | tojson }},
+      summary: {{ t('teacher.attendance.save_summary') | tojson }},
+      notePlaceholder: {{ t('teacher.attendance.note_placeholder') | tojson }},
+      notePlaceholderAbsent: {{ t('teacher.attendance.note_placeholder_absent') | tojson }},
+    };
+    var ATT_LOG_URL = "{{ url_for('teacher.teacher_log_attendance') }}";
+    var DEFAULT_DURATION_KEY = "integrated.attendanceDefaultDuration";
+
+    function attFormat(template, values) {
+      return template.replace(/\{(\w+)\}/g, function (_, key) {
+        return values[key] !== undefined ? values[key] : "{" + key + "}";
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const dateInput = document.getElementById("sessionDate");
+      const defaultInput = document.getElementById("defaultDuration");
+      const searchInput = document.getElementById("rosterSearch");
+      const saveBtn = document.getElementById("saveAttendance");
+      const rows = () => Array.from(document.querySelectorAll(".att-row"));
+      // Groups are sub-header rows inside the one sheet, so a group's learners
+      // are its siblings sharing the key rather than its DOM children.
+      const groupRows = (key) => Array.from(document.querySelectorAll('.att-row[data-group-key="' + key + '"]'));
+      const groupRow = (key) => document.querySelector('.att-group-row[data-group-key="' + key + '"]');
+      const groupHeads = () => Array.from(document.querySelectorAll(".att-group-row"));
+
+      // `hidden` alone is a coin-flip inside a table — a stray `display` rule on
+      // a row beats the attribute — so visibility is a class the sheet owns.
+      function setRowVisible(row, visible) {
+        row.hidden = !visible;
+        row.classList.toggle("att-hidden", !visible);
+      }
+
+      // The default is a per-teacher working preference, not shared data — it
+      // lives in localStorage so it survives reloads without a schema column.
+      const storedDefault = localStorage.getItem(DEFAULT_DURATION_KEY);
+      if (storedDefault && defaultInput) defaultInput.value = storedDefault;
+      defaultInput?.addEventListener("change", function () {
+        localStorage.setItem(DEFAULT_DURATION_KEY, defaultInput.value);
+      });
+
+      // The sheet is one day's register — changing the day reloads it so the
+      // rows show what is already recorded for that date.
+      dateInput?.addEventListener("change", function () {
+        if (!dateInput.value) return;
+        window.location.href = "{{ url_for('teacher.teacher_attendance') }}?date=" + encodeURIComponent(dateInput.value);
+      });
+
+      function setRowStatus(row, status) {
+        row.dataset.status = status || "";
+        row.classList.toggle("att-row-present", status === "present");
+        row.classList.toggle("att-row-absent", status === "absent");
+        row.classList.toggle("att-row-unmarked", !status);
+        row.querySelectorAll("[data-mark]").forEach((btn) => {
+          btn.setAttribute("aria-pressed", btn.dataset.mark === status ? "true" : "false");
+        });
+        syncHours(row.querySelector(".att-hours"), status);
+        syncNotePrompt(row.querySelector(".att-note"), status);
+        updateTally();
+      }
+
+      // An absence is explained, not described, so the note asks why.
+      function syncNotePrompt(note, status) {
+        if (!note) return;
+        note.placeholder = status === "absent" ? ATT_T.notePlaceholderAbsent : ATT_T.notePlaceholder;
+      }
+
+      // An absence or an unmarked row has no hours, so the field is locked
+      // (and emptied) until the row is marked present — matching the history page.
+      function syncHours(hours, status) {
+        if (!hours) return;
+        const present = status === "present";
+        hours.disabled = !present;
+        if (!present) hours.value = "";
+        else if (!hours.value) hours.value = defaultInput?.value || "1";
+      }
+
+      // The volunteer is marked once per group; the mark, hours and note ride
+      // along on every learner row that group saves, so it needs no row of its
+      // own in the payload — but it is a row on the sheet, and counts as one.
+      function setVolunteerStatus(head, status) {
+        if (!head || !head.dataset.volunteerId) return;
+        head.dataset.volunteerStatus = status || "";
+        head.querySelectorAll("[data-volunteer-mark]").forEach((btn) => {
+          btn.setAttribute("aria-pressed", btn.dataset.volunteerMark === status ? "true" : "false");
+        });
+        syncHours(head.querySelector(".att-volunteer-hours"), status);
+        syncNotePrompt(head.querySelector(".att-volunteer-note"), status);
+        updateTally();
+      }
+
+      function updateTally() {
+        let present = 0, absent = 0, unmarked = 0, hours = 0;
+        // The save summary counts learners only, so it is tracked apart from
+        // the tallies — counting a volunteer there reads as "3 of 2 learners".
+        let learnersMarked = 0;
+        rows().forEach((row) => {
+          if (row.dataset.status === "present") {
+            present += 1;
+            learnersMarked += 1;
+            hours += parseFloat(row.querySelector(".att-hours").value) || 0;
+          } else if (row.dataset.status === "absent") {
+            absent += 1;
+            learnersMarked += 1;
+          } else {
+            unmarked += 1;
+          }
+        });
+        // A volunteer is a person on the register too — a group with no
+        // volunteer has nobody to count, so it is skipped rather than counted
+        // as unmarked.
+        groupHeads().forEach((head) => {
+          if (!head.dataset.volunteerId) return;
+          if (head.dataset.volunteerStatus === "present") {
+            present += 1;
+            hours += parseFloat(head.querySelector(".att-volunteer-hours")?.value) || 0;
+          } else if (head.dataset.volunteerStatus === "absent") {
+            absent += 1;
+          } else {
+            unmarked += 1;
+          }
+        });
+        document.getElementById("tallyPresent").textContent = present;
+        document.getElementById("tallyAbsent").textContent = absent;
+        document.getElementById("tallyUnmarked").textContent = unmarked;
+        document.getElementById("tallyHours").textContent = hours.toFixed(2).replace(/\.?0+$/, "") || "0";
+        const summary = document.getElementById("saveSummary");
+        if (summary) {
+          summary.textContent = attFormat(ATT_T.summary, { marked: learnersMarked, total: rows().length });
+        }
+      }
+
+      document.getElementById("rosterRoot")?.addEventListener("click", function (event) {
+        const markBtn = event.target.closest("[data-mark]");
+        if (markBtn) {
+          const row = markBtn.closest(".att-row");
+          // Second tap on the active half clears the row back to unmarked.
+          const next = row.dataset.status === markBtn.dataset.mark ? "" : markBtn.dataset.mark;
+          setRowStatus(row, next);
+          return;
+        }
+
+        const volunteerBtn = event.target.closest("[data-volunteer-mark]");
+        if (volunteerBtn) {
+          const head = volunteerBtn.closest(".att-group-row");
+          const next = head.dataset.volunteerStatus === volunteerBtn.dataset.volunteerMark
+            ? "" : volunteerBtn.dataset.volunteerMark;
+          setVolunteerStatus(head, next);
+          return;
+        }
+
+        const groupBtn = event.target.closest("[data-group-present]");
+        if (groupBtn) {
+          const head = groupBtn.closest(".att-group-row");
+          setVolunteerStatus(head, "present");
+          groupRows(head.dataset.groupKey).forEach((row) => {
+            if (row.hidden) return;
+            setRowStatus(row, "present");
+          });
+          return;
+        }
+      });
+
+      document.getElementById("rosterRoot")?.addEventListener("input", function (event) {
+        if (event.target.classList.contains("att-hours")) updateTally();
+      });
+
+      document.getElementById("markAllPresent")?.addEventListener("click", function () {
+        rows().forEach((row) => { if (!row.hidden) setRowStatus(row, "present"); });
+        groupHeads().forEach((head) => { if (!head.hidden) setVolunteerStatus(head, "present"); });
+      });
+      document.getElementById("markAllAbsent")?.addEventListener("click", function () {
+        rows().forEach((row) => { if (!row.hidden) setRowStatus(row, "absent"); });
+        groupHeads().forEach((head) => { if (!head.hidden) setVolunteerStatus(head, "absent"); });
+      });
+      document.getElementById("clearAllMarks")?.addEventListener("click", function () {
+        rows().forEach((row) => { if (!row.hidden) setRowStatus(row, ""); });
+        groupHeads().forEach((head) => setVolunteerStatus(head, ""));
+      });
+
+      function applySearch() {
+        const term = searchInput.value.trim().toLowerCase();
+        let shown = 0;
+        rows().forEach((row) => {
+          const match = term === "" || row.dataset.name.includes(term);
+          setRowVisible(row, match);
+          if (match) shown += 1;
+        });
+        groupHeads().forEach((head) => {
+          setRowVisible(head, groupRows(head.dataset.groupKey).some((row) => !row.hidden));
+        });
+        const noMatch = document.getElementById("rosterNoMatch");
+        if (noMatch) setRowVisible(noMatch, shown === 0);
+      }
+
+      searchInput?.addEventListener("input", applySearch);
+      searchInput?.addEventListener("keydown", function (event) {
+        if (event.key !== "Escape") return;
+        searchInput.value = "";
+        applySearch();
+      });
+
+      saveBtn?.addEventListener("click", async function () {
+        const marked = rows().filter((row) => row.dataset.status);
+        if (marked.length === 0) {
+          window.showToast(ATT_T.nothingMarked, "warning");
+          return;
+        }
+
+        const pairs = [];
+        for (const row of marked) {
+          const status = row.dataset.status;
+          let duration = 0;
+          if (status === "present") {
+            duration = parseFloat(row.querySelector(".att-hours").value);
+            if (!(duration > 0)) {
+              window.showToast(ATT_T.needHours, "warning");
+              row.querySelector(".att-hours").focus();
+              return;
+            }
+          }
+          const head = groupRow(row.dataset.groupKey);
+          const volunteerHours = head?.querySelector(".att-volunteer-hours")?.value;
+          pairs.push({
+            learner_id: parseInt(row.dataset.learnerId, 10),
+            volunteer_id: row.dataset.volunteerId ? parseInt(row.dataset.volunteerId, 10) : null,
+            status: status,
+            volunteer_status: head?.dataset.volunteerStatus || null,
+            volunteer_duration: volunteerHours || null,
+            volunteer_notes: head?.querySelector(".att-volunteer-note")?.value.trim() || null,
+            duration: duration,
+            notes: row.querySelector(".att-note").value.trim(),
+          });
+        }
+
+        // A volunteer mark is stored on that group's learner rows, so a group
+        // with no marked learner has nowhere to keep it — say so instead of
+        // dropping it silently.
+        const strandedVolunteer = groupHeads().some((head) =>
+          head.dataset.volunteerStatus && !groupRows(head.dataset.groupKey).some((row) => row.dataset.status)
+        );
+        if (strandedVolunteer) {
+          window.showToast(ATT_T.volunteerNeedsLearner, "warning");
+          return;
+        }
+
+        window.analytics?.trackEvent?.("cta_clicked", {
+          action: "attendance_submit",
+          pair_count: pairs.length,
+        });
+
+        saveBtn.disabled = true;
+        try {
+          const res = await window.analytics.trackedFetch(ATT_LOG_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date: dateInput.value, pairs: pairs }),
+          }, { flow: "attendance", action: "submit" });
+          const data = await res.json();
+          if (data.status !== "success") {
+            window.showToast(data.message || ATT_T.saveError, "error");
+            return;
+          }
+          sessionStorage.setItem("integrated.flash", JSON.stringify({
+            message: attFormat(ATT_T.saved, { present: data.present, absent: data.absent }),
+            type: "success",
+          }));
+          window.location.reload();
+        } catch (err) {
+          // trackedFetch throws on a non-2xx, so the API's own message (bad
+          // date, no teacher assigned) is only on err.response.
+          let message = ATT_T.saveError;
+          if (err.response) {
+            const body = await err.response.json().catch(() => ({}));
+            if (body.message) message = body.message;
+          }
+          window.analytics?.trackError?.(err, { flow: "attendance", action: "submit" });
+          window.showToast(message, "error");
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+
+      const pendingFlash = sessionStorage.getItem("integrated.flash");
+      if (pendingFlash) {
+        sessionStorage.removeItem("integrated.flash");
+        try {
+          const parsed = JSON.parse(pendingFlash);
+          window.showToast(parsed.message, parsed.type || "info");
+        } catch (err) {
+          /* malformed leftover — nothing to show */
+        }
+      }
+
+      updateTally();
+    });
+  </script>
+</Page>

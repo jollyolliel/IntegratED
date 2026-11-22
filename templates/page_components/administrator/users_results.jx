@@ -1,0 +1,53 @@
+{#- The users table and its pager: the swap region on
+    `pages/administrator/users.jx`. `routes/administrator/people.py` renders it alone for an
+    `X-Fragment` request. The role badges' colours (`badge-*`) are the page's local style. -#}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/pagination.jx" as Pagination #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#def users, page, page_count, page_args #}
+<div data-swap-region>
+{%- if users %}
+<Table wrap_class="overflow-x-auto" class="min-w-[600px]">
+  <thead>
+    <tr>
+      <th>{{ t('admin.users.col_id') }}</th>
+      <th>{{ t('admin.users.col_type') }}</th>
+      <th>{{ t('admin.users.col_name') }}</th>
+      <th>{{ t('admin.users.col_username_email') }}</th>
+      <th>{{ t('admin.users.col_school') }}</th>
+      <th class="text-right">{{ t('admin.users.col_actions') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {%- for u in users %}
+    <tr>
+      <td class="text-ink-faint text-xs font-mono">{{ u.id }}</td>
+      <td>
+        <span class="user-badge badge-{{ u.user_type if u.user_type in ('learner', 'volunteer', 'teacher', 'school_admin') else 'other' }}">{{ u.user_type }}</span>
+      </td>
+      <td class="font-medium text-sky-900">{{ u.name or '—' }}</td>
+      <td class="font-mono text-xs text-ink-faint">{{ u.display_email or u.display_username or '—' }}</td>
+      <td class="text-ink-faint text-xs">{{ u.display_school.name if u.display_school else '—' }}</td>
+      <td class="text-right">
+        <div class="flex items-center justify-end gap-2">
+          {%- if u.user_type != 'administrator' %}
+          <form action="{{ url_for('administrator.impersonate', user_id=u.id) }}" method="POST" class="inline">
+            <Button variant="sky" flat type="submit">{{ t('admin.users.impersonate') }}</Button>
+          </form>
+          {%- endif %}
+          <form action="{{ url_for('administrator.delete_user', user_id=u.id) }}" method="POST" class="inline js-ajax-form" data-remove-selector="tr"
+                data-confirm="{{ t('confirm.delete_user_id', id=u.id) }}">
+            <Button variant="danger" flat type="submit">{{ t('admin.users.delete') }}</Button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {%- endfor %}
+  </tbody>
+</Table>
+<Pagination endpoint="administrator.users" page={{ page }} total_pages={{ page_count }} args={{ page_args }} />
+{%- else %}
+<EmptyState message={{ t('admin.users.empty') }} />
+{%- endif %}
+</div>

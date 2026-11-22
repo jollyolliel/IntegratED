@@ -1,0 +1,96 @@
+# What a brand-new development database is filled with (helpers/seed.py).
+#
+# Loaded by `uv run main.py` when the database has no school and no user, and by
+# `uv run flask seed` at any time. Insert-only: an existing school, user, article
+# or team member (matched by name / username / email / title) is never changed.
+# Only ever read in development.
+#
+# Passwords are plaintext on purpose: this file is dev-only, fake, and hashed on
+# insert. Do not put a real password here. A school's photo and logo are paths under
+# static/; an article's file and hero_image are paths under seed/files/.
+
+# ── Schools ──────────────────────────────────────────────────────────────────
+[[schools]]
+name = "ACS Athens"
+mission_statement = "Empowering refugee youth through peer-to-peer learning."
+location = "Athens, Greece"
+volunteer_domain = "stu.acs.gr"
+teacher_domain = "acs.gr"
+photo = "img/acs-athens.jpg"
+logo = "img/schools/acs-athens-logo.jpg"
+
+# ── Users ────────────────────────────────────────────────────────────────────
+# type: administrator | school_admin | teacher | volunteer | learner
+# administrator / school_admin / learner need username + password.
+# teacher / volunteer need email and sign in with Google only (no username or password);
+# in development, sign in as one with /dev/login-as.
+# school_admin / teacher / volunteer / learner need school (a name from above).
+# volunteer / learner may name a teacher by that teacher's email.
+[[users]]
+type = "administrator"
+username = "admin"
+name = "Dev Admin"
+password = "dev-admin-password"
+
+[[users]]
+type = "school_admin"
+username = "school-admin"
+name = "Dev School Admin"
+password = "dev-school-admin-password"
+school = "ACS Athens"
+
+[[users]]
+type = "teacher"
+email = "teacher@example.test"
+name = "Dev Teacher"
+school = "ACS Athens"
+
+[[users]]
+type = "volunteer"
+email = "volunteer@example.test"
+name = "Dev Volunteer"
+school = "ACS Athens"
+teacher = "teacher@example.test"
+
+[[users]]
+type = "learner"
+username = "learner"
+name = "Dev Learner"
+password = "dev-learner-password"
+school = "ACS Athens"
+teacher = "teacher@example.test"
+# completed_survey = true       # learners and volunteers; default true
+# completed_map_test = true     # learners; default true (false sends them to the placement test)
+
+# ── Articles (News) ──────────────────────────────────────────────────────────
+# Give exactly one of body (inline markdown) or file (a .md under seed/files/).
+# hero_image is optional (an image under seed/files/); author is an administrator's username above.
+# [[articles]]
+# title = "A first article"
+# author = "admin"
+# body = "Written in **markdown**."
+# hero_image = "articles/hero.jpg"
+
+# ── Team page and site text ──────────────────────────────────────────────────
+[[team_members]]
+name = "Maya Karras"
+job = "Administration"
+strengths = "Planning ahead, keeping everyone on track, and making sure each role has the right person in it."
+bio = "10th grade student who enjoys science clubs and community projects such as Y2Y and IntegratED."
+
+[[team_members]]
+name = "Daniel Okafor"
+job = "Project Lead (Organization)"
+strengths = "People skills, organization, time management, thoroughness, reading"
+bio = "10th grade student. Loves reading, keeping things tidy and working with others toward a shared goal."
+
+[[team_members]]
+name = "Sofia Marin"
+job = "App Creation"
+strengths = "Programming, problem solving, time management"
+bio = "9th grade student who has grown up in Greece. Enjoys turning ideas into working software."
+
+[site_content]
+team_statement = "Meet the passionate team behind IntegratED. We are a diverse group of individuals committed to bridging the educational gap for refugees and underserved populations through innovative technology and community support."
+how_we_work = "We leverage AI-powered adaptive learning and community-driven peer matching to provide a holistic educational experience. Our process involves constant research, development, and cultural exchange to ensure we meet the unique needs of every learner."
+mission_statement = "IntegratED provides essential educational opportunities in Language and Digital Literacy to refugees and underserved populations. We believe in the power of education to unlock potential."

@@ -1,0 +1,881 @@
+{#- Potion Workshop: the lesson's questions become recipes on scrolls. The learner picks a recipe,
+    answers by choosing ingredient bottles that pour into the cauldron in the workshop scene, then
+    stirs; the finished potion flies to the mantel shelf, golden if every ingredient was right
+    first time. No timer, no penalty for a wrong answer: the cauldron puffs and the bottle comes
+    back. The scene's backdrop is decoration only (no ids, no JS hooks); the shelf and the
+    cauldron in front of it are what the script drives. -#}
+{#import "@components/shell/game_page.jx" as GamePage #}
+{#import "@components/audio_button.jx" as AudioButton #}
+{#import "@components/base/button.jx" as Button #}
+{#def lesson, already_completed=False #}
+<GamePage title={{ t('learner.potion_workshop.title') ~ ' — ' ~ lesson.title ~ ' - IntegratED' }} lesson={{ lesson }} styles="game-potion-workshop">
+    <main class="flex-1 container mx-auto px-4 py-3 max-w-6xl w-full" id="page-content">
+
+      <!-- Header row: title, streak note, progress -->
+      <div class="flex items-center justify-between mb-3 gap-3 flex-wrap">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl flex items-center justify-center bg-violet-100 border-2 border-violet-300">
+            <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+            </svg>
+          </div>
+          <h1 class="display-font font-bold text-sm text-sky-700 uppercase tracking-widest">{{ t('learner.potion_workshop.title') }}</h1>
+        </div>
+        <div class="flex items-center gap-3 flex-1 min-w-[190px] max-w-[320px]">
+          <span id="streakNote" class="pw-streak" hidden></span>
+          <span id="progressLabel" class="text-xs font-bold text-ink-muted whitespace-nowrap font-mono">—</span>
+          <div class="progress-track flex-1"><div id="progressFill" class="progress-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      {% if already_completed %}
+      <div class="rounded-2xl px-4 py-2.5 mb-3 text-sm font-semibold bg-amber-100 border-2 border-amber-300 text-amber-800">
+        {{ t('learner.potion_workshop.already_completed') }} {{ t('learner.potion_workshop.replay_no_xp') }}
+      </div>
+      {% endif %}
+
+      <!-- Error -->
+      <div id="errorState" class="hidden py-12 text-center rounded-2xl p-6 mb-3 bg-red-50 border-2 border-red-200">
+        <p class="text-danger font-bold mb-4">{{ t('learner.potion_workshop.load_failed') }}</p>
+        <Button variant="danger" onclick="location.reload()">{{ t('learner.potion_workshop.reload') }}</Button>
+      </div>
+
+      <div class="pw-layout">
+
+        <!-- ── The workshop scene (phones: on top) ── -->
+        <div class="pw-scene-card">
+          <div class="pw-scene" id="workshop">
+            <div class="pw-backdrop" aria-hidden="true">
+              <img class="pw-backdrop-room" src="{{ url_for('static', filename='svg/games/potion_workshop/cottage.svg') }}" alt="">
+              <img class="pw-backdrop-front" src="{{ url_for('static', filename='svg/games/potion_workshop/cottage-front.svg') }}" alt="">
+            </div>
+
+            <!-- Mantel shelf: one slot per recipe, filled as potions are brewed -->
+            <div class="pw-shelf" aria-hidden="true">
+              <div class="pw-shelf-row" id="collectionRow"></div>
+              <svg class="pw-shelf-plank" viewBox="0 0 400 24" preserveAspectRatio="none" aria-hidden="true">
+                <rect x="0" y="0" width="400" height="12" rx="3" fill="#6B4430"/>
+                <rect x="0" y="0" width="400" height="4" rx="2" fill="#93644A"/>
+                <rect x="0" y="10" width="400" height="2" fill="#4A2E20"/>
+                <path d="M30 12 h22 l-22 12 Z M370 12 h-22 l22 12 Z" fill="#4E3223"/>
+              </svg>
+            </div>
+
+            <svg id="cauldronSvg" class="pw-cauldron" viewBox="0 0 260 230" aria-hidden="true">
+              <!-- Steam rises above the pot; tinted by the brew -->
+              <g id="steam">
+                <circle class="pw-steam" cx="100" cy="66" r="16" fill="#FFFFFF"/>
+                <circle class="pw-steam b" cx="132" cy="58" r="20" fill="#FFFFFF"/>
+                <circle class="pw-steam c" cx="162" cy="68" r="14" fill="#FFFFFF"/>
+                <circle class="pw-steam d" cx="118" cy="70" r="12" fill="#FFFFFF"/>
+              </g>
+              <!-- Fire under the pot -->
+              <ellipse cx="130" cy="216" rx="96" ry="14" fill="#FFB25B" opacity="0.35"/>
+              <g id="fire">
+                <path class="pw-flame" d="M84 214 C70 196 78 176 92 166 C90 182 102 186 100 200 C106 192 106 184 104 176 C118 188 120 206 108 216 Z" fill="#F97316"/>
+                <path class="pw-flame b" d="M152 216 C140 204 144 184 158 172 C158 186 168 190 168 202 C174 194 172 186 170 180 C184 192 184 208 172 218 Z" fill="#F97316"/>
+                <path class="pw-flame c" d="M112 218 C102 200 112 178 130 168 C128 186 142 192 140 206 C148 198 146 190 146 184 C158 196 156 212 146 220 Z" fill="#FBBF24"/>
+              </g>
+              <g>
+                <rect x="70" y="210" width="120" height="13" rx="6.5" fill="#6B3F26" transform="rotate(-7 130 216)"/>
+                <rect x="70" y="210" width="120" height="13" rx="6.5" fill="#7E4D30" transform="rotate(7 130 216)"/>
+                <circle cx="72" cy="208" r="6" fill="#A06A44"/><circle cx="188" cy="208" r="6" fill="#A06A44"/>
+              </g>
+              <!-- Legs -->
+              <path d="M62 178 l-10 40 h14 l8 -34 Z" fill="#1F1C2B"/>
+              <path d="M198 178 l10 40 h-14 l-8 -34 Z" fill="#1F1C2B"/>
+              <g id="cauldronBowl">
+                <!-- Iron body: a lit left facet and a shadowed right one, no outline -->
+                <path d="M26 92 C10 150 48 202 130 202 C212 202 250 150 234 92 Z" fill="#34304A"/>
+                <path d="M130 92 H234 C250 150 212 202 130 202 C186 196 210 150 200 92 Z" fill="#25223A"/>
+                <path d="M40 104 C34 140 56 178 96 192 C66 170 54 140 56 104 Z" fill="#4C4768"/>
+                <path d="M44 112 C42 132 50 152 64 168" fill="none" stroke="#6E6894" stroke-width="4" stroke-linecap="round"/>
+                <!-- Ring handles -->
+                <circle cx="22" cy="118" r="11" fill="none" stroke="#25223A" stroke-width="6"/>
+                <circle cx="238" cy="118" r="11" fill="none" stroke="#1B1929" stroke-width="6"/>
+                <!-- Rim, mouth, brew -->
+                <ellipse cx="130" cy="92" rx="108" ry="24" fill="#433E5E"/>
+                <ellipse cx="130" cy="94" rx="96" ry="18" fill="#17151F"/>
+                <ellipse id="brewGlow" cx="130" cy="84" rx="96" ry="30" fill="#A8A3C8" opacity="0.25"/>
+                <ellipse id="liquid" cx="130" cy="97" rx="90" ry="14" fill="#8E89B0"/>
+                <ellipse id="liquidShine" cx="108" cy="94" rx="40" ry="5" fill="#FFFFFF" opacity="0.22"/>
+                <g id="bubbles"></g>
+                <g id="splash"></g>
+                <g id="spoon" opacity="0">
+                  <rect x="150" y="10" width="10" height="84" rx="5" fill="#9A6A43" transform="rotate(18 155 94)"/>
+                  <rect x="150" y="10" width="4" height="84" rx="2" fill="#C08A5C" transform="rotate(18 155 94)"/>
+                </g>
+                <!-- Front lip drawn last so the spoon dips behind it -->
+                <path d="M22 92 A108 24 0 0 0 238 92 A108 30 0 0 1 22 92 Z" fill="#5A547C"/>
+                <path d="M40 104 A100 20 0 0 0 110 116" fill="none" stroke="#8781AE" stroke-width="3" stroke-linecap="round"/>
+              </g>
+            </svg>
+
+            <p id="sceneStatus" class="sr-only" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <!-- ── The working panel ── -->
+        <div class="pw-panel">
+
+          <!-- SCREEN A: RECIPE SCROLLS (the choice) -->
+          <section id="bookScreen" style="display:none;">
+            <div class="rounded-[22px] bg-white px-[18px] py-3 mb-4 flex items-center gap-4 border-[2.5px] border-primary-light shadow-[4px_4px_0_var(--color-sky-100)]">
+              <AudioButton id="bookSpeaker" label={{ t('learner.potion_workshop.read_aloud') }} />
+              <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-primary mb-0.5">{{ t('learner.potion_workshop.recipe_book') }}</p>
+                <p id="bookTitle" class="display-font text-xl md:text-2xl font-bold leading-snug text-sky-950"></p>
+              </div>
+            </div>
+            <div class="pw-scroll-grid" id="recipeGrid"></div>
+          </section>
+
+          <!-- SCREEN B: BREWING -->
+          <section id="brewScreen" style="display:none;">
+            <div class="pw-brewing-strip mb-3">
+              <span id="recipeFlask" class="pw-brewing-flask" aria-hidden="true"></span>
+              <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-violet-500 leading-none mb-1">{{ t('learner.potion_workshop.now_brewing') }}</p>
+                <p id="recipeName" class="display-font text-lg font-bold leading-none text-sky-950"></p>
+              </div>
+              <div class="flex items-center gap-1.5 ms-auto" id="ingHeaderSlots"></div>
+            </div>
+
+            <div class="rounded-[22px] bg-white px-[18px] py-3 flex items-center gap-4 mb-3 border-[2.5px] border-primary-light shadow-[4px_4px_0_var(--color-sky-100)]" id="questionCard">
+              <AudioButton id="speakerBtn" label={{ t('learner.potion_workshop.read_aloud') }} />
+              <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-primary mb-0.5" id="stepLabel"></p>
+                <p id="questionText" class="display-font text-xl md:text-2xl font-bold leading-snug text-sky-950"></p>
+              </div>
+            </div>
+
+            <div id="bottleWrap">
+              <p class="text-xs font-bold uppercase tracking-wider text-ink-muted mb-2 text-center">{{ t('learner.potion_workshop.tap_bottle') }}</p>
+              <div id="bottleRow" class="pw-bottle-row"></div>
+            </div>
+
+            <div class="text-center" id="stirWrap" style="display:none;">
+              <p class="display-font text-lg font-bold text-violet-700 mb-3">{{ t('learner.potion_workshop.stir_prompt') }}</p>
+              <button type="button" class="pw-stir-btn" id="stirBtn" aria-label="{{ t('learner.potion_workshop.stir') }}">
+                <svg class="pw-stir-spoon" viewBox="0 0 32 32" aria-hidden="true">
+                  <ellipse cx="9" cy="23" rx="6.5" ry="4.5" fill="currentColor" transform="rotate(-45 9 23)"/>
+                  <rect x="12" y="4" width="4" height="20" rx="2" fill="currentColor" transform="rotate(45 14 14)"/>
+                </svg>
+                {{ t('learner.potion_workshop.stir') }}
+                <span class="pw-stir-pips" id="stirPips" aria-hidden="true"><i></i><i></i><i></i></span>
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Try-again hint -->
+    <div class="game-hint-toast" id="tryAgain">{{ t('learner.potion_workshop.try_again') }}</div>
+
+<script>
+// ============================================================
+// Potion Workshop — the learner CHOOSES which recipe to brew
+// (each recipe = a chunk of the lesson's questions), answers by
+// pouring ingredient bottles into the cauldron, then stirs.
+// A recipe brewed with zero mistakes = golden potion (bonus XP).
+// ============================================================
+const lessonId = {{ lesson.id }};
+GameKit.init({ lessonId, game: 'potion_workshop' });
+
+const T = {
+  bookFirst:  {{ t('learner.potion_workshop.book_title_first') | tojson }},
+  bookNext:   {{ t('learner.potion_workshop.book_title_next') | tojson }},
+  ingredientOf: {{ t('learner.potion_workshop.ingredient_of') | tojson }},
+  ingredientsCount: {{ t('learner.potion_workshop.ingredients_count') | tojson }},
+  brewedOf:   {{ t('learner.potion_workshop.brewed_of') | tojson }},
+  brewed:     {{ t('learner.potion_workshop.brewed') | tojson }},
+  golden:     {{ t('learner.potion_workshop.golden') | tojson }},
+  inARow:     {{ t('learner.potion_workshop.in_a_row') | tojson }},
+  hearWord:   {{ t('learner.potion_workshop.hear_word') | tojson }},
+  sceneStatus: {{ t('learner.potion_workshop.scene_status') | tojson }},
+  checkFailed: {{ t('learner.game.check_failed') | tojson }},
+  recipeNames: [
+    {{ t('learner.potion_workshop.recipe_1') | tojson }},
+    {{ t('learner.potion_workshop.recipe_2') | tojson }},
+    {{ t('learner.potion_workshop.recipe_3') | tojson }},
+    {{ t('learner.potion_workshop.recipe_4') | tojson }},
+    {{ t('learner.potion_workshop.recipe_5') | tojson }},
+    {{ t('learner.potion_workshop.recipe_6') | tojson }},
+  ],
+};
+// Each recipe has its own colour AND its own flask shape, so recipes are told
+// apart without reading and without relying on colour alone.
+const RECIPE_COLORS = ["#F43F5E", "#38BDF8", "#FACC15", "#A78BFA", "#34D399", "#FB923C"];
+const WATER = "#8E89B0";      // the brew before any ingredient goes in
+const GOLD = "#FBBF24";
+// Answer bottles: a different silhouette and cork colour per letter. The glass
+// itself stays one pale "moonwater" for every bottle — a coloured liquid would
+// fight colour-word answers (the word "blue" in a pink bottle).
+const LETTERS = ["A", "B", "C", "D", "E", "F"];
+const CORKS = ["#FB7185", "#38BDF8", "#FBBF24", "#A78BFA", "#34D399", "#FB923C"];
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let recipes = [];      // {name, color, shape, steps:[question], done, golden, index, answered:Set}
+let current = null;
+let stepIdx = 0;
+let firstTryStep = true;
+let firstTryRecipe = true;
+let stirsLeft = 3;
+let goldenCount = 0;
+let brewed = 0;
+let streak = 0;
+let busy = false;
+
+document.getElementById("bookSpeaker").addEventListener("click", () => GameKit.speak(document.getElementById("bookTitle").textContent));
+document.getElementById("speakerBtn").addEventListener("click", () => { if (current) GameKit.speakQuestion(current.steps[stepIdx]); });
+
+// ── Colour helpers ──────────────────────────────────────────────────────
+function rgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function mix(a, b, t) {
+  const A = rgb(a), B = rgb(b);
+  return "#" + A.map((c, i) => Math.round(c + (B[i] - c) * t).toString(16).padStart(2, "0")).join("");
+}
+
+// ── Art: recipe flasks (one shape per recipe) ───────────────────────────
+// viewBox 0 0 48 64. Each entry: the glass silhouette and its neck.
+const FLASKS = [
+  { body: "M19 20 a19 19 0 1 0 10 0 Z", neck: "M19 7 h10 v15 h-10 Z" },                                         // round flask
+  { body: "M12 30 q0 -9 8 -12 h8 q8 3 8 12 v26 q0 5 -5 5 h-14 q-5 0 -5 -5 Z", neck: "M19 6 h10 v14 h-10 Z" },    // tall bottle
+  { body: "M24 26 C18 14 3 17 5 32 C7 44 19 52 24 61 C29 52 41 44 43 32 C45 17 30 14 24 26 Z", neck: "M20 6 h8 v16 h-8 Z" }, // heart
+  { body: "M8 22 q0 -5 5 -5 h22 q5 0 5 5 v34 q0 5 -5 5 h-22 q-5 0 -5 -5 Z", neck: "M15 8 h18 v11 h-18 Z" },     // square jar
+  { body: "M19 22 l-14 31 q-3 8 5 8 h28 q8 0 5 -8 l-14 -31 Z", neck: "M19 6 h10 v18 h-10 Z" },                   // conical flask
+  { body: "M20 18 C10 30 5 38 5 45 A19 17 0 0 0 43 45 C43 38 38 30 28 18 Z", neck: "M20 6 h8 v14 h-8 Z" },       // teardrop
+];
+function flaskSVG(shape, color, opts = {}) {
+  const f = FLASKS[shape % FLASKS.length];
+  const cls = (opts.cls ? ` class="${opts.cls}"` : "") + (opts.w ? ` width="${opts.w}" height="${opts.w * 66 / 48}"` : "");
+  if (opts.empty) {
+    return `<svg viewBox="0 0 48 66"${cls} aria-hidden="true">
+      <path d="${f.neck}" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/>
+      <path d="${f.body}" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/>
+    </svg>`;
+  }
+  const deep = mix(color, "#1E1B4B", 0.35);
+  return `<svg viewBox="0 0 48 66"${cls} aria-hidden="true">
+    ${opts.golden ? `<circle cx="24" cy="38" r="24" fill="${GOLD}" opacity="0.35"/>` : ""}
+    <path d="${f.neck}" fill="#EEF2FF" stroke="${deep}" stroke-width="2"/>
+    <path d="${f.body}" fill="${color}" stroke="${deep}" stroke-width="2"/>
+    <path d="M14 34 q-2 8 2 15" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" opacity="0.6"/>
+    <circle cx="31" cy="36" r="2.4" fill="#fff" opacity="0.55"/>
+    <rect x="16" y="1" width="16" height="8" rx="3" fill="${opts.golden ? GOLD : "#A16A3E"}"/>
+    <rect x="16" y="1" width="16" height="3" rx="1.5" fill="${opts.golden ? "#FDE68A" : "#C38A57"}"/>
+    ${opts.golden ? `<path d="M40 4 l1.8 4.2 4.2 1.8 -4.2 1.8 -1.8 4.2 -1.8 -4.2 -4.2 -1.8 4.2 -1.8 Z" fill="#FFF7D1" class="pw-twinkle"/>` : ""}
+  </svg>`;
+}
+
+// ── Art: answer bottles (one silhouette + cork colour per letter) ───────
+// viewBox 0 0 64 80. Glass outline + pale liquid + cork; mouth at the top centre.
+const BOTTLES = [
+  // A: round-bottomed flask with a long neck
+  { glass: "M26 6 h12 v24 C52 36 56 48 54 58 A22 20 0 0 1 10 58 C8 48 12 36 26 30 Z", liquid: "M12 52 Q32 46 52 52 C54 64 44 76 32 76 C20 76 10 64 12 52 Z", cork: [25, 0, 14, 9] },
+  // B: tall square bottle
+  { glass: "M26 6 h12 v10 q12 3 12 12 v44 q0 6 -6 6 h-24 q-6 0 -6 -6 v-44 q0 -9 12 -12 Z", liquid: "M16 44 h32 v28 q0 4 -4 4 h-24 q-4 0 -4 -4 Z", cork: [25, 0, 14, 9] },
+  // C: chunky jug with a handle
+  { glass: "M24 8 h16 v8 q16 6 16 24 v26 q0 10 -10 10 h-28 q-10 0 -10 -10 v-26 q0 -18 16 -24 Z M56 34 q8 2 8 12 q0 10 -8 12", liquid: "M10 46 h44 v20 q0 8 -8 8 h-28 q-8 0 -8 -8 Z", cork: [22, 1, 20, 9] },
+  // D: fat little pot with a wide cork
+  { glass: "M18 14 h28 v6 q14 6 14 24 q0 32 -28 32 q-28 0 -28 -32 q0 -18 14 -24 Z", liquid: "M7 48 Q32 42 57 48 Q56 74 32 74 Q8 74 7 48 Z", cork: [17, 3, 30, 11] },
+  // E: tall cone
+  { glass: "M27 6 h10 v18 l20 44 q3 8 -6 8 h-38 q-9 0 -6 -8 l20 -44 Z", liquid: "M15 54 h34 l7 15 q2 5 -4 5 h-40 q-6 0 -4 -5 Z", cork: [26, 0, 12, 9] },
+  // F: pear drop
+  { glass: "M27 6 h10 v14 C50 30 58 44 56 56 A24 20 0 0 1 8 56 C6 44 14 30 27 20 Z", liquid: "M9 52 Q32 46 55 52 C54 66 44 76 32 76 C20 76 10 66 9 52 Z", cork: [26, 0, 12, 9] },
+];
+function bottleSVG(i) {
+  const b = BOTTLES[i % BOTTLES.length], cork = CORKS[i % CORKS.length];
+  const [cx, cy, cw, ch] = b.cork;
+  return `<svg class="pw-bottle-art" viewBox="-2 -2 68 84" aria-hidden="true">
+    <path d="${b.glass}" fill="#F5F3FF" fill-opacity="0.9"/>
+    <path d="${b.liquid}" fill="#DDD6FE"/>
+    <path d="${b.glass}" fill="none" stroke="#3B3561" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M17 50 q-1 8 3 14" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" opacity="0.9"/>
+    <rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="3" fill="${cork}" stroke="#3B3561" stroke-width="2"/>
+    <rect x="${cx + 2}" y="${cy + 2}" width="${cw - 4}" height="2.5" rx="1.2" fill="#fff" opacity="0.55"/>
+  </svg>`;
+}
+
+// ── Load questions and build recipes ────────────────────────────────────
+async function loadQuestions() {
+  // The lesson's deal: only questions with options, so every step has bottles to pour.
+  const data = await GameKit.questions();
+  const questions = data ? data.questions : [];
+  if (!questions.length) { showError(); return; }
+  const correctIds = new Set(data.progress.correct_ids);
+
+  // Chunk into recipes of 2 ingredients; an odd question count makes the
+  // last recipe 3 so no recipe is ever a single step.
+  let i = 0, r = 0;
+  while (i < questions.length) {
+    const take = (questions.length - i === 3) ? 3 : Math.min(2, questions.length - i);
+    const steps = questions.slice(i, i + take);
+    recipes.push({
+      name: T.recipeNames[r % T.recipeNames.length],
+      color: RECIPE_COLORS[r % RECIPE_COLORS.length],
+      shape: r % FLASKS.length,
+      steps, index: r,
+      done: steps.every(q => correctIds.has(q.id)),
+      golden: false,
+      answered: new Set(steps.filter(q => correctIds.has(q.id)).map(q => q.id)),
+    });
+    i += take; r++;
+  }
+  brewed = recipes.filter(x => x.done).length;
+
+  buildShelf();
+  updateProgress();
+  if (brewed >= recipes.length) { finishGame(); return; }
+  renderBook();
+}
+function showError() { document.getElementById("errorState").classList.remove("hidden"); }
+
+function updateProgress() {
+  const total = recipes.reduce((n, r) => n + r.steps.length, 0);
+  const answered = recipes.reduce((n, r) => n + r.answered.size, 0);
+  GameKit.progress({
+    label: T.brewedOf.replace("{brewed}", brewed).replace("{total}", recipes.length),
+    fraction: total ? answered / total : 0,
+  });
+  document.getElementById("sceneStatus").textContent =
+    T.sceneStatus.replace("{brewed}", brewed).replace("{total}", recipes.length);
+}
+
+function updateStreak() {
+  const note = document.getElementById("streakNote");
+  if (streak >= 2) {
+    note.textContent = T.inARow.replace("{n}", streak);
+    if (note.hidden) { note.hidden = false; if (!REDUCED) gsap.from(note, { scale: 0.6, opacity: 0, duration: 0.35, ease: "back.out(2)" }); }
+  } else {
+    note.hidden = true;
+  }
+}
+
+// ── The mantel shelf ────────────────────────────────────────────────────
+// An empty shelf spot is a little brass name-plate set with the recipe's colour,
+// so the learner sees where each potion will stand without a ghost outline.
+function slotHTML(r) {
+  if (!r.done) return `<svg viewBox="0 0 48 66" aria-hidden="true">
+    <rect x="8" y="55" width="32" height="10" rx="3" fill="#B98A3E"/>
+    <rect x="8" y="55" width="32" height="3.5" rx="1.75" fill="#E2BB6C"/>
+    <circle cx="24" cy="60.5" r="3.2" fill="${r.color}"/><circle cx="23" cy="59.5" r="1" fill="#FFFFFF" opacity=".7"/>
+  </svg>`;
+  return flaskSVG(r.shape, r.color, { golden: r.golden });
+}
+function buildShelf() {
+  const row = document.getElementById("collectionRow");
+  row.innerHTML = "";
+  recipes.forEach((r, i) => {
+    const slot = document.createElement("div");
+    slot.className = "pw-shelf-slot" + (r.done ? " is-filled" : "") + (r.golden ? " is-golden" : "");
+    slot.id = "slot-" + i;
+    slot.innerHTML = slotHTML(r);
+    row.appendChild(slot);
+  });
+}
+
+// ── Recipe scrolls ──────────────────────────────────────────────────────
+function scrollArt(r) {
+  // A parchment scroll with the potion drawn on it and one bottle pip per ingredient.
+  const pips = r.steps.map((q, k) => {
+    const x = 50 - (r.steps.length - 1) * 9 + k * 18;
+    const got = r.answered.has(q.id);
+    return `<g transform="translate(${x - 6} 92)">
+      <path d="M4 0 h4 v3 q4 2 4 7 v5 q0 3 -3 3 h-6 q-3 0 -3 -3 v-5 q0 -5 4 -7 Z" fill="${got ? r.color : "#FFFFFF"}" fill-opacity="${got ? 1 : 0.7}" stroke="#8A6A45" stroke-width="1.6"/>
+    </g>`;
+  }).join("");
+  return `<svg class="pw-scroll-art" viewBox="0 0 100 118" aria-hidden="true">
+    <rect x="14" y="10" width="72" height="100" rx="4" fill="#FBF0D6"/>
+    <rect x="14" y="10" width="8" height="100" fill="#F1DFB6"/>
+    <path d="M24 30 h40 M24 80 h52" stroke="#E5CF9F" stroke-width="2" stroke-linecap="round"/>
+    <rect x="8" y="4" width="84" height="12" rx="6" fill="#E8D2A2"/>
+    <rect x="8" y="4" width="84" height="4" rx="2" fill="#F6E8C6"/>
+    <rect x="8" y="104" width="84" height="12" rx="6" fill="#E8D2A2"/>
+    <rect x="8" y="104" width="84" height="4" rx="2" fill="#F6E8C6"/>
+    <circle cx="8" cy="10" r="5" fill="#B8864F"/><circle cx="92" cy="10" r="5" fill="#B8864F"/>
+    <circle cx="8" cy="110" r="5" fill="#B8864F"/><circle cx="92" cy="110" r="5" fill="#B8864F"/>
+    <g transform="translate(29 20) scale(0.88)">${flaskSVG(r.shape, r.color, { golden: r.golden, w: 48 })}</g>
+    ${pips}
+    ${r.done ? `<g transform="translate(70 18)"><circle r="11" fill="#16A34A"/><path d="M-5 0 l3.5 3.5 l6.5 -7" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>` : ""}
+  </svg>`;
+}
+function renderBook() {
+  current = null;
+  document.getElementById("bookScreen").style.display = "block";
+  document.getElementById("brewScreen").style.display = "none";
+  document.getElementById("bookTitle").textContent = brewed === 0 ? T.bookFirst : T.bookNext;
+  setBrew(WATER, 0.4);
+  const grid = document.getElementById("recipeGrid");
+  grid.innerHTML = "";
+  recipes.forEach((r, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    if (r.done) {
+      btn.className = "clay-card-green pw-scroll";
+      btn.disabled = true;
+    } else {
+      btn.className = "quick-action-card pw-scroll";
+      btn.style.setProperty("--qa-border", mix(r.color, "#FFFFFF", 0.55));
+      btn.style.setProperty("--qa-hover", r.color);
+    }
+    btn.setAttribute("aria-label", r.name + (r.done ? " — " + T.brewed + (r.golden ? ", " + T.golden : "")
+      : " — " + T.ingredientsCount.replace("{n}", r.steps.length)));
+    btn.innerHTML = scrollArt(r) + `<span class="pw-scroll-name">${r.name}</span>`;
+    if (!r.done) btn.addEventListener("click", () => startRecipe(i));
+    grid.appendChild(btn);
+  });
+  if (!REDUCED) gsap.from(grid.children, { y: 18, rotation: (i) => (i % 2 ? 3 : -3), opacity: 0, stagger: 0.08, duration: 0.4, ease: "back.out(1.6)", clearProps: "transform,translate,rotate,scale,opacity" });
+}
+
+// ── Brewing ─────────────────────────────────────────────────────────────
+function startRecipe(i) {
+  current = recipes[i];
+  stepIdx = current.steps.findIndex(q => !current.answered.has(q.id));
+  if (stepIdx === -1) stepIdx = current.steps.length;
+  firstTryRecipe = true;
+  stirsLeft = 3;
+  GameKit.track('potion_recipe_started', { recipe: i });
+  document.getElementById("bookScreen").style.display = "none";
+  document.getElementById("brewScreen").style.display = "block";
+  document.getElementById("recipeName").textContent = current.name;
+  document.getElementById("recipeFlask").innerHTML = flaskSVG(current.shape, current.color);
+  setBrew(brewColour(), 0.5);
+  renderHeaderSlots();
+  if (stepIdx >= current.steps.length) enterStirPhase();
+  else renderStep();
+}
+
+// The brew drifts from plain water towards the recipe colour, one ingredient at a time.
+function brewColour() {
+  if (!current) return WATER;
+  return mix(WATER, current.color, current.answered.size / current.steps.length);
+}
+function setBrew(color, dur = 0.6) {
+  const steam = mix("#FFFFFF", color, 0.3);
+  if (REDUCED || dur === 0) {
+    document.getElementById("liquid").setAttribute("fill", color);
+    document.getElementById("brewGlow").setAttribute("fill", color);
+    document.querySelectorAll("#steam circle").forEach(c => c.setAttribute("fill", steam));
+    return;
+  }
+  gsap.to("#liquid", { attr: { fill: color }, duration: dur });
+  gsap.to("#brewGlow", { attr: { fill: color }, duration: dur });
+  gsap.to("#steam circle", { attr: { fill: steam }, duration: dur });
+}
+
+function renderHeaderSlots() {
+  const wrap = document.getElementById("ingHeaderSlots");
+  wrap.innerHTML = "";
+  // One round pip per ingredient: soft when waiting, ringed when it's the one
+  // being poured, filled with the recipe's colour and a tick once it's in.
+  current.steps.forEach((q, k) => {
+    const el = document.createElement("span");
+    const filled = current.answered.has(q.id);
+    el.className = "pw-ing-slot" + (filled ? " is-filled" : k === stepIdx ? " is-current" : "");
+    if (filled) el.style.setProperty("--ing", current.color);
+    el.innerHTML = filled
+      ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`
+      : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4c3 3.8 6 7 6 10.4a6 6 0 1 1-12 0C6 11 9 7.8 12 4z" fill="currentColor"/></svg>`;
+    wrap.appendChild(el);
+  });
+}
+
+function renderStep() {
+  busy = false;
+  firstTryStep = true;
+  const step = current.steps[stepIdx];
+  document.getElementById("questionCard").style.display = "flex";
+  document.getElementById("bottleWrap").style.display = "block";
+  document.getElementById("stirWrap").style.display = "none";
+  document.getElementById("stepLabel").textContent =
+    T.ingredientOf.replace("{current}", stepIdx + 1).replace("{total}", current.steps.length);
+  document.getElementById("questionText").textContent = step.question_text || step.question_prompt || "";
+
+  const row = document.getElementById("bottleRow");
+  row.innerHTML = "";
+  GameKit.shuffle(step.options).forEach((word, i) => {
+    const slot = document.createElement("div");
+    slot.className = "pw-bottle-slot";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "quick-action-card pw-bottle";
+    btn.setAttribute("aria-label", LETTERS[i % LETTERS.length] + ": " + word);
+    btn.innerHTML = `<span class="pw-letter pw-letter-${i % LETTERS.length}" aria-hidden="true">${LETTERS[i % LETTERS.length]}</span>`
+      + bottleSVG(i);
+    const w = document.createElement("span");
+    w.className = "pw-word";
+    w.textContent = word;
+    btn.appendChild(w);
+    btn.addEventListener("click", () => onBottle(word, btn));
+
+    // Hear the word without choosing it — the learner may not be able to read it.
+    const hear = document.createElement("button");
+    hear.type = "button";
+    hear.className = "pw-hear";
+    hear.setAttribute("aria-label", T.hearWord.replace("{word}", word));
+    hear.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 5 6 9H3v6h3l5 4V5z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>`;
+    hear.addEventListener("click", () => GameKit.speak(word));
+
+    slot.appendChild(btn);
+    slot.appendChild(hear);
+    row.appendChild(slot);
+  });
+  if (!REDUCED) gsap.from(row.children, { y: -16, opacity: 0, stagger: 0.07, duration: 0.35, ease: "back.out(1.6)", clearProps: "transform,translate,rotate,scale,opacity" });
+  GameKit.speakQuestion(step);
+}
+
+async function onBottle(word, btn) {
+  if (busy) return;
+  busy = true;
+  const step = current.steps[stepIdx];
+  const isCorrect = await GameKit.check(step.id, word);
+  if (isCorrect === null) {
+    // The check never reached the server: the bottle stays on the shelf, just ask again.
+    showHint(T.checkFailed);
+    busy = false;
+    return;
+  }
+  GameKit.track('game_answer', { question_id: step.id, is_correct: isCorrect, first_try: firstTryStep });
+  GameKit.speak(word);
+
+  if (!isCorrect) {
+    firstTryStep = false;
+    firstTryRecipe = false;
+    streak = 0;
+    updateStreak();
+    showHint();
+    rejectBottle(btn, () => {
+      // The option dims and stays out of the way; the others are still free to try.
+      btn.disabled = true;
+      btn.classList.add("is-tried");
+      busy = false;
+    });
+    return;
+  }
+  if (firstTryStep) { streak++; } else { streak = 0; }
+  updateStreak();
+  current.answered.add(step.id);
+  updateProgress();
+  document.querySelectorAll("#bottleRow .pw-bottle").forEach(b => { b.disabled = true; });
+  pourBottle(btn, () => {
+    stepIdx++;
+    renderHeaderSlots();
+    if (stepIdx >= current.steps.length) enterStirPhase();
+    else renderStep();
+  });
+}
+
+// Every floating animation bit (the poured bottle, the stream, the finished
+// potion, smoke) is positioned in *page* coordinates and appended absolutely to
+// <body> — NOT fixed to the viewport. Rects are read once when an animation
+// starts, so viewport coords would go stale the moment the learner scrolls
+// mid-pour. Page coords survive scroll.
+function pageRect(el) {
+  const r = el.getBoundingClientRect();
+  return {
+    left: r.left + window.scrollX, top: r.top + window.scrollY,
+    width: r.width, height: r.height,
+  };
+}
+// Points on the cauldron in page coordinates (its viewBox is 260×230; the brew
+// surface sits at y=97, the rim at y=92).
+function cauldronPoint(vx, vy) {
+  const c = pageRect(document.getElementById("cauldronSvg"));
+  return { x: c.left + c.width * vx / 260, y: c.top + c.height * vy / 230, scale: c.width / 260 };
+}
+
+function floatingClone(svg) {
+  const b = pageRect(svg);
+  const clone = svg.cloneNode(true);
+  Object.assign(clone.style, {
+    position: "absolute", left: b.left + "px", top: b.top + "px",
+    width: b.width + "px", height: b.height + "px", margin: 0,
+    zIndex: 30, pointerEvents: "none",
+  });
+  document.body.appendChild(clone);
+  return { clone, b };
+}
+
+// Tilt while pouring. Rotation is about the bottle's centre, so the mouth
+// (centre-top) lands at centre + (h/2·sinθ, −h/2·cosθ): that maths parks the
+// bottle with its mouth exactly over the brew instead of eyeballing an offset.
+const POUR_ANGLE = 112;
+
+function pourBottle(btn, done) {
+  const svg = btn.querySelector(".pw-bottle-art");
+  gsap.to(btn, { opacity: 0.45, duration: 0.2 });
+  if (REDUCED) {
+    setBrew(brewColour(), 0);
+    gsap.delayedCall(0.4, done);
+    return;
+  }
+  const { clone, b } = floatingClone(svg);
+  gsap.set(svg, { opacity: 0 });
+
+  const surface = cauldronPoint(122, 97);
+  const rad = POUR_ANGLE * Math.PI / 180;
+  const mouthDX = (b.height / 2) * Math.sin(rad);
+  const mouthDY = -(b.height / 2) * Math.cos(rad);
+  const spoutX = surface.x - 30 * surface.scale;
+  const spoutY = surface.y - 70 * surface.scale;
+  const targetLeft = spoutX - mouthDX - b.width / 2;
+  const targetTop  = spoutY - mouthDY - b.height / 2;
+
+  const tl = gsap.timeline({ onComplete: () => { clone.remove(); done(); } });
+  tl.to(clone, { y: -18, scale: 1.12, duration: 0.2, ease: "back.out(2)", transformOrigin: "50% 50%" })
+    // An arc: x eases evenly while y swoops up then down.
+    .to(clone, { left: targetLeft + "px", duration: 0.55, ease: "power1.inOut" }, "fly")
+    .to(clone, { top: (Math.min(b.top, targetTop) - 70) + "px", duration: 0.3, ease: "power2.out" }, "fly")
+    .to(clone, { top: targetTop + "px", y: 0, duration: 0.25, ease: "power2.in" }, "fly+=0.3")
+    .to(clone, { rotation: POUR_ANGLE, duration: 0.28, ease: "power2.in" })
+    .add(() => pourStream(spoutX, spoutY, surface.x, surface.y, current.color))
+    .add(() => { setBrew(brewColour(), 0.6); splashReaction(current.color); flareFire(); }, "+=0.3")
+    .to(clone, { rotation: POUR_ANGLE - 10, duration: 0.18, ease: "sine.inOut" })
+    .to(clone, { rotation: POUR_ANGLE + 4, duration: 0.18, ease: "sine.inOut" })
+    .to(clone, { rotation: 0, scale: 1, duration: 0.3, ease: "back.out(1.4)" }, "+=0.15")
+    .to(clone, { opacity: 0, y: -20, scale: 0.6, duration: 0.25 }, "-=0.05");
+}
+
+// A curved ribbon of liquid from the bottle mouth down into the brew, drawn in a
+// page-level SVG: it grows from the mouth, then lets go and falls in.
+function pourStream(x0, y0, x1, y1, color) {
+  const ns = "http://www.w3.org/2000/svg";
+  const pad = 20;
+  const left = Math.min(x0, x1) - pad, top = Math.min(y0, y1) - pad;
+  const w = Math.abs(x1 - x0) + pad * 2, h = Math.abs(y1 - y0) + pad * 2;
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("width", w); svg.setAttribute("height", h);
+  svg.setAttribute("aria-hidden", "true");
+  Object.assign(svg.style, { position: "absolute", left: left + "px", top: top + "px", zIndex: 29, pointerEvents: "none", overflow: "visible" });
+  const sx = x0 - left, sy = y0 - top, ex = x1 - left, ey = y1 - top;
+  const path = document.createElementNS(ns, "path");
+  path.setAttribute("d", `M${sx} ${sy} Q${sx + (ex - sx) * 0.9} ${sy + 4} ${ex} ${ey}`);
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", color);
+  path.setAttribute("stroke-width", 9);
+  path.setAttribute("stroke-linecap", "round");
+  const shine = path.cloneNode();
+  shine.setAttribute("stroke", "#fff");
+  shine.setAttribute("stroke-width", 3);
+  shine.setAttribute("opacity", 0.6);
+  svg.appendChild(path); svg.appendChild(shine);
+  document.body.appendChild(svg);
+  const len = path.getTotalLength();
+  [path, shine].forEach(p => { p.style.strokeDasharray = len; p.style.strokeDashoffset = len; });
+  gsap.timeline({ onComplete: () => svg.remove() })
+    .to([path, shine], { strokeDashoffset: 0, duration: 0.28, ease: "power1.in" })
+    .to([path, shine], { strokeDashoffset: -len, duration: 0.3, ease: "power1.in" }, "+=0.42");
+}
+
+// The "it landed!" reaction, drawn inside the cauldron SVG (brew surface y=97):
+// a ring, a crown of liquid, flying droplets and coloured steam, plus a knock of the pot.
+function splashReaction(color) {
+  const ns = "http://www.w3.org/2000/svg";
+  const g = document.getElementById("splash");
+  const el = (tag, attrs) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); g.appendChild(e); return e; };
+
+  const ring = el("ellipse", { cx: 122, cy: 97, rx: 12, ry: 3, fill: "none", stroke: "#fff", "stroke-width": 4 });
+  gsap.to(ring, { attr: { rx: 80, ry: 14, "stroke-width": 1 }, opacity: 0, duration: 0.6, ease: "power2.out", onComplete: () => ring.remove() });
+
+  const spurt = el("ellipse", { cx: 122, cy: 94, rx: 14, ry: 8, fill: color });
+  gsap.timeline({ onComplete: () => spurt.remove() })
+    .to(spurt, { attr: { cy: 62, rx: 8, ry: 24 }, duration: 0.22, ease: "power2.out" })
+    .to(spurt, { attr: { cy: 97, rx: 18, ry: 5 }, opacity: 0, duration: 0.26, ease: "power2.in" });
+
+  for (let i = 0; i < 10; i++) {
+    const dir = i % 2 ? 1 : -1;
+    const c = el("circle", { cx: 122, cy: 92, r: 2.5 + Math.random() * 3.5, fill: color });
+    gsap.timeline({ onComplete: () => c.remove() })
+      .to(c, { attr: { cx: 122 + dir * (18 + Math.random() * 50), cy: 40 + Math.random() * 26 }, duration: 0.28, ease: "power2.out" })
+      .to(c, { attr: { cy: 96 }, opacity: 0, duration: 0.34, ease: "power2.in" });
+  }
+  for (let i = 0; i < 6; i++) {
+    const p = el("circle", { cx: 80 + Math.random() * 100, cy: 86, r: 8 + Math.random() * 8, fill: color, opacity: 0.5 });
+    gsap.to(p, { attr: { cy: 10 - Math.random() * 30, r: 20 + Math.random() * 10 }, opacity: 0, duration: 1 + Math.random() * 0.5, ease: "power1.out", onComplete: () => p.remove() });
+  }
+  gsap.fromTo("#cauldronSvg", { rotation: 0 },
+    { rotation: 2, yoyo: true, repeat: 3, duration: 0.07, transformOrigin: "50% 100%",
+      onComplete: () => gsap.set("#cauldronSvg", { rotation: 0 }) });
+}
+
+function flareFire() {
+  if (REDUCED) return;
+  gsap.fromTo("#fire", { scale: 1 }, { scale: 1.35, yoyo: true, repeat: 1, duration: 0.25, ease: "power2.out", transformOrigin: "50% 100%" });
+}
+
+function bubbleBurst(color, n) {
+  const ns = "http://www.w3.org/2000/svg";
+  const g = document.getElementById("bubbles");
+  for (let i = 0; i < n; i++) {
+    const c = document.createElementNS(ns, "circle");
+    c.setAttribute("cx", 50 + Math.random() * 160);
+    c.setAttribute("cy", 96);
+    c.setAttribute("r", 2.5 + Math.random() * 4);
+    c.setAttribute("fill", mix(color, "#FFFFFF", 0.3));
+    g.appendChild(c);
+    gsap.to(c, { attr: { cy: 60 - Math.random() * 30 }, opacity: 0, duration: 0.8 + Math.random() * 0.6, ease: "power1.out", onComplete: () => c.remove() });
+  }
+}
+// Gentle idle bubbling (skipped under reduced motion and on hidden tabs).
+if (!REDUCED) {
+  setInterval(() => {
+    if (!document.hidden) bubbleBurst(document.getElementById("liquid").getAttribute("fill"), 1);
+  }, 650);
+}
+
+// Wrong ingredient: the bottle floats over to the cauldron, the brew gives a
+// soft grey puff, the bottle shakes its head and floats home. Nothing is lost.
+function rejectBottle(btn, done) {
+  const svg = btn.querySelector(".pw-bottle-art");
+  if (REDUCED) { smokePuff(); done(); return; }
+  const { clone, b } = floatingClone(svg);
+  gsap.set(svg, { opacity: 0 });
+  const hover = cauldronPoint(130, 40);
+  gsap.timeline({ onComplete: () => { clone.remove(); gsap.set(svg, { opacity: 1 }); done(); } })
+    .to(clone, { left: (hover.x - b.width / 2) + "px", top: (hover.y - b.height) + "px", duration: 0.45, ease: "power2.inOut" })
+    .add(smokePuff)
+    .to(clone, { rotation: 12, duration: 0.09, repeat: 5, yoyo: true, ease: "sine.inOut" })
+    .to(clone, { rotation: 0, duration: 0.08 })
+    .to(clone, { left: b.left + "px", top: b.top + "px", duration: 0.45, ease: "power2.inOut" }, "+=0.1");
+}
+
+function smokePuff() {
+  const ns = "http://www.w3.org/2000/svg";
+  const g = document.getElementById("splash");
+  for (let i = 0; i < 7; i++) {
+    const p = document.createElementNS(ns, "circle");
+    p.setAttribute("cx", 80 + Math.random() * 100);
+    p.setAttribute("cy", 88);
+    p.setAttribute("r", 9 + Math.random() * 8);
+    p.setAttribute("fill", "#CBD5E1");
+    p.setAttribute("opacity", 0.85);
+    g.appendChild(p);
+    if (REDUCED) { gsap.to(p, { opacity: 0, duration: 0.8, onComplete: () => p.remove() }); continue; }
+    gsap.to(p, { attr: { cy: 20 - Math.random() * 40, r: 22 + Math.random() * 10, cx: "+=" + ((Math.random() - 0.5) * 40) }, opacity: 0, duration: 1.2, ease: "power1.out", onComplete: () => p.remove() });
+  }
+  if (!REDUCED) gsap.fromTo("#cauldronBowl", { y: 0 }, { y: 3, yoyo: true, repeat: 1, duration: 0.12 });
+}
+
+// ── Stir phase ──────────────────────────────────────────────────────────
+function renderPips() {
+  document.querySelectorAll("#stirPips i").forEach((p, k) => p.classList.toggle("is-done", k < 3 - stirsLeft));
+}
+function enterStirPhase() {
+  busy = false;
+  document.getElementById("questionCard").style.display = "none";
+  document.getElementById("bottleWrap").style.display = "none";
+  const wrap = document.getElementById("stirWrap");
+  wrap.style.display = "block";
+  if (!REDUCED) gsap.from(wrap, { y: -10, opacity: 0, duration: 0.3 });
+  gsap.to("#spoon", { opacity: 1, duration: REDUCED ? 0 : 0.3 });
+  setBrew(current.color, 0.4);
+  renderPips();
+}
+
+document.getElementById("stirBtn").addEventListener("click", () => {
+  if (stirsLeft <= 0 || busy) return;
+  stirsLeft--;
+  renderPips();
+  if (!REDUCED) {
+    gsap.fromTo("#spoon", { x: 0, y: 0 }, { keyframes: [{ x: -34, y: 4, duration: 0.15 }, { x: -60, y: 0, duration: 0.15 }, { x: -30, y: -4, duration: 0.15 }, { x: 0, y: 0, duration: 0.15 }], ease: "sine.inOut" });
+    gsap.fromTo("#liquidShine", { attr: { cx: 108 } }, { attr: { cx: 152 }, yoyo: true, repeat: 1, duration: 0.3, ease: "sine.inOut" });
+    bubbleBurst(current.color, 6);
+  }
+  if (stirsLeft === 0) {
+    busy = true;
+    gsap.delayedCall(REDUCED ? 0.2 : 0.7, completeRecipe);
+  }
+});
+
+function completeRecipe() {
+  const golden = firstTryRecipe;
+  if (golden) goldenCount++;
+  current.done = true;
+  current.golden = golden;
+  brewed++;
+  updateProgress();
+  GameKit.track('potion_recipe_completed', { recipe: current.index, golden });
+  gsap.to("#spoon", { opacity: 0, duration: REDUCED ? 0 : 0.3 });
+
+  const recipe = current;
+  const slot = document.getElementById("slot-" + recipe.index);
+  const land = () => {
+    slot.classList.add("is-filled");
+    if (golden) slot.classList.add("is-golden");
+    slot.innerHTML = slotHTML(recipe);
+    if (!REDUCED) gsap.from(slot.firstElementChild, { scale: 0.4, y: 10, duration: 0.5, ease: "back.out(2)", transformOrigin: "50% 100%" });
+    setBrew(WATER, 0.8);
+    gsap.delayedCall(REDUCED ? 0.3 : 0.7, () => {
+      if (brewed >= recipes.length) finishGame();
+      else renderBook();
+    });
+  };
+  if (REDUCED) { land(); return; }
+
+  bubbleBurst(golden ? GOLD : recipe.color, 16);
+  gsap.fromTo("#cauldronSvg", { scale: 1 }, { scale: 1.06, yoyo: true, repeat: 1, duration: 0.2, transformOrigin: "50% 100%" });
+
+  // The finished potion rises out of the brew, shines, then flies to its shelf slot.
+  const surface = cauldronPoint(130, 92);
+  const sr = pageRect(slot);
+  const size = Math.max(sr.width, 40);
+  const fly = document.createElement("div");
+  fly.innerHTML = flaskSVG(recipe.shape, recipe.color, { golden });
+  Object.assign(fly.style, {
+    position: "absolute", width: size + "px", height: size * 66 / 48 + "px",
+    left: (surface.x - size / 2) + "px", top: (surface.y - size * 66 / 48 * 0.6) + "px",
+    zIndex: 35, pointerEvents: "none",
+  });
+  fly.firstElementChild.style.width = "100%";
+  fly.firstElementChild.style.height = "100%";
+  document.body.appendChild(fly);
+  burstSparkles(surface.x, surface.y - 50 * surface.scale, golden ? GOLD : "#FFFFFF", golden ? 14 : 8);
+  gsap.timeline({ onComplete: () => { fly.remove(); land(); } })
+    .fromTo(fly, { scale: 0.2, y: 30, opacity: 0 }, { scale: 1.25, y: -70 * surface.scale, opacity: 1, duration: 0.6, ease: "back.out(1.6)" })
+    .to(fly, { rotation: 8, yoyo: true, repeat: 3, duration: 0.12, ease: "sine.inOut" })
+    .to(fly, { left: sr.left + (sr.width - size) / 2 + "px", top: sr.top + sr.height - size * 66 / 48 + "px", y: 0, scale: 1, rotation: 0, duration: 0.75, ease: "power2.inOut" }, "+=0.15");
+}
+
+// Little four-point stars that pop out from a point (page coordinates).
+function burstSparkles(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement("span");
+    s.className = "pw-sparkle";
+    s.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 0 l2.6 7.4 7.4 2.6 -7.4 2.6 -2.6 7.4 -2.6 -7.4 -7.4 -2.6 7.4 -2.6 Z" fill="${color}"/></svg>`;
+    Object.assign(s.style, { left: (x - 8) + "px", top: (y - 8) + "px" });
+    document.body.appendChild(s);
+    const a = (Math.PI * 2 * i) / n, d = 50 + Math.random() * 40;
+    gsap.fromTo(s, { scale: 0.3, opacity: 1 }, { x: Math.cos(a) * d, y: Math.sin(a) * d, scale: 1, rotation: 90, opacity: 0, duration: 0.9, ease: "power2.out", onComplete: () => s.remove() });
+  }
+}
+
+function showHint(text) {
+  const hint = document.getElementById("tryAgain");
+  if (!hint.dataset.text) hint.dataset.text = hint.textContent;
+  hint.textContent = text || hint.dataset.text;
+  gsap.killTweensOf(hint);
+  gsap.fromTo(hint, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.25, onComplete: () => gsap.to(hint, { opacity: 0, delay: 1.3 }) });
+}
+
+// ── Finish ──────────────────────────────────────────────────────────────
+async function finishGame() {
+  document.getElementById("bookScreen").style.display = "none";
+  document.getElementById("brewScreen").style.display = "none";
+  if (!REDUCED) {
+    const potions = document.querySelectorAll(".pw-shelf-slot svg");
+    gsap.to(potions, { y: -10, yoyo: true, repeat: 1, stagger: 0.12, duration: 0.22, ease: "power2.out" });
+    const shelf = pageRect(document.getElementById("collectionRow"));
+    gsap.delayedCall(0.3, () => burstSparkles(shelf.left + shelf.width / 2, shelf.top + shelf.height / 2, GOLD, 14));
+  }
+
+  await GameKit.finish({ golden_count: goldenCount }, { after: 1600 });
+}
+
+// ── Start ───────────────────────────────────────────────────────────────
+loadQuestions();
+</script>
+</GamePage>

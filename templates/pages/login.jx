@@ -1,0 +1,69 @@
+{#- The sign-in page: one two-column card — learners' username and password, teachers' and
+    volunteers' Google sign-in (teachers are told their account already exists) — and a single
+    invite-code join button closing the card. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/google_button.jx" as GoogleButton #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/shell/main.jx" as Main #}
+<Page title={{ t('nav.login') ~ " - IntegratED" }} styles="auth">
+  <Main layout="centered" width="4xl">
+    <div class="auth-card p-6 md:p-10">
+      <h1 class="display-font text-3xl font-extrabold text-sky-950 mb-8 text-center">{{ t('auth.login_title') }}</h1>
+
+      <div class="grid lg:grid-cols-2">
+        <section class="lg:pe-10 space-y-5">
+          <div class="flex items-center gap-3">
+            <IconBox icon="book-open" tone="green" size="lg" />
+            <div>
+              <h2 class="display-font text-xl font-extrabold text-sky-950">{{ t('auth.learner_method_title') }}</h2>
+              <p class="text-sm text-ink-heading/65">{{ t('auth.learner_method_note') }}</p>
+            </div>
+          </div>
+          <form action="{{ url_for('auth.login') }}" method="POST" class="space-y-4">
+            <Field label={{ t('auth.username') }} for_id="username">
+              <Input size="lg" name="username" id="username" autocomplete="username" required />
+            </Field>
+            <Field label={{ t('auth.password') }} for_id="password">
+              <Input type="password" size="lg" name="password" id="password" autocomplete="current-password" required />
+            </Field>
+            <Button type="submit" class="mt-2 w-full" icon_end="arrow-right">{{ t('auth.sign_in') }}</Button>
+          </form>
+        </section>
+
+        <section class="mt-8 pt-8 border-t-2 border-primary-soft lg:mt-0 lg:pt-0 lg:border-t-0 lg:border-s-2 lg:ps-10 space-y-5">
+          <div class="flex items-center gap-3">
+            <IconBox icon="user-group" tone="sky" size="lg" />
+            <div>
+              <h2 class="display-font text-xl font-extrabold text-sky-950">{{ t('auth.google_method_title') }}</h2>
+              <p class="text-sm text-ink-heading/65">{{ t('auth.google_method_note') }}</p>
+            </div>
+          </div>
+          <div>
+            <GoogleButton href={{ url_for('auth.login_google') }}>{{ t('auth.sign_in_google') }}</GoogleButton>
+            <p class="mt-2 flex items-center justify-center gap-1.5 text-xs font-semibold text-primary">
+              <Icon name="building-library" size="4" />
+              {{ t('auth.school_account_note') }}
+            </p>
+          </div>
+          <Card tone="green" class="p-4">
+            <p class="flex items-center gap-2 font-bold text-sky-950 text-sm">
+              <Icon name="check-circle" size="5" class="text-accent" />
+              {{ t('auth.teacher_ready_title') }}
+            </p>
+            <p class="mt-1 text-sm text-ink-heading/70">{{ t('auth.teacher_ready_desc') }}</p>
+          </Card>
+        </section>
+      </div>
+
+      <div class="mt-8 pt-6 border-t-2 border-primary-soft text-center">
+        <p class="text-sm text-ink-heading/65 mb-3">{{ t('auth.new_here') }}</p>
+        <Button variant="sky" href={{ url_for('auth.register') }} icon_end="arrow-right">{{ t('auth.join_with_code') }}</Button>
+      </div>
+    </div>
+  </Main>
+</Page>

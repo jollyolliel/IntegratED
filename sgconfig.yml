@@ -1,0 +1,12 @@
+# ast-grep: design-system lint for templates and CSS (see lint/rules/*.yml).
+#   uv run ast-grep scan                              # whole repo
+#   uv run ast-grep test --skip-snapshot-tests        # rule self-tests
+ruleDirs:
+  - lint/rules
+testConfigs:
+  - testDir: lint/rule-tests
+utilDirs:
+  - lint/utils
+# jx components and pages are HTML with component tags; the HTML rules cover them too.
+languageGlobs:
+  html: ["*.jx"]

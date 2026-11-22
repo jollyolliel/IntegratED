@@ -1,0 +1,5 @@
+{#- The pill above every major heading: sky, or amber for pending / review sections. -#}
+{#import "@components/base/badge.jx" as Badge #}
+{#def tone=None, tag=None #}
+{%- set tone = prop("SectionBadge", "tone", tone) -%}
+<Badge tone={{ tone }} tag={{ tag }} class="inline-block text-[0.7rem] px-3 py-1 uppercase tracking-[0.06em] mb-2" attrs={{ attrs }}>{{ content }}</Badge>

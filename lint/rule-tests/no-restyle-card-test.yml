@@ -1,0 +1,10 @@
+id: no-restyle-card
+valid:
+  - '<div class="clay-card p-8 mb-6"></div>'
+  - '<a class="quick-action-card flex items-center gap-3"></a>'
+  - '<div class="impact-card-green shadow-md"></div>'
+invalid:
+  - '<div class="clay-card rounded-3xl"></div>'
+  - '<div class="clay-card-rose border-rose-400"></div>'
+  - '<a class="quick-action-card bg-sky-50"></a>'
+  - '<a class="quick-action-card [--qa-border:#fff]"></a>'

@@ -1,0 +1,24 @@
+id: no-raw-color-css
+language: css
+severity: error
+message: |
+  Raw colour in CSS — use a design token.
+note: |
+  var(--color-<role>) (primary, accent, danger, ink-*, surface-*, card-*-border/-shadow)
+  or a palette token var(--color-sky-200); for alpha, rgb(var(--color-<role>-rgb) / 0.2).
+  Tokens live in tailwind.config.js — add a role there only if no existing one fits.
+ignores:
+  # Deliberately outside the design system (docs/ui-design/styling-system.md -> Traps):
+  # the dependency-free boot page.
+  - templates/starting_up.html
+rule:
+  any:
+    - kind: color_value
+    - all:
+        - kind: call_expression
+        - has: { kind: function_name, regex: '^(rgba?|hsla?)$' }
+        - not:
+            has:
+              stopBy: end
+              kind: function_name
+              regex: '^var$'

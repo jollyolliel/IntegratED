@@ -1,0 +1,72 @@
+{#- Create (`article` is None) or edit one article: title, Markdown body and an optional hero
+    image. `draft` refills the create form after a failed submit. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/textarea.jx" as Textarea #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/choice.jx" as Choice #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/shell/main.jx" as Main #}
+{#def article=None, draft=None #}
+{%- set src = article or draft %}
+{%- set heading = t('admin.articles.edit_heading') if article else t('admin.articles.create_heading') %}
+<Page title={{ heading ~ " — Admin" }}>
+  <Main>
+    <div class="max-w-4xl mx-auto">
+      <div class="mb-8">
+        <BackLink href={{ url_for('administrator.dashboard') }} label="Dashboard" />
+        <h1 class="display-font text-4xl font-extrabold text-sky-950 mt-1">{{ heading }}</h1>
+      </div>
+
+      {%- with messages = get_flashed_messages(with_categories=true) %}
+      {%- for category, message in messages %}
+      <div class="mb-4 p-4 rounded-xl text-red-700 font-medium bg-red-50 border-2 border-red-200">{{ message }}</div>
+      {%- endfor %}
+      {%- endwith %}
+
+      <Card>
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+          <Field label={{ t('admin.articles.article_title_label') }} for_id="title">
+            <Input name="title" id="title" required value={{ src.title if src else '' }}
+              placeholder={{ t('administrator.article_title_placeholder') }} />
+          </Field>
+
+          <Field label={{ t('admin.articles.content_md_label') }} for_id="content">
+            <Textarea name="content" id="content" required rows="16" class="font-mono"
+              placeholder={{ t('administrator.article_content_placeholder') }}>{{ src.content_markdown if src else '' }}</Textarea>
+          </Field>
+
+          <Field label={{ t('admin.articles.hero_image_label') }} for_id="hero_image">
+            {%- if article and article.hero_image %}
+            <img src="{{ url_for('base.article_image', filename=article.hero_image) }}" alt="{{ t('admin.articles.hero_image_current_alt') }}"
+              class="w-full max-h-56 object-cover rounded-xl border-2 border-primary-light mb-3" />
+            {%- endif %}
+            <label for="hero_image"
+              class="flex flex-col items-center justify-center gap-2 rounded-xl p-6 cursor-pointer text-center transition-colors border-2 border-dashed border-primary-light bg-surface-card hover:border-primary focus-within:border-primary">
+              <Icon name="photo" size="8" class="text-sky-300" aria-hidden="true" />
+              <span id="hero-image-name" class="text-sm text-ink-muted font-medium">
+                {{- t('admin.articles.hero_image_replace') if article and article.hero_image else t('admin.articles.hero_image_choose') -}}
+              </span>
+              <span class="text-xs text-ink-faint">{{ t('admin.articles.hero_image_hint') }}</span>
+              <input id="hero_image" name="hero_image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="sr-only"
+                onchange="if (this.files[0]) document.getElementById('hero-image-name').textContent = this.files[0].name" />
+            </label>
+            {%- if article and article.hero_image %}
+            <Choice type="checkbox" name="remove_hero_image" value="1" label={{ t('admin.articles.hero_image_remove') }} class="mt-3" />
+            {%- endif %}
+          </Field>
+
+          <div class="flex justify-end gap-3 pt-4 border-t-2 border-primary-soft">
+            <Button variant="gray" href={{ url_for('administrator.dashboard') }}>{{ t('admin.articles.cancel') }}</Button>
+            <Button type="submit" icon_end="check">
+              {{- t('admin.articles.save_changes') if article else t('admin.articles.create_article') -}}
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  </Main>
+</Page>

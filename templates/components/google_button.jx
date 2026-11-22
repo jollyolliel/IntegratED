@@ -1,0 +1,16 @@
+{#- Google OAuth sign-in / sign-up, with the Google mark: a link given `href`, else a
+    <button type="button"> (pass type="submit" when it submits a form). -#}
+{#def href=None #}
+{%- set mark %}<img src="{{ url_for('static', filename='img/google-mark.png') }}" class="w-5 h-5" alt="{{ t('common.google') }}" />{% endset -%}
+{%- if href is not none %}
+<a {{ attrs.render(class="btn-google", href=href) }}>
+  {{ mark }}
+  {{ content }}
+</a>
+{%- else %}
+{%- do attrs.setdefault(type="button") %}
+<button {{ attrs.render(class="btn-google") }}>
+  {{ mark }}
+  {{ content }}
+</button>
+{%- endif %}

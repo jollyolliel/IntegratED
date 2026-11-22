@@ -1,0 +1,63 @@
+name: Migrations
+
+# Replays the whole Alembic chain onto an empty Postgres — the dialect prod runs —
+# and diffs the result against models.py. Without this, a revision's first run on
+# Postgres is the deploy's `flask release` against the production database.
+# Path-filtered so it only spends minutes when the schema can have changed;
+# uv.lock is listed because a SQLAlchemy/Alembic/psycopg bump changes the DDL.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "migrations/**"
+      - "models.py"
+      - "models_learning.py"
+      - "tests/support/migrations.py"
+      - "tests/integration/test_migration_replay*.py"
+      - "uv.lock"
+      - ".github/workflows/migrations.yml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "migrations/**"
+      - "models.py"
+      - "models_learning.py"
+      - "tests/support/migrations.py"
+      - "tests/integration/test_migration_replay*.py"
+      - "uv.lock"
+      - ".github/workflows/migrations.yml"
+  workflow_dispatch:
+
+jobs:
+  postgres-replay:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # Neon's major version.
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: replay
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d replay"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Replay migrations on Postgres
+        run: uv run -m pytest tests/integration/test_migration_replay_postgres.py --suite=external -v
+        env:
+          MIGRATION_TEST_POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/replay

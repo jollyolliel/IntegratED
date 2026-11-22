@@ -1,0 +1,153 @@
+/* Lantern Sky (game_type word_storm): page-specific styles, linked via
+   <GamePage styles="game-word-storm">. Answers are lanterns that meander over a night scene; a
+   right one rises and becomes a star in a constellation that draws itself into a bird.
+   No timer, no hearts: a wrong lantern dims and drifts back. */
+
+/* ── Layout: question panel beside the scene; stacked on phones ─────────── */
+.ws-wrap {
+  flex: 1 1 auto; display: flex; flex-direction: column; gap: 12px;
+  width: 100%; max-width: 1240px; margin-inline: auto; padding: 12px 16px 16px;
+}
+.ws-panel { display: flex; flex-direction: column; gap: 10px; }
+.ws-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ws-title { display: flex; align-items: center; gap: 8px; }
+.ws-title-icon {
+  width: 34px; height: 34px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  background: var(--color-indigo-950); border: 2px solid var(--color-indigo-700);
+}
+.ws-progress { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 180px; max-width: 320px; }
+.ws-streak {
+  font-weight: 800; font-size: 0.8rem; color: var(--color-accent-dark); white-space: nowrap;
+}
+.ws-streak[hidden] { display: none; }
+.ws-question {
+  display: flex; align-items: center; gap: 14px; background: var(--color-surface);
+  border: 2.5px solid var(--color-primary-light); border-radius: 22px; padding: 12px 16px;
+  box-shadow: 4px 4px 0 var(--color-sky-100);
+}
+.ws-question-text { font-size: clamp(1.15rem, 3.6vw, 1.6rem); line-height: 1.25; color: var(--color-sky-950); overflow-wrap: anywhere; }
+.ws-instruction { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.85rem; color: var(--color-ink-muted); }
+
+/* The scene sits in a static white frame (same construction as Garden Grow's). */
+.ws-frame {
+  flex: 1 1 auto; display: flex; min-height: 400px; padding: 8px; background: var(--color-surface);
+  border: 2.5px solid var(--color-card-sky-border); border-radius: 26px;
+  box-shadow: 4px 4px 0 var(--color-card-sky-shadow);
+}
+.ws-stage {
+  position: relative; flex: 1 1 auto; overflow: hidden; border-radius: 18px;
+  background: var(--color-indigo-950); isolation: isolate; touch-action: manipulation;
+}
+
+@media (min-width: 900px) {
+  .ws-wrap { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 20px; padding: 16px 20px 20px; }
+  .ws-panel { gap: 14px; padding-block-start: 6px; }
+  .ws-progress { max-width: none; }
+  .ws-question { flex-direction: column; align-items: flex-start; padding: 18px 20px 20px; }
+  .ws-question-text { font-size: 1.75rem; }
+  .ws-frame { min-height: 520px; }
+}
+@media (max-width: 899px) {
+  .ws-instruction { display: none; }
+}
+
+/* ── Scene backdrop (decorative; the /live variants swap this element) ───── */
+.ws-backdrop { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.ws-backdrop svg { position: absolute; display: block; }
+
+/* Lantern Lake: dusk over a mountain lake, reeds and a willow framing it. */
+.ws-lake-world { inset: 0; width: 100%; height: 100%; }
+.ws-lake-frame-l { inset-inline-start: 0; bottom: 0; height: clamp(150px, 36%, 300px); aspect-ratio: 3 / 4; }
+.ws-lake-frame-r { inset-inline-end: 0; bottom: 0; height: clamp(140px, 33%, 280px); aspect-ratio: 3 / 4; }
+.ws-lake-frame-t { inset-inline-start: 0; top: 0; height: clamp(110px, 26%, 230px); aspect-ratio: 32 / 26; overflow: visible; }
+.ws-lake-tw { animation: wsLakeTwinkle 3.6s ease-in-out infinite; }
+.ws-lake-far { animation: wsLakeRise 20s linear infinite; }
+.ws-lake-shimmer { animation: wsLakeShimmer 4.5s ease-in-out infinite; }
+.ws-lake-sway { transform-box: fill-box; transform-origin: 50% 100%; animation: wsLakeSway 5.5s ease-in-out infinite alternate; }
+.ws-lake-sway-b { animation-duration: 6.5s; animation-delay: -2s; }
+.ws-lake-fly { animation: wsLakeFly 7s ease-in-out infinite; }
+.ws-lake-fly-b { animation-duration: 9s; }
+.ws-lake-willow { transform-box: view-box; transform-origin: 0 0; animation: wsLakeWillow 8s ease-in-out infinite alternate; }
+@keyframes wsLakeTwinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes wsLakeRise {
+  0% { transform: translateY(30px); opacity: 0; } 12%, 85% { opacity: 1; }
+  100% { transform: translateY(-120px); opacity: 0; }
+}
+@keyframes wsLakeShimmer { 0%, 100% { opacity: 1; transform: translateX(0); } 50% { opacity: 0.6; transform: translateX(5px); } }
+@keyframes wsLakeSway { from { transform: rotate(-1.6deg); } to { transform: rotate(1.6deg); } }
+@keyframes wsLakeFly {
+  0%, 100% { transform: translate(0, 0); opacity: 1; } 30% { transform: translate(14px, -16px); opacity: 0.5; }
+  60% { transform: translate(-8px, -30px); opacity: 1; } 80% { opacity: 0.4; }
+}
+@keyframes wsLakeWillow { from { transform: rotate(0deg); } to { transform: rotate(1.4deg); } }
+
+/* ── Constellation (the hero: one star per answered question) ───────────── */
+.ws-sky {
+  position: absolute; inset-inline: 3%; top: 2%; width: 94%; height: 36%;
+  z-index: 1; pointer-events: none; overflow: visible;
+}
+.ws-sky-slot { fill: var(--color-surface); opacity: 0.3; }
+.ws-sky-line {
+  fill: none; stroke: var(--color-amber-200); stroke-width: 2.5px; stroke-linecap: round;
+  vector-effect: non-scaling-stroke; opacity: 0.9;
+}
+.ws-sky-line-closing { stroke-dasharray: 2 7; }
+.ws-sky-glow { fill: var(--color-amber-200); opacity: 0.28; }
+.ws-sky-star { fill: var(--color-amber-50); }
+.ws-sky-star.is-gold { fill: var(--color-amber-200); }
+.ws-sky-figure { fill: var(--color-amber-100); opacity: 0; }
+
+#burstCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
+
+/* ── Lanterns: the four answers (art: static/svg/games/word_storm/lanterns.svg) ── */
+.ws-lanterns { position: absolute; inset: 0; z-index: 2; }
+/* Wind streaks: faint strokes drifting across the sky during gusts (between the sky art and the lanterns). */
+.ws-wind { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+.ws-wind-streak {
+  position: absolute; left: 0; height: 2px; border-radius: 2px; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgb(var(--color-surface-rgb) / 0.9), transparent);
+}
+.ws-lanterns.is-busy .ws-lantern { pointer-events: none; }
+.ws-lantern {
+  --lw: 110px;
+  position: absolute; left: 0; top: 0; width: var(--lw); height: calc(var(--lw) * 1.25 + 26px);
+  padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  will-change: translate, transform;
+}
+.ws-lantern-tone-a { --lan-body: var(--color-amber-400); --lan-shade: var(--color-amber-500); --lan-line: var(--color-amber-800); --lan-hi: var(--color-amber-100); --lan-glow: var(--color-amber-300); }
+.ws-lantern-tone-b { --lan-body: var(--color-rose-400); --lan-shade: var(--color-rose-500); --lan-line: var(--color-rose-800); --lan-hi: var(--color-rose-100); --lan-glow: var(--color-rose-300); }
+.ws-lantern-tone-c { --lan-body: var(--color-emerald-400); --lan-shade: var(--color-emerald-500); --lan-line: var(--color-emerald-800); --lan-hi: var(--color-emerald-100); --lan-glow: var(--color-emerald-300); }
+.ws-lantern-tone-d { --lan-body: var(--color-sky-400); --lan-shade: var(--color-sky-500); --lan-line: var(--color-sky-800); --lan-hi: var(--color-sky-100); --lan-glow: var(--color-sky-300); }
+.ws-lantern-bob { position: absolute; inset: 0; transition: opacity 0.4s ease; }
+.ws-lantern-glow {
+  position: absolute; left: -30%; top: -22%; width: 160%; height: calc(var(--lw) * 1.25 * 1.45);
+  border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--lan-glow) 60%, transparent), transparent);
+  animation: wsGlow 3.2s ease-in-out infinite; pointer-events: none;
+}
+.ws-lantern-art { position: absolute; left: 0; top: 0; width: var(--lw); height: calc(var(--lw) * 1.25); overflow: visible; }
+.ws-lantern-word {
+  position: absolute; left: 50%; top: calc(var(--lw) * 0.6); transform: translate(-50%, -50%);
+  max-width: calc(var(--lw) * 0.86); padding: 2px 8px; border-radius: 12px;
+  background: var(--color-surface); border: 2.5px solid var(--lan-line);
+  font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: var(--fs, 1.05rem); line-height: 1.1;
+  color: var(--color-ink-heading); text-align: center; white-space: nowrap;
+  box-shadow: 0 2px 0 var(--lan-line);
+}
+.ws-lantern-letter {
+  position: absolute; left: 50%; top: calc(var(--lw) * 1.25 - 6px); transform: translateX(-50%);
+  width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--lan-body); border: 2.5px solid var(--lan-line); color: var(--color-ink-heading);
+  font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 0.95rem; line-height: 1;
+}
+.ws-lantern:hover .ws-lantern-glow, .ws-lantern:focus-visible .ws-lantern-glow { opacity: 1; animation-play-state: paused; }
+.ws-lantern:focus-visible { outline: none; }
+.ws-lantern:focus-visible .ws-lantern-word { outline: 3px solid var(--color-surface); outline-offset: 3px; }
+.ws-lantern:active .ws-lantern-word { box-shadow: 0 0 0 var(--lan-line); translate: 0 2px; }
+.ws-lantern.is-tried .ws-lantern-bob { opacity: 0.5; }
+.ws-lantern.is-tried .ws-lantern-glow { animation: none; opacity: 0.15; }
+.ws-lantern.is-right .ws-lantern-glow { animation: none; opacity: 1; transform: scale(1.25); }
+@keyframes wsGlow { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-backdrop *, .ws-lantern-glow { animation: none !important; }
+}

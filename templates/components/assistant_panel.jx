@@ -1,0 +1,755 @@
+{#- The teacher AI assistant slide-out panel, rendered by <Header> for teachers only.
+    Behaviour + endpoints: docs/features/ai-assistant.md. Its script sets some button and input
+    classes by `className`; the markup it starts from is here. -#}
+<aside
+  id="assist-panel"
+  class="assist-panel"
+  role="complementary"
+  aria-labelledby="assist-panel-title"
+  aria-hidden="true"
+>
+  <div class="assist-panel-header">
+    <div class="assist-avatar" aria-hidden="true">
+      <svg viewBox="0 0 40 40" fill="none">
+        <circle cx="14" cy="19" r="2.6" fill="currentColor"></circle>
+        <circle cx="26" cy="19" r="2.6" fill="currentColor"></circle>
+        <path d="M13 25c2 3 12 3 14 0" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
+        <path d="M20 6l1.3 3.2L24.5 10.5l-3.2 1.3L20 15l-1.3-3.2-3.2-1.3 3.2-1.3L20 6z" fill="currentColor"></path>
+      </svg>
+    </div>
+    <div class="flex-1 min-w-0">
+      <p id="assist-panel-title" class="display-font assist-panel-title">
+        {{ t('assistant.title') }}
+      </p>
+      <p class="assist-panel-sub">{{ t('assistant.subtitle') }}</p>
+    </div>
+    <button
+      type="button"
+      id="assist-new"
+      class="assist-header-btn"
+      title="{{ t('assistant.new_chat') }}"
+      aria-label="{{ t('assistant.new_chat') }}"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+    </button>
+    <button
+      type="button"
+      id="assist-close"
+      class="assist-header-btn"
+      aria-label="{{ t('assistant.close') }}"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="assist-tabs" role="tablist">
+    <button type="button" id="assist-tab-chat" class="assist-tab active" role="tab" aria-selected="true">
+      {{ t('assistant.tab_chat') }}
+    </button>
+    <button type="button" id="assist-tab-history" class="assist-tab" role="tab" aria-selected="false">
+      {{ t('assistant.tab_history') }}
+    </button>
+  </div>
+
+  <div id="assist-log" class="clay-scroll assist-log">
+    <div id="assist-empty" class="assist-empty">
+      <div class="assist-avatar assist-avatar-lg" aria-hidden="true">
+        <svg viewBox="0 0 40 40" fill="none">
+          <circle cx="14" cy="19" r="2.6" fill="currentColor"></circle>
+          <circle cx="26" cy="19" r="2.6" fill="currentColor"></circle>
+          <path d="M13 25c2 3 12 3 14 0" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
+          <path d="M20 6l1.3 3.2L24.5 10.5l-3.2 1.3L20 15l-1.3-3.2-3.2-1.3 3.2-1.3L20 6z" fill="currentColor"></path>
+        </svg>
+      </div>
+      <p class="display-font assist-empty-title">{{ t('assistant.empty_title') }}</p>
+      <p class="mt-2">{{ t('assistant.empty_body') }}</p>
+      <div class="flex flex-wrap justify-center gap-2 mt-5">
+        <button type="button" class="assist-suggestion">{{ t('assistant.suggestion_progress') }}</button>
+        <button type="button" class="assist-suggestion">{{ t('assistant.suggestion_attendance') }}</button>
+        <button type="button" class="assist-suggestion">{{ t('assistant.suggestion_worksheets') }}</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="assist-live" class="assist-live" role="status" aria-live="polite"></div>
+
+  <div id="assist-history" class="clay-scroll assist-history" hidden>
+    <div id="assist-history-empty" class="assist-empty">
+      <p>{{ t('assistant.history_empty') }}</p>
+    </div>
+  </div>
+
+  <form id="assist-form" class="assist-composer" autocomplete="off">
+    <div class="assist-inputwrap">
+      <label for="assist-input" class="sr-only">{{ t('assistant.placeholder') }}</label>
+      <textarea
+        id="assist-input"
+        class="assist-input"
+        rows="1"
+        placeholder="{{ t('assistant.placeholder') }}"
+      ></textarea>
+    </div>
+    <button type="submit" id="assist-send" class="assist-send" disabled>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+      </svg>
+      <span class="sr-only">{{ t('assistant.send') }}</span>
+    </button>
+  </form>
+</aside>
+
+<script>
+  var ASSIST_T = {
+    working: {{ t('assistant.working') | tojson }},
+    changesTitle: {{ t('assistant.changes_title') | tojson }},
+    apply: {{ t('assistant.apply') | tojson }},
+    skip: {{ t('assistant.skip') | tojson }},
+    applyAll: {{ t('assistant.apply_all') | tojson }},
+    pendingCount: {{ t('assistant.pending_count') | tojson }},
+    applied: {{ t('assistant.applied') | tojson }},
+    rejected: {{ t('assistant.rejected') | tojson }},
+    stale: {{ t('assistant.stale') | tojson }},
+    networkError: {{ t('assistant.network_error') | tojson }},
+    confirmDestructive: {{ t('assistant.confirm_destructive') | tojson }},
+    confirmApplyAll: {{ t('assistant.confirm_apply_all') | tojson }},
+    editSaved: {{ t('assistant.edit_saved') | tojson }},
+    empty: {{ t('assistant.empty_title') | tojson }},
+    newChat: {{ t('assistant.new_chat') | tojson }},
+    statusPresent: {{ t('teacher.attendance.status_present') | tojson }},
+    statusAbsent: {{ t('teacher.attendance.status_absent') | tojson }}
+  };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const panel = document.getElementById("assist-panel");
+    const log = document.getElementById("assist-log");
+    const live = document.getElementById("assist-live");
+    const history = document.getElementById("assist-history");
+    const historyEmpty = document.getElementById("assist-history-empty");
+    const tabChat = document.getElementById("assist-tab-chat");
+    const tabHistory = document.getElementById("assist-tab-history");
+    const form = document.getElementById("assist-form");
+    const input = document.getElementById("assist-input");
+    const sendBtn = document.getElementById("assist-send");
+    const emptyState = document.getElementById("assist-empty");
+    if (!panel || !form) return;
+
+    // Tools that write are confirmed before applying, per the destructive-action
+    // rule — never a native confirm().
+    const DESTRUCTIVE = ["unmatch_pair"];
+    let busy = false;
+    let loaded = false;
+    let historyLoaded = false;
+    let activeConversationId = null;
+
+    const fmt = (template, values) =>
+      String(template).replace(/\{(\w+)\}/g, (m, k) => (k in values ? values[k] : m));
+
+    const scrollDown = () => { log.scrollTop = log.scrollHeight; };
+
+    const setEmpty = () => {
+      const hasMessages = log.querySelector(".assist-msg, .assist-change-card");
+      if (emptyState) emptyState.style.display = hasMessages ? "none" : "";
+    };
+
+    // The textarea grows with its content up to the CSS max-height, then
+    // scrolls. "auto" first so it can also shrink back.
+    const autosize = () => {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 128) + "px";
+    };
+    const syncSend = () => { sendBtn.disabled = busy || !input.value.trim(); };
+    input.addEventListener("input", () => { autosize(); syncSend(); });
+
+    // --- markdown -----------------------------------------------------------
+    // Assistant answers only. Everything is HTML-escaped before any tag is
+    // introduced, so model output can never inject markup.
+
+    const escapeHtml = (s) =>
+      String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    // Code spans are split out first so bold/italic never rewrite their insides.
+    const inlineMd = (s) =>
+      s.split(/(`[^`]+`)/).map((part) => {
+        if (part.length > 2 && part.startsWith("`") && part.endsWith("`")) {
+          return "<code>" + part.slice(1, -1) + "</code>";
+        }
+        return part
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
+          .replace(
+            /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+            '<a href="$2" target="_blank" rel="noopener">$1</a>'
+          );
+      }).join("");
+
+    function renderMarkdown(raw) {
+      const out = [];
+      let para = [];
+      let list = null;   // "ul" | "ol"
+      let fence = null;  // lines inside a ``` block
+      let table = null;  // array of cell arrays
+
+      const closePara = () => {
+        if (para.length) { out.push("<p>" + inlineMd(para.join("<br>")) + "</p>"); para = []; }
+      };
+      const closeList = () => { if (list) { out.push("</" + list + ">"); list = null; } };
+      const closeTable = () => {
+        if (!table) return;
+        let html = '<div class="assist-md-scroll"><table>';
+        table.forEach((cells, i) => {
+          const tag = i === 0 ? "th" : "td";
+          html += "<tr>" + cells.map((c) => "<" + tag + ">" + inlineMd(c) + "</" + tag + ">").join("") + "</tr>";
+        });
+        out.push(html + "</table></div>");
+        table = null;
+      };
+      const closeBlocks = () => { closePara(); closeList(); closeTable(); };
+
+      escapeHtml(raw || "").split("\n").forEach((line) => {
+        if (fence) {
+          if (/^```/.test(line.trim())) {
+            out.push("<pre><code>" + fence.join("\n") + "</code></pre>");
+            fence = null;
+          } else fence.push(line);
+          return;
+        }
+        const t = line.trim();
+        if (/^```/.test(t)) { closeBlocks(); fence = []; return; }
+        if (!t) { closeBlocks(); return; }
+
+        const heading = t.match(/^(#{1,4})\s+(.*)$/);
+        if (heading) {
+          closeBlocks();
+          const level = Math.min(heading[1].length + 2, 5);
+          out.push("<h" + level + ">" + inlineMd(heading[2]) + "</h" + level + ">");
+          return;
+        }
+
+        if (/^\|.*\|$/.test(t)) {
+          closePara(); closeList();
+          if (!/^\|[\s\-:|]+\|$/.test(t)) {
+            if (!table) table = [];
+            table.push(t.slice(1, -1).split("|").map((c) => c.trim()));
+          }
+          return;
+        }
+        closeTable();
+
+        const ul = t.match(/^[-*]\s+(.*)$/);
+        const ol = t.match(/^\d+[.)]\s+(.*)$/);
+        if (ul || ol) {
+          closePara();
+          const want = ul ? "ul" : "ol";
+          if (list !== want) { closeList(); out.push("<" + want + ">"); list = want; }
+          out.push("<li>" + inlineMd((ul || ol)[1]) + "</li>");
+          return;
+        }
+        closeList();
+
+        const quote = t.match(/^&gt;\s?(.*)$/);
+        if (quote) { closePara(); out.push("<blockquote>" + inlineMd(quote[1]) + "</blockquote>"); return; }
+
+        para.push(t);
+      });
+      closeBlocks();
+      if (fence) out.push("<pre><code>" + fence.join("\n") + "</code></pre>");
+      return out.join("");
+    }
+
+    // --- messages -----------------------------------------------------------
+
+    // The bot avatar: a small clay badge holding the same face icon as the
+    // header, sized down by the .assist-row-bot ancestor rule.
+    const makeAvatar = () => {
+      const avatar = document.createElement("div");
+      avatar.className = "assist-avatar";
+      avatar.setAttribute("aria-hidden", "true");
+      avatar.innerHTML =
+        '<svg viewBox="0 0 40 40" fill="none">' +
+        '<circle cx="14" cy="19" r="2.6" fill="currentColor"></circle>' +
+        '<circle cx="26" cy="19" r="2.6" fill="currentColor"></circle>' +
+        '<path d="M13 25c2 3 12 3 14 0" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>' +
+        '<path d="M20 6l1.3 3.2L24.5 10.5l-3.2 1.3L20 15l-1.3-3.2-3.2-1.3 3.2-1.3L20 6z" fill="currentColor"></path>' +
+        "</svg>";
+      return avatar;
+    };
+
+    function addMessage(role, text) {
+      const row = document.createElement("div");
+      row.className = "assist-row " + (role === "user" ? "assist-row-user" : "assist-row-bot");
+      if (role !== "user") row.appendChild(makeAvatar());
+      const bubble = document.createElement("div");
+      bubble.className = "assist-msg " + (role === "user" ? "assist-msg-user" : "assist-msg-bot");
+      if (role === "user") bubble.textContent = text || "";
+      else bubble.innerHTML = renderMarkdown(text || "");
+      row.appendChild(bubble);
+      log.appendChild(row);
+      setEmpty();
+      scrollDown();
+      return bubble;
+    }
+
+    // One bubble: avatar + the current step's own label + dots. Only ever
+    // shows what Kip is doing *now* — the label swaps in place as new steps
+    // arrive, and nothing is kept once the turn ends (cleared in send()'s
+    // finally). No separate spinner chip, no log of finished steps.
+    function setLive(label) {
+      let bubble = live.querySelector(".assist-typing-label");
+      if (!bubble) {
+        const row = document.createElement("div");
+        row.className = "assist-row assist-row-bot";
+        row.appendChild(makeAvatar());
+        const typing = document.createElement("div");
+        typing.className = "assist-typing";
+        bubble = document.createElement("span");
+        bubble.className = "assist-typing-label";
+        const dots = document.createElement("span");
+        dots.className = "assist-typing-dots";
+        for (let i = 0; i < 3; i++) {
+          const dot = document.createElement("span");
+          dot.className = "assist-typing-dot";
+          dots.appendChild(dot);
+        }
+        typing.appendChild(bubble);
+        typing.appendChild(dots);
+        row.appendChild(typing);
+        live.appendChild(row);
+      }
+      bubble.textContent = label;
+    }
+
+    // --- staged changes ------------------------------------------------------
+
+    function renderChanges(changes) {
+      log.querySelectorAll("[data-assist-changes]").forEach((n) => n.remove());
+      if (!changes || !changes.length) { setEmpty(); return; }
+
+      const wrap = document.createElement("div");
+      wrap.setAttribute("data-assist-changes", "1");
+      wrap.className = "flex flex-col gap-3";
+
+      const heading = document.createElement("p");
+      heading.className = "assist-panel-title";
+      heading.textContent = ASSIST_T.changesTitle;
+      wrap.appendChild(heading);
+
+      changes.forEach((change) => wrap.appendChild(changeCard(change)));
+
+      if (changes.length > 1) {
+        const bar = document.createElement("div");
+        bar.className = "assist-savebar";
+        const count = document.createElement("span");
+        count.className = "assist-panel-sub";
+        count.textContent = fmt(ASSIST_T.pendingCount, { count: changes.length });
+        const all = document.createElement("button");
+        all.type = "button";
+        all.className = "btn-clay btn-flat btn-accent";
+        all.textContent = ASSIST_T.applyAll;
+        all.addEventListener("click", () => {
+          window
+            .confirmDelete(fmt(ASSIST_T.confirmApplyAll, { count: changes.length }))
+            .then((ok) => { if (ok) post("/assistant/changes/apply-all"); });
+        });
+        bar.appendChild(count);
+        bar.appendChild(all);
+        wrap.appendChild(bar);
+      }
+
+      log.appendChild(wrap);
+      setEmpty();
+      scrollDown();
+    }
+
+    // Present/Absent is a closed set (models.py Attendance.is_present), so
+    // the review card gets a segmented pill instead of a free-text box — the
+    // same save path (`update`), just a friendlier control for this one field.
+    function attendanceStatusControl(changeId, field) {
+      const wrap = document.createElement("div");
+      wrap.className = "assist-status-toggle";
+      const current = field.after === null || field.after === undefined ? "" : String(field.after);
+      const restore = () => {
+        wrap.querySelectorAll(".assist-status-btn").forEach((b) =>
+          b.classList.toggle("active", b.dataset.value === current));
+      };
+      [["true", ASSIST_T.statusPresent], ["false", ASSIST_T.statusAbsent]].forEach(([value, label]) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.value = value;
+        btn.className = "assist-status-btn" + (value === current ? " active" : "");
+        btn.textContent = label;
+        btn.addEventListener("click", () => {
+          if (btn.classList.contains("active")) return;
+          wrap.querySelectorAll(".assist-status-btn").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const values = {};
+          values[field.field] = value === "true";
+          fetch("/assistant/changes/" + changeId + "/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+            body: JSON.stringify({ values: values }),
+          })
+            .then((r) => r.json())
+            .then((data) => {
+              if (!data.success) { restore(); window.showToast(data.message || ASSIST_T.networkError, "error"); return; }
+              window.showToast(ASSIST_T.editSaved, "success");
+            })
+            .catch(() => { restore(); window.showToast(ASSIST_T.networkError, "error"); });
+        });
+        wrap.appendChild(btn);
+      });
+      return wrap;
+    }
+
+    function changeCard(change) {
+      const card = document.createElement("div");
+      card.className = "assist-change-card";
+
+      const summary = document.createElement("p");
+      summary.className = "assist-change-summary";
+      summary.textContent = change.summary || change.tool;
+      card.appendChild(summary);
+
+      // Only fields that actually move are shown — an unchanged row is noise.
+      (change.fields || []).filter((f) => f.changed).forEach((field) => {
+        const row = document.createElement("div");
+        row.className = "assist-change-row";
+
+        const label = document.createElement("span");
+        label.className = "assist-change-label";
+        label.textContent = field.label;
+        if (field.before !== null && field.before !== undefined && field.before !== "") {
+          const before = document.createElement("span");
+          before.className = "assist-change-before";
+          before.textContent = " " + field.before;
+          label.appendChild(before);
+        }
+        row.appendChild(label);
+
+        if (change.entity === "Attendance" && field.field === "is_present" && field.editable) {
+          row.appendChild(attendanceStatusControl(change.id, field));
+        } else if (field.editable) {
+          const box = document.createElement("input");
+          box.type = "text";
+          box.className = "clay-input !py-1.5 !text-sm";
+          box.value = field.after === null || field.after === undefined ? "" : field.after;
+          box.dataset.original = box.value;
+          box.addEventListener("change", () => saveField(change.id, field.field, box));
+          row.appendChild(box);
+        } else {
+          const value = document.createElement("span");
+          value.className = "font-semibold text-gray-700";
+          value.textContent = field.after === null ? "—" : String(field.after);
+          row.appendChild(value);
+        }
+        card.appendChild(row);
+      });
+
+      const actions = document.createElement("div");
+      actions.className = "assist-change-actions";
+
+      const apply = document.createElement("button");
+      apply.type = "button";
+      apply.className = "btn-clay btn-flat btn-accent";
+      apply.textContent = ASSIST_T.apply;
+      apply.addEventListener("click", () => {
+        if (DESTRUCTIVE.indexOf(change.tool) !== -1) {
+          window.confirmDelete(ASSIST_T.confirmDestructive).then((ok) => {
+            if (ok) post("/assistant/changes/" + change.id + "/apply");
+          });
+          return;
+        }
+        post("/assistant/changes/" + change.id + "/apply");
+      });
+
+      const skip = document.createElement("button");
+      skip.type = "button";
+      skip.className = "btn-clay btn-flat btn-gray";
+      skip.textContent = ASSIST_T.skip;
+      skip.addEventListener("click", () => post("/assistant/changes/" + change.id + "/reject"));
+
+      actions.appendChild(apply);
+      actions.appendChild(skip);
+      card.appendChild(actions);
+      return card;
+    }
+
+    function saveField(changeId, field, box) {
+      const values = {};
+      values[field] = box.value;
+      fetch("/assistant/changes/" + changeId + "/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+        body: JSON.stringify({ values: values }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.success) {
+            // A rejected edit restores the value it had, so the card never
+            // shows a number the server refused.
+            box.value = box.dataset.original;
+            window.showToast(data.message || ASSIST_T.networkError, "error");
+            return;
+          }
+          box.dataset.original = box.value;
+          window.showToast(ASSIST_T.editSaved, "success");
+        })
+        .catch(() => {
+          box.value = box.dataset.original;
+          window.showToast(ASSIST_T.networkError, "error");
+        });
+    }
+
+    function post(url) {
+      fetch(url, { method: "POST", headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then((r) => r.json().then((data) => ({ ok: r.ok, data: data })))
+        .then((result) => {
+          const data = result.data;
+          if (data.status === "stale") {
+            window.showToast(ASSIST_T.stale, "warning");
+          } else if (!result.ok || data.success === false) {
+            window.showToast(data.message || ASSIST_T.networkError, "error");
+          } else {
+            window.showToast(data.message || ASSIST_T.applied, "success");
+          }
+          if (data.changes) renderChanges(data.changes);
+        })
+        .catch(() => window.showToast(ASSIST_T.networkError, "error"));
+    }
+
+    // --- the stream ----------------------------------------------------------
+
+    function send(text) {
+      if (busy || !text) return;
+      busy = true;
+      panel.classList.add("assist-busy");
+      addMessage("user", text);
+      input.value = "";
+      autosize();
+      syncSend();
+
+      setLive(ASSIST_T.working);
+
+      const body = new FormData();
+      body.append("message", text);
+      if (activeConversationId) body.append("conversation_id", activeConversationId);
+
+      let bubble = null;
+      let answer = "";
+
+      fetch("/assistant/message", {
+        method: "POST",
+        body: body,
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then((response) => {
+          if (!response.ok || !response.body) throw new Error("stream failed");
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          const pump = () =>
+            reader.read().then(({ done, value }) => {
+              if (done) return;
+              buffer += decoder.decode(value, { stream: true });
+              // SSE frames are separated by a blank line; ": " lines are
+              // heartbeat comments and carry no data.
+              const frames = buffer.split("\n\n");
+              buffer = frames.pop();
+              frames.forEach((frame) => {
+                const line = frame.split("\n").find((l) => l.indexOf("data:") === 0);
+                if (!line) return;
+                let event;
+                try {
+                  event = JSON.parse(line.slice(5).trim());
+                } catch (e) {
+                  return;
+                }
+                handle(event);
+              });
+              return pump();
+            });
+
+          const handle = (event) => {
+            if (event.type === "step") {
+              if (!event.done) setLive(event.label);
+            } else if (event.type === "delta") {
+              if (!bubble) bubble = addMessage("assistant", "");
+              answer += event.text;
+              bubble.innerHTML = renderMarkdown(answer);
+              scrollDown();
+            } else if (event.type === "error") {
+              window.showToast(event.message || ASSIST_T.networkError, "error");
+            } else if (event.type === "changes") {
+              renderChanges(event.changes);
+            }
+          };
+
+          return pump();
+        })
+        .catch(() => window.showToast(ASSIST_T.networkError, "error"))
+        .finally(() => {
+          busy = false;
+          panel.classList.remove("assist-busy");
+          syncSend();
+          live.innerHTML = "";
+          scrollDown();
+          historyLoaded = false; // the thread just moved — refresh next open
+        });
+    }
+
+    // --- tabs ------------------------------------------------------------
+
+    function setTab(name) {
+      const isChat = name === "chat";
+      tabChat.classList.toggle("active", isChat);
+      tabChat.setAttribute("aria-selected", String(isChat));
+      tabHistory.classList.toggle("active", !isChat);
+      tabHistory.setAttribute("aria-selected", String(!isChat));
+      log.hidden = !isChat;
+      live.hidden = !isChat;
+      form.hidden = !isChat;
+      history.hidden = isChat;
+      if (!isChat) loadHistory();
+    }
+    tabChat.addEventListener("click", () => setTab("chat"));
+    tabHistory.addEventListener("click", () => setTab("history"));
+
+    function formatHistoryDate(iso) {
+      try {
+        return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function loadHistory() {
+      if (historyLoaded) return;
+      historyLoaded = true;
+      fetch("/assistant/conversations", { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then((r) => r.json())
+        .then((data) => {
+          history.querySelectorAll(".assist-history-item").forEach((n) => n.remove());
+          const items = data.conversations || [];
+          historyEmpty.style.display = items.length ? "none" : "";
+          items.forEach((conversation) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "assist-history-item";
+            const date = document.createElement("span");
+            date.className = "assist-history-date";
+            date.textContent = formatHistoryDate(conversation.updated_at);
+            const title = document.createElement("span");
+            title.className = "assist-history-title";
+            title.textContent = conversation.title || ASSIST_T.newChat;
+            const preview = document.createElement("span");
+            preview.className = "assist-history-preview";
+            preview.textContent = conversation.preview || "";
+            btn.appendChild(date);
+            btn.appendChild(title);
+            btn.appendChild(preview);
+            btn.addEventListener("click", () => openConversation(conversation.id));
+            history.appendChild(btn);
+          });
+        })
+        .catch(() => { historyLoaded = false; });
+    }
+
+    function openConversation(id) {
+      fetch("/assistant/conversation?id=" + encodeURIComponent(id), {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.conversation_id) return;
+          activeConversationId = data.conversation_id;
+          log.querySelectorAll(".assist-row, [data-assist-changes]").forEach((n) => n.remove());
+          (data.messages || []).forEach((message) => addMessage(message.role, message.content));
+          setEmpty();
+          setTab("chat");
+        })
+        .catch(() => window.showToast(ASSIST_T.networkError, "error"));
+    }
+
+    // --- open / close --------------------------------------------------------
+
+    function load() {
+      if (loaded) return;
+      loaded = true;
+      fetch("/assistant/conversation", { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then((r) => r.json())
+        .then((data) => {
+          activeConversationId = data.conversation_id;
+          (data.messages || []).forEach((message) => addMessage(message.role, message.content));
+        })
+        .catch(() => {});
+      fetch("/assistant/changes", { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then((r) => r.json())
+        .then((data) => renderChanges(data.changes))
+        .catch(() => {});
+    }
+
+    // Toggle .open — never Tailwind's `hidden`, which skips the slide entirely.
+    // .assist-docked on <html> shrinks the page (body padding) in step with
+    // the slide; a media query neutralises it under 900px, where the panel
+    // covers the viewport instead.
+    function setOpen(open) {
+      panel.classList.toggle("open", open);
+      document.documentElement.classList.toggle("assist-docked", open);
+      panel.setAttribute("aria-hidden", String(!open));
+      document.querySelectorAll("[data-assist-toggle]").forEach((btn) =>
+        btn.setAttribute("aria-expanded", String(open))
+      );
+      if (open) {
+        load();
+        input.focus();
+      }
+    }
+
+    document.querySelectorAll("[data-assist-toggle]").forEach((btn) =>
+      btn.addEventListener("click", () => setOpen(!panel.classList.contains("open")))
+    );
+    document.getElementById("assist-close").addEventListener("click", () => setOpen(false));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && panel.classList.contains("open")) setOpen(false);
+    });
+
+    document.getElementById("assist-new").addEventListener("click", () => {
+      fetch("/assistant/conversation/new", {
+        method: "POST",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          activeConversationId = data.conversation_id;
+          historyLoaded = false;
+          log.querySelectorAll(".assist-row, [data-assist-changes]").forEach((n) => n.remove());
+          setEmpty();
+          setTab("chat");
+        })
+        .catch(() => window.showToast(ASSIST_T.networkError, "error"));
+    });
+
+    log.querySelectorAll(".assist-suggestion").forEach((btn) =>
+      btn.addEventListener("click", () => send(btn.textContent.trim()))
+    );
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      send(input.value.trim());
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        send(input.value.trim());
+      }
+    });
+  });
+</script>

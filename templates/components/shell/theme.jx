@@ -1,0 +1,280 @@
+{#- The <head> essentials on every page: PostHog (production only), the analytics shim, the shared
+    page behaviour (data-cta clicks, scroll reveal, counters), instant.page,
+    the built Tailwind stylesheet and the universal input styles. Plain Jinja with no props. -#}
+{% if config['SETTINGS'].analytics_enabled %}
+<!-- PostHog Analytics -->
+<link
+  rel="preconnect"
+  href="https://eu-assets.i.posthog.com"
+  crossorigin="anonymous"
+/>
+<link
+  rel="preconnect"
+  href="https://eu.i.posthog.com"
+  crossorigin="anonymous"
+/>
+<script>
+  !(function (t, e) {
+    var o, n, p, r;
+    e.__SV ||
+      ((window.posthog = e),
+      (e._i = []),
+      (e.init = function (i, s, a) {
+        function g(t, e) {
+          var o = e.split(".");
+          (2 == o.length && ((t = t[o[0]]), (e = o[1])),
+            (t[e] = function () {
+              t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
+            }));
+        }
+        (((p = t.createElement("script")).type = "text/javascript"),
+          (p.crossOrigin = "anonymous"),
+          (p.async = !0),
+          (p.src =
+            s.api_host.replace(".i.posthog.com", "-assets.i.posthog.com") +
+            "/static/array.js"),
+          (r = t.getElementsByTagName("script")[0]).parentNode.insertBefore(
+            p,
+            r,
+          ));
+        var u = e;
+        for (
+          void 0 !== a ? (u = e[a] = []) : (a = "posthog"),
+            u.people = u.people || [],
+            u.toString = function (t) {
+              var e = "posthog";
+              return (
+                "posthog" !== a && (e += "." + a),
+                t || (e += " (stub)"),
+                e
+              );
+            },
+            u.people.toString = function () {
+              return u.toString(1) + ".people (stub)";
+            },
+            o =
+              "init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(
+                " ",
+              ),
+            n = 0;
+          n < o.length;
+          n++
+        )
+          g(u, o[n]);
+        e._i.push([i, s, a]);
+      }),
+      (e.__SV = 1));
+  })(document, window.posthog || []);
+
+  posthog.init("{{ config['SETTINGS'].posthog_api_key }}", {
+    api_host: "{{ config['SETTINGS'].posthog_host }}",
+    defaults: "2026-01-30",
+    autocapture: true,
+    capture_pageview: true,
+    capture_pageleave: "if_capture_pageview",
+    session_recording: {
+      maskAllInputs: true,
+    },
+    disable_session_recording: {{ 'false' if current_user.is_authenticated else 'true' }},
+    capture_exceptions: {
+      capture_unhandled_errors: true,
+      capture_unhandled_rejections: true,
+      capture_console_errors: false,
+    },
+  });
+</script>
+{% if current_user.is_authenticated %}
+<!--Identify User-->
+<script>
+  posthog.identify("{{ current_user.posthog_id }}", {
+    user_type: "{{ current_user.user_type }}",
+    is_authenticated: true,
+    $name:
+      "{{ current_user.username or current_user.email or ('user_' ~ current_user.id) }}",
+  });
+  try {
+    sessionStorage.setItem("ph_identified", "1");
+  } catch (e) {}
+</script>
+{% else %}
+<script>
+  try {
+    if (sessionStorage.getItem("ph_identified")) {
+      posthog.reset();
+      sessionStorage.removeItem("ph_identified");
+    }
+  } catch (e) {}
+</script>
+{% endif %} {% endif %}
+
+<!-- Analytics -->
+<script>
+  window.analytics = window.analytics || {
+    trackEvent() {},
+    trackError(error, properties = {}) {
+      console.error("Analytics tracking unavailable", error, properties);
+    },
+    trackedFetch(url, options = {}) {
+      return fetch(url, options);
+    },
+    getSessionId() {
+      return null;
+    },
+  };
+  (function () {
+    const fallbackAnalytics = window.analytics || {};
+    const hasPosthog = typeof window.posthog !== "undefined";
+
+    function normalizeProperties(properties) {
+      return properties && typeof properties === "object"
+        ? { ...properties }
+        : {};
+    }
+
+    async function trackedFetch(url, options = {}, analyticsMeta = {}) {
+      const meta = normalizeProperties(analyticsMeta);
+      const headers = new Headers(options.headers || {});
+      const sessionId =
+        hasPosthog && typeof window.posthog.getSessionId === "function"
+          ? window.posthog.getSessionId()
+          : null;
+
+      if (sessionId) {
+        headers.set("X-PostHog-Session-ID", sessionId);
+      }
+
+      try {
+        const response = await fetch(url, { ...options, headers });
+        if (!response.ok) {
+          const error = new Error(
+            `Request failed with status ${response.status}`,
+          );
+          error.response = response;
+          error.url = url;
+          throw error;
+        }
+        return response;
+      } catch (error) {
+        trackError(error, {
+          ...meta,
+          url,
+          method: options.method || "GET",
+        });
+        throw error;
+      }
+    }
+
+    function trackEvent(name, properties = {}) {
+      if (!hasPosthog) return;
+      window.posthog.capture(name, normalizeProperties(properties));
+    }
+
+    function trackError(error, properties = {}) {
+      if (
+        !hasPosthog ||
+        typeof window.posthog.captureException !== "function"
+      ) {
+        console.error(
+          "PostHog captureException unavailable",
+          error,
+          properties,
+        );
+        return;
+      }
+      window.posthog.captureException(error, normalizeProperties(properties));
+    }
+
+    window.analytics = {
+      ...fallbackAnalytics,
+      trackEvent,
+      trackError,
+      trackedFetch,
+      getSessionId() {
+        return hasPosthog && typeof window.posthog.getSessionId === "function"
+          ? window.posthog.getSessionId()
+          : null;
+      },
+    };
+
+    window.addEventListener("error", (event) => {
+      if (event.error) {
+        trackError(event.error, { source: "window_error" });
+      }
+    });
+
+    window.addEventListener("unhandledrejection", (event) => {
+      const reason =
+        event.reason instanceof Error
+          ? event.reason
+          : new Error(
+              typeof event.reason === "string"
+                ? event.reason
+                : "Unhandled promise rejection",
+            );
+      trackError(reason, { source: "unhandledrejection" });
+    });
+  })();
+</script>
+
+<!-- Shared page behaviour: CTA analytics, scroll reveal (.reveal, public.css), counters -->
+<script>
+  // Any element with data-cta reports its click — one delegated listener for every page.
+  document.addEventListener("click", function (event) {
+    const el = event.target.closest && event.target.closest("[data-cta]");
+    if (el) window.analytics.trackEvent("cta_clicked", { action: el.dataset.cta, location: el.dataset.ctaLocation });
+  });
+  document.addEventListener("DOMContentLoaded", function () {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // `.reveal` (and the landing timeline) gains `.visible` once it scrolls into view.
+    const reveal = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("visible");
+        reveal.unobserve(entry.target);
+      });
+    }, { threshold: 0.1, rootMargin: "0px 0px -30px 0px" });
+    document.querySelectorAll(".reveal, .lp-timeline").forEach(function (el) { reveal.observe(el); });
+    // `[data-counter="N"]` counts up to N once in view (it already shows N without motion).
+    const counters = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        counters.unobserve(entry.target);
+        const el = entry.target;
+        const target = parseInt(el.getAttribute("data-counter"), 10);
+        if (isNaN(target) || target === 0 || reduceMotion) return;
+        const start = performance.now();
+        (function tick(now) {
+          const progress = Math.min((now - start) / 2200, 1);
+          el.textContent = progress < 1 ? Math.round((1 - Math.pow(1 - progress, 3)) * target) : target;
+          if (progress < 1) requestAnimationFrame(tick);
+        })(start);
+      });
+    }, { threshold: 0.4 });
+    document.querySelectorAll("[data-counter]").forEach(function (el) { counters.observe(el); });
+  });
+</script>
+
+<script
+  src="//instant.page/5.2.0"
+  type="module"
+  integrity="sha384-jnZyxPjiipYXnSU0ygqeac2q7CVYMbh84q0uHVRRxEtvFPiQYbXWUorga2aqZJ0z"
+></script>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/tailwind.css') }}"
+/>
+
+<!--Universal Styles-->
+<style>
+  input:focus {
+    outline: none;
+  }
+
+  /* Clean Custom Checkbox */
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-primary);
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+</style>

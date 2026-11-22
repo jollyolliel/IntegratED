@@ -1,0 +1,6 @@
+id: no-transition-all-class
+valid:
+  - '<div class="transition-transform duration-150"></div>'
+invalid:
+  - '<div class="transition-all duration-200"></div>'
+  - '<div class="hover:scale-105 transition-all"></div>'

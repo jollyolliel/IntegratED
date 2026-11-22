@@ -1,0 +1,15 @@
+id: no-transition-all
+language: css
+severity: error
+message: |
+  transition "all" animates every property on one curve — list what changes (docs/ui-design/visual-language.md).
+note: |
+  Clay elements transition transform and box-shadow (plus border-color / background when those change), 150ms ease-out.
+ignores:
+  # Deliberately outside the design system (docs/ui-design/styling-system.md -> Traps):
+  # the dependency-free boot page.
+  - templates/starting_up.html
+rule:
+  kind: declaration
+  has: { kind: property_name, regex: '^transition(-property)?$' }
+  regex: '(?:[:,]\s*)all\b'

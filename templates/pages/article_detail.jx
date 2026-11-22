@@ -1,0 +1,55 @@
+{#- One public News article: a link back to the News index, then a card with a centred masthead
+    (title, byline; book art when there's no hero), the framed hero image (if the article has
+    one) and the rendered markdown. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/shell/main.jx" as Main #}
+{#def article #}
+{%- set head %}
+<style>
+  .article-card-body { padding: clamp(28px, 5vw, 48px); }
+  .article-masthead { text-align: center; margin-bottom: 28px; }
+  .article-masthead-art { width: 96px; margin: 0 auto 16px; rotate: -6deg; }
+  .article-hero { margin: 0 0 40px; }
+  .article-hero img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 14px; border: var(--clay-border-width) solid var(--color-card-sky-border); }
+  .article-masthead-title { font-size: clamp(2.2rem, 4.4vw, 3.6rem); line-height: 1.06; letter-spacing: -0.02em; text-wrap: balance; color: var(--color-ink-heading); margin-bottom: 14px; }
+  .article-masthead-by { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; font-size: 0.92rem; color: var(--color-ink-muted); }
+  .article-masthead-by strong { color: var(--color-ink-heading); }
+  .article-body { max-width: 68ch; font-size: 1.08rem; color: var(--color-ink-body); }
+  .article-body > p:first-child { font-size: 1.35rem; line-height: 1.6; font-weight: 600; color: var(--color-ink-heading); margin-bottom: 1.4em; }
+  .article-body p { line-height: 1.8; }
+  .article-body h2, .article-body h3 { position: relative; display: inline-block; color: var(--color-ink-heading); padding-bottom: 0.3em; }
+  .article-body h2::after, .article-body h3::after { content: ""; position: absolute; inset-inline: 0; bottom: 0; height: 0.28em; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 20' preserveAspectRatio='none'%3E%3Cpath d='M0 10 C6.5 4 13.5 4 20 10 S33.5 16 40 10' fill='none' stroke='%23fbbf24' stroke-width='4.5' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E"); background-repeat: repeat-x; background-size: 0.8em 100%; }
+  .article-body a { color: var(--color-primary-dark); text-decoration: underline; text-underline-offset: 4px; }
+</style>
+{%- endset %}
+<Page title={{ article.title ~ " - IntegratED" }} styles="learning-nav" head={{ head }}>
+  <Main width="3xl">
+    <div class="mb-6">
+      <a href="{{ url_for('base.articles_list') }}" class="article-back-link">
+        <Icon name="arrow-left" />
+        {{ t('articles.back_to_articles') }}
+      </a>
+    </div>
+
+    <article class="article-content-card overflow-hidden">
+      <div class="article-card-body">
+        <div class="article-masthead">
+          {%- if not article.hero_image %}
+          <img class="article-masthead-art" src="{{ url_for('static', filename='svg/book.svg') }}" alt="" />
+          {%- endif %}
+          <h1 class="article-masthead-title display-font font-extrabold">{{ article.title }}</h1>
+          <p class="article-masthead-by"><strong>{{ t('articles.editor_byline') }}</strong><time datetime="{{ article.created_at.strftime('%Y-%m-%d') }}">{{ article.created_at.strftime('%B %d, %Y') }}</time></p>
+        </div>
+        {%- if article.hero_image %}
+        <figure class="article-hero">
+          <img src="{{ url_for('base.article_image', filename=article.hero_image) }}" alt="" />
+        </figure>
+        {%- endif %}
+        <div class="prose article-body">
+          {{ article.content_markdown | markdown | safe }}
+        </div>
+      </div>
+    </article>
+  </Main>
+</Page>

@@ -1,0 +1,117 @@
+/* match-up game: page-specific styles, linked via <GamePage styles="game-match-up">.
+   The train builder: a wide scene on top (valley, dunes or night, picked by lesson id) with the
+   train on its rail, and the two-column board of word tiles under it. The scene is one stacking
+   context: the scene's back SVG, the train layer, then its front SVG (.mu-world is display:contents). */
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+.mu-layout {
+  width: 100%; max-width: 980px; margin-inline: auto; padding: 14px 16px 32px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.mu-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.mu-title-badge {
+  width: 32px; height: 32px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  background: var(--color-sky-100); border: 2px solid var(--color-sky-300); color: var(--color-primary);
+}
+.mu-progress { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 170px; max-width: 280px; }
+.mu-progress-labels { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mu-streak {
+  font-size: 0.7rem; font-weight: 800; color: var(--color-accent-dark); white-space: nowrap;
+  background: var(--color-green-50); border: 1.5px solid var(--color-green-200); border-radius: 999px; padding: 1px 8px;
+}
+
+/* ── Scene ──────────────────────────────────────────────────────────── */
+.mu-scene {
+  position: relative; overflow: hidden; isolation: isolate; border-radius: 24px;
+  aspect-ratio: 3.3 / 1; min-height: 168px;
+  border: 3px solid var(--color-card-sky-border); box-shadow: 0 6px 0 var(--color-card-sky-shadow);
+  background: var(--color-sky-200);
+}
+@media (max-width: 640px) { .mu-scene { aspect-ratio: 2.2 / 1; } }
+.mu-world { display: contents; }
+.mu-back, .mu-front, .mu-train-layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.mu-back { z-index: 0; }
+.mu-train-layer { z-index: 1; overflow: visible; }
+.mu-front { z-index: 2; }
+
+.mu-world .mu-drift { animation: muDrift var(--dr, 80s) ease-in-out infinite alternate; }
+@keyframes muDrift { from { translate: -30px 0; } to { translate: 40px 0; } }
+.mu-world .mu-twinkle { animation: muTwinkle var(--tw, 3s) ease-in-out var(--tw-d, 0s) infinite alternate; }
+@keyframes muTwinkle { from { opacity: 1; } to { opacity: 0.2; } }
+.mu-world .mu-sway { transform-box: fill-box; transform-origin: 50% 100%; animation: muSway var(--sw, 4s) ease-in-out infinite alternate; }
+@keyframes muSway { from { rotate: -4deg; } to { rotate: 4deg; } }
+
+/* Train pieces. SVG wheels spin about their own centre (fill-box). */
+.mu-slot { fill: rgb(var(--color-surface-rgb) / 0.18); stroke: rgb(var(--color-surface-rgb) / 0.85); stroke-width: 2.5; stroke-dasharray: 7 6; transition: opacity 0.3s ease-out; }
+.mu-slot.is-filled { opacity: 0; }
+.mu-car-text { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; fill: var(--color-ink-heading); }
+.mu-spokes { transform-box: fill-box; transform-origin: center; }
+.mu-scene.is-moving .mu-spokes { animation: muSpin 0.45s linear infinite; }
+@keyframes muSpin { to { rotate: 360deg; } }
+.mu-puff { fill: var(--color-surface); opacity: 0.85; }
+.mu-arm { transform-box: fill-box; transform-origin: 0% 100%; }
+.mu-scene.is-done .mu-arm { animation: muWave 0.5s ease-in-out infinite alternate; }
+@keyframes muWave { from { rotate: -18deg; } to { rotate: 14deg; } }
+.mu-spark { position: absolute; width: 8px; height: 8px; border-radius: 2px; transform: rotate(45deg); z-index: 43; pointer-events: none; }
+
+/* ── Board ──────────────────────────────────────────────────────────── */
+.mu-board[hidden] { display: none; }
+.mu-board { display: flex; flex-direction: column; gap: 12px; }
+.mu-instruct {
+  display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 20px;
+  background: var(--color-surface); border: 2.5px solid var(--color-primary-light); box-shadow: 4px 4px 0 var(--color-sky-100);
+}
+.mu-instruct p { font-size: 1.2rem; font-weight: 800; line-height: 1.25; color: var(--color-sky-950); }
+/* One grid for both columns (the .mu-col wrappers are display:contents), so a row's two
+   tiles always share a height. The script puts each tile on its row with grid-row; a
+   matched right tile moves onto its left partner's row. */
+.mu-columns { --mu-gap: 28px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px var(--mu-gap); }
+@media (max-width: 480px) { .mu-columns { --mu-gap: 14px; } }
+.mu-col { display: contents; }
+.mu-tile-left { grid-column: 1; }
+.mu-tile-right { grid-column: 2; }
+
+/* A tile = the shared clickable clay card; this lays out its inside and its states.
+   Left tiles carry a round tab on their inline-end edge, right tiles a notch on their
+   inline-start edge, so the two sides read as halves that fit together. */
+.mu-tile {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 54px; padding: 6px 14px; text-align: center;
+  font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.2rem; line-height: 1.15;
+  color: var(--color-ink-heading);
+}
+.mu-tile-word { min-width: 0; overflow-wrap: break-word; }
+.mu-tile::after {
+  content: ""; position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; translate: 0 -50%;
+  background: var(--color-sky-200); border: 2px solid var(--color-surface);
+}
+.mu-tile-left::after { inset-inline-end: -9px; }
+.mu-tile-right::after { inset-inline-start: -9px; background: var(--color-surface); border-color: var(--color-sky-200); }
+/* Picked: the card fills sky and its tab lights up, waiting for its partner. Colour only —
+   the clay card keeps its own border, shadow and press motion. */
+.mu-tile.is-picked { --qa-border: var(--color-primary); --qa-hover: var(--color-primary); background: var(--color-sky-100); color: var(--color-primary-dark); }
+.mu-tile.is-picked::after { background: var(--color-primary); width: 18px; height: 18px; }
+.mu-tile.is-wrong { --qa-border: var(--color-rose-300); background: var(--color-rose-50); }
+.mu-tile.is-matched, .mu-tile.is-matched:disabled {
+  --qa-border: color-mix(in srgb, var(--pc) 55%, white);
+  background: color-mix(in srgb, var(--pc) 14%, white); opacity: 1; cursor: default;
+}
+.mu-tile.is-matched::after { background: var(--pc); border-color: var(--color-surface); }
+/* Joined: a bar in the pair's colour bridges the gap from the left tile's tab to its
+   partner's notch. The script adds .is-joined once the right tile has slid onto the row. */
+.mu-tile-left.is-joined::before {
+  content: ""; position: absolute; top: 50%; inset-inline-start: 100%; width: calc(var(--mu-gap) + 4px); height: 6px;
+  translate: 0 -50%; border-radius: 3px; background: var(--pc);
+  transform-origin: 0 50%; animation: muBridge 0.25s ease-out both;
+}
+[dir="rtl"] .mu-tile-left.is-joined::before { transform-origin: 100% 50%; }
+@keyframes muBridge { from { scale: 0 1; } to { scale: 1 1; } }
+.mu-tile-mark { display: none; width: 22px; height: 22px; border-radius: 50%; flex: none; align-items: center; justify-content: center; color: var(--color-surface); font-size: 0.8rem; }
+.mu-tile.is-matched .mu-tile-mark { display: flex; background: var(--pc); }
+.mu-tile.is-matched .mu-tile-mark::after { content: "✓"; }
+.mu-flying { box-shadow: 0 10px 24px rgb(var(--color-ink-heading-rgb) / 0.25); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mu-world .mu-drift, .mu-world .mu-twinkle, .mu-world .mu-sway, .mu-scene.is-moving .mu-spokes, .mu-scene.is-done .mu-arm,
+  .mu-tile-left.is-joined::before { animation: none; }
+}

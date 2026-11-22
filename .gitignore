@@ -1,0 +1,52 @@
+# ── Secrets & local config ───────────────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.Python
+.venv/
+venv/
+
+# ── Tool caches ──────────────────────────────────────────────────────────────
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ── Local runtime data (dev DB, local bucket, logs) ──────────────────────────
+instance/
+*.db
+*.log
+
+# ── Build output ─────────────────────────────────────────────────────────────
+static/css/tailwind.css
+
+# ── Editors / OS ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Claude Code (local-only parts; shared config is tracked) ─────────────────
+.claude/docs/
+.claude/state/
+.claude/worktrees/
+.claude/settings.local.json
+.claude/launch.json
+.claude/.headroom_wrap_*
+**/.claude/state/
+.serena/
+.impeccable/
+
+# ── Dev scratch ──────────────────────────────────────────────────────────────
+.live/
+tools/live-extension/
+teaching/
+translations/*.lock

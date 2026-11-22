@@ -1,0 +1,57 @@
+{#- The school's own settings: its mission statement and the email domains that sign volunteers
+    and teachers into it. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/textarea.jx" as Textarea #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def school #}
+{%- set volunteer_label %}{{ t('school_admin.settings.volunteer_domain_label') }} <span class="font-normal text-ink-muted">({{ t('school_admin.settings.volunteer_domain_desc') }})</span>{% endset %}
+{%- set teacher_label %}{{ t('school_admin.settings.teacher_domain_label') }} <span class="font-normal text-ink-muted">({{ t('school_admin.settings.teacher_domain_desc') }})</span>{% endset %}
+<Page title={{ "Settings — " ~ school.name }} styles="admin">
+  <Main>
+    <BackLink href={{ url_for('school_admin.dashboard') }} label="Dashboard" />
+
+    <div class="mb-8">
+      <SectionBadge>{{ t('school_admin.settings.eyebrow') }}</SectionBadge>
+      <h1 class="display-font text-3xl md:text-4xl font-extrabold text-sky-950 mt-1">{{ school.name }}</h1>
+    </div>
+
+    <form action="{{ url_for('school_admin.settings') }}" method="POST" class="max-w-2xl space-y-6">
+      <Card>
+        <IconBox icon="building-office" class="mb-3" />
+        <h2 class="display-font text-lg font-bold text-sky-900 mb-4">{{ t('school_admin.settings.school_identity') }}</h2>
+        <Field label={{ t('school_admin.settings.mission_statement_label') }} for_id="mission_statement">
+          <Textarea name="mission_statement" id="mission_statement" rows="4"
+            placeholder={{ t('school_admin.mission_placeholder') }}>{{ school.mission_statement or '' }}</Textarea>
+          <p class="hint-text">{{ t('school_admin.settings.mission_hint') }}</p>
+        </Field>
+      </Card>
+
+      <Card tone="green">
+        <IconBox icon="envelope" tone="green" class="mb-3" />
+        <h2 class="display-font text-lg font-bold text-sky-900 mb-1">{{ t('school_admin.settings.email_domain_mapping') }}</h2>
+        <p class="hint-text mb-5">{{ t('school_admin.settings.email_domain_hint') }}</p>
+        <div class="space-y-5">
+          <Field label={{ volunteer_label }} for_id="volunteer_domain">
+            <Input name="volunteer_domain" id="volunteer_domain" value={{ school.volunteer_domain or '' }}
+              placeholder={{ t('school_admin.student_domain_placeholder') }} class="font-mono" />
+          </Field>
+          <Field label={{ teacher_label }} for_id="teacher_domain">
+            <Input name="teacher_domain" id="teacher_domain" value={{ school.teacher_domain or '' }}
+              placeholder={{ t('school_admin.school_domain_placeholder') }} class="font-mono" />
+          </Field>
+        </div>
+      </Card>
+
+      <div>
+        <Button type="submit" icon="check">{{ t('school_admin.settings.save_settings') }}</Button>
+      </div>
+    </form>
+  </Main>
+</Page>

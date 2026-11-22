@@ -1,0 +1,7 @@
+id: no-raw-palette-utility
+valid:
+  - '<p class="text-ink-muted bg-primary-tint"></p>'
+  - '<div class="w-10 h-10 bg-sky-50 rounded-xl"></div>'
+invalid:
+  - '<p class="text-gray-500"></p>'
+  - '<button class="hover:bg-sky-600"></button>'

@@ -1,0 +1,126 @@
+{#- The school's three rosters (teachers, volunteers, learners): the swap region
+    on `pages/school_admin/people.jx`. Each table pages on its own key and carries the other two
+    pages in `common_args`, so one hop leaves the others where they were. `routes/school_admin.py`
+    renders it alone for an `X-Fragment` request. The amber / green table tints are the page's
+    local style. -#}
+{#import "@components/section_title.jx" as SectionTitle #}
+{#import "@components/status_pill.jx" as StatusPill #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/pagination.jx" as Pagination #}
+{#def teachers, learners, volunteers, teacher_count, learner_count, volunteer_count,
+      teacher_page, teacher_page_count, learner_page, learner_page_count,
+      volunteer_page, volunteer_page_count, common_args #}
+<div data-swap-region>
+<section class="mb-10">
+  <SectionTitle icon="building-office" tone="amber" count={{ teacher_count }}>{{ t('school_admin.people.teachers_heading') }}</SectionTitle>
+  {%- if teachers %}
+  <Table wrap_class="people-table-amber">
+    <thead>
+      <tr>
+        <th>{{ t('school_admin.people.col_name') }}</th>
+        <th>{{ t('school_admin.people.col_email') }}</th>
+        <th>{{ t('school_admin.people.col_learners') }}</th>
+        <th>{{ t('school_admin.people.col_volunteers') }}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {#- loop var must not be `t`: it would shadow the global t() translation helper #}
+      {%- for tch in teachers %}
+      <tr>
+        <td class="font-medium text-sky-900">{{ tch.name or '—' }}</td>
+        <td class="text-ink-faint">{{ tch.email }}</td>
+        <td>{{ tch.managed_learners|length }}</td>
+        <td>{{ tch.managed_volunteers|length }}</td>
+        <td class="text-end">
+          <Button variant="sky" flat href={{ url_for('school_admin.teacher_detail', teacher_id=tch.id) }}>{{ t('school_admin.people.view') }}</Button>
+        </td>
+      </tr>
+      {%- endfor %}
+    </tbody>
+  </Table>
+  <Pagination endpoint="school_admin.people" page={{ teacher_page }} total_pages={{ teacher_page_count }} args={{ common_args }} key="teacher" />
+  {%- else %}
+  <p class="text-ink-faint italic text-sm">{{ t('school_admin.people.no_teachers') }}</p>
+  {%- endif %}
+</section>
+
+<section class="mb-10">
+  <SectionTitle icon="user-group" tone="green" count={{ volunteer_count }}>{{ t('school_admin.people.volunteers_heading') }}</SectionTitle>
+  {%- if volunteers %}
+  <Table wrap_class="people-table-green">
+    <thead>
+      <tr>
+        <th>{{ t('school_admin.people.col_name') }}</th>
+        <th>{{ t('school_admin.people.col_email') }}</th>
+        <th>{{ t('school_admin.people.col_status') }}</th>
+        <th>{{ t('school_admin.people.col_hours') }}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {%- for v in volunteers %}
+      <tr>
+        <td class="font-medium text-sky-900">{{ v.name or '—' }}</td>
+        <td class="text-ink-faint">{{ v.email }}</td>
+        <td>
+          {%- if v.is_matched %}
+          <StatusPill status="matched">{{ t('school_admin.people.matched') }}</StatusPill>
+          {%- else %}
+          <StatusPill status="unmatched">{{ t('school_admin.people.unmatched') }}</StatusPill>
+          {%- endif %}
+        </td>
+        <td class="font-semibold">{{ "%.1f"|format(v.hours_volunteered or 0) }}</td>
+        <td class="text-end">
+          <Button variant="sky" flat href={{ url_for('school_admin.volunteer_detail', volunteer_id=v.id) }}>{{ t('school_admin.people.view') }}</Button>
+        </td>
+      </tr>
+      {%- endfor %}
+    </tbody>
+  </Table>
+  <Pagination endpoint="school_admin.people" page={{ volunteer_page }} total_pages={{ volunteer_page_count }} args={{ common_args }} key="volunteer" />
+  {%- else %}
+  <p class="text-ink-faint italic text-sm">{{ t('school_admin.people.no_volunteers') }}</p>
+  {%- endif %}
+</section>
+
+<section>
+  <SectionTitle icon="users" count={{ learner_count }}>{{ t('school_admin.people.learners_heading') }}</SectionTitle>
+  {%- if learners %}
+  <Table>
+    <thead>
+      <tr>
+        <th>{{ t('school_admin.people.col_username') }}</th>
+        <th>{{ t('school_admin.people.col_name') }}</th>
+        <th>{{ t('school_admin.people.col_status') }}</th>
+        <th>{{ t('school_admin.people.col_hours') }}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {%- for l in learners %}
+      <tr>
+        <td class="font-mono text-xs text-ink-muted">{{ l.username }}</td>
+        <td class="font-medium text-sky-900">{{ l.name or '—' }}</td>
+        <td>
+          {%- if l.is_matched %}
+          <StatusPill status="matched">{{ t('school_admin.people.matched') }}</StatusPill>
+          {%- else %}
+          <StatusPill status="unmatched">{{ t('school_admin.people.unmatched') }}</StatusPill>
+          {%- endif %}
+        </td>
+        <td class="font-semibold">{{ "%.1f"|format(l.hours_learned or 0) }}</td>
+        <td class="text-end">
+          <Button variant="sky" flat href={{ url_for('school_admin.learner_detail', learner_id=l.id) }}>{{ t('school_admin.people.view') }}</Button>
+        </td>
+      </tr>
+      {%- endfor %}
+    </tbody>
+  </Table>
+  <Pagination endpoint="school_admin.people" page={{ learner_page }} total_pages={{ learner_page_count }} args={{ common_args }} key="learner" />
+  {%- else %}
+  <p class="text-ink-faint italic text-sm">{{ t('school_admin.people.no_learners') }}</p>
+  {%- endif %}
+</section>
+</div>

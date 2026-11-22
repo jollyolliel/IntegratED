@@ -1,0 +1,142 @@
+{#- The volunteer's home: hours, match status, the first partner's levels and topics done, quick
+    links, then one partnership row per learner (or the no-partner card). -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/quick_action.jx" as QuickAction #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/progress_bar.jx" as ProgressBar #}
+{#import "@components/shell/main.jx" as Main #}
+{#def volunteer, partners, matched_learner, pending_announcement=None #}
+{%- set head %}
+  <style>
+    .info-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; font-size: 0.87rem; }
+    .info-label { color: var(--color-ink-faint); font-weight: 500; flex-shrink: 0; }
+    .info-value { color: var(--color-ink-body); font-weight: 600; }
+  </style>
+{%- endset %}
+<Page title={{ t('volunteer.dashboard.title') }} head={{ head }} announcement={{ pending_announcement }}>
+  <Main>
+
+    <div class="mb-8">
+      <SectionBadge tag="div">{{ t('volunteer.dashboard.heading') }}</SectionBadge>
+      <h1 class="display-font text-3xl md:text-4xl font-extrabold text-sky-950 leading-tight">
+        {{ t('volunteer.dashboard.welcome', name=volunteer.name or t('nav.logout')) }}
+      </h1>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <StatTile icon="clock" label={{ t('volunteer.dashboard.hours_volunteered') }} value={{ "%.1f"|format(volunteer.hours_volunteered) }} />
+
+      {%- if matched_learner %}
+      <StatTile tone="green" icon="check-circle" label={{ t('volunteer.dashboard.match_status') }}
+        value={{ t('volunteer.dashboard.partner_count', count=partners|length) if partners|length > 1 else t('volunteer.dashboard.matched') }} />
+      {%- else %}
+      <StatTile tone="amber" icon="exclamation-circle" label={{ t('volunteer.dashboard.match_status') }} value={{ t('volunteer.dashboard.unmatched') }} />
+      {%- endif %}
+
+      {#- One "subject: level" line per subject, smaller than a single stat value. -#}
+      {%- set levels %}
+        {%- if matched_learner %}
+          {%- for subject, level in matched_learner.subject_levels.items() %}
+          <div class="text-base">{{ subject }}: {{ level }}</div>
+          {%- endfor %}
+          {%- if partners|length > 1 %}
+          <div class="text-[11px] text-ink-faint font-semibold">{{ t('volunteer.dashboard.plus_more_partners', count=partners|length - 1) }}</div>
+          {%- endif %}
+        {%- else %}—{% endif %}
+      {%- endset %}
+      <StatTile tone="amber" icon="bolt" label={{ t('volunteer.dashboard.partners_level') }} value={{ levels }} />
+
+      <StatTile tone="rose" icon="clipboard-document-check" label={{ t('volunteer.dashboard.topics_completed') }}
+        value={{ partners|sum(attribute='completed_count') if partners else '—' }} />
+    </div>
+
+    <div class="mb-2">
+      <SectionBadge>{{ t('volunteer.dashboard.quick_actions') }}</SectionBadge>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+      {%- if matched_learner %}
+      <QuickAction href={{ url_for('volunteer.volunteer_my_partner') }} icon="information-circle"
+        title={{ t('volunteer.dashboard.view_partner') }} description={{ t('volunteer.dashboard.view_partner_desc') }} />
+      {%- endif %}
+      <QuickAction tone="green" href={{ url_for('volunteer.volunteer_resources') }} icon="book-open"
+        title={{ t('volunteer.dashboard.explore_resources') }} description={{ t('volunteer.dashboard.explore_resources_desc') }} />
+      <QuickAction tone="amber" href={{ url_for('volunteer.volunteer_profile') }} icon="cog-6-tooth"
+        title={{ t('volunteer.dashboard.my_profile') }} description={{ t('volunteer.dashboard.my_profile_desc') }} />
+    </div>
+
+    {%- if partners %}
+    {%- for partner in partners %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 {% if not loop.last %}mb-6{% endif %}">
+      <Card tone="green">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="w-2.5 h-2.5 rounded-full bg-green-400 flex-shrink-0"></span>
+          <h3 class="font-bold text-sky-900 text-base">{{ t('volunteer.dashboard.your_partner') }}</h3>
+        </div>
+        <div class="bg-green-50 rounded-xl p-4 mb-4 border-[1.5px] border-card-green-border">
+          <h4 class="text-lg font-bold text-green-800 mb-2">{{ partner.learner.name or partner.learner.username }}</h4>
+          <div class="space-y-1.5">
+            {%- if partner.learner.school %}
+            <div class="info-row">
+              <span class="info-label">{{ t('volunteer.dashboard.school_label') }}</span>
+              <span class="info-value">{{ partner.learner.school.name }}</span>
+            </div>
+            {%- endif %}
+            <div class="info-row">
+              <span class="info-label">{{ t('volunteer.dashboard.focus_label') }}</span>
+              <span class="info-value">{{ partner.current_subject or t('volunteer.dashboard.not_assigned') }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">{{ t('volunteer.dashboard.levels_label') }}</span>
+              <span class="info-value">
+                {% for subject, level in partner.learner.subject_levels.items() %}{{ subject }}: {{ level }}{% if not loop.last %}, {% endif %}{% endfor %}
+              </span>
+            </div>
+          </div>
+        </div>
+        <Button variant="sky" href={{ url_for('volunteer.volunteer_my_partner', learner=partner.learner.id) }} icon_end="arrow-right" class="w-full justify-center">
+          {{ t('volunteer.dashboard.view_full_profile') }}
+        </Button>
+      </Card>
+
+      <Card>
+        <div class="flex items-center gap-2 mb-4">
+          <span class="w-2.5 h-2.5 rounded-full bg-sky-400 flex-shrink-0"></span>
+          <h3 class="font-bold text-sky-900 text-base">{{ t('volunteer.dashboard.learning_progress') }}</h3>
+        </div>
+        <div class="bg-sky-50 rounded-xl p-4 mb-4 border-[1.5px] border-primary-light">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-primary-dark">{{ t('volunteer.dashboard.topics_completed') }}</span>
+            <span class="text-sm font-bold text-primary">{{ partner.completed_count }} / {{ partner.total_topics }}</span>
+          </div>
+          <ProgressBar value={{ partner.progress_percentage }} size="sm" />
+        </div>
+        <div class="space-y-2">
+          <div class="info-row">
+            <span class="info-label">{{ t('volunteer.dashboard.hours_learned_label') }}</span>
+            <span class="info-value">{{ "%.1f"|format(partner.learner.hours_learned) }} {{ t('volunteer.dashboard.hours_unit') }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">{{ t('volunteer.dashboard.last_active_label') }}</span>
+            <span class="info-value">{{ t('volunteer.dashboard.recently') }}</span>
+          </div>
+        </div>
+      </Card>
+    </div>
+    {%- endfor %}
+
+    {%- else %}
+    <Card tone="amber" class="text-center py-10">
+      <IconBox icon="user-group" tone="amber" size="xl" class="mx-auto mb-4" />
+      <h3 class="display-font text-xl font-bold text-sky-900 mb-2">{{ t('volunteer.dashboard.no_partnership_title') }}</h3>
+      <p class="text-ink-muted text-sm mb-6 max-w-md mx-auto">{{ t('volunteer.dashboard.no_partnership_desc') }}</p>
+      <Button variant="sky" href={{ url_for('volunteer.volunteer_profile') }} icon_end="arrow-right">
+        {{ t('volunteer.dashboard.complete_profile') }}
+      </Button>
+    </Card>
+    {%- endif %}
+  </Main>
+</Page>

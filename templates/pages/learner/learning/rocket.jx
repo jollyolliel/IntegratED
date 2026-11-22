@@ -1,0 +1,708 @@
+{#- Rocket — a star voyage. Every right answer launches the rocket on a hop to the next planet on
+    its route; the last one lands it on the glowing home planet. A wrong answer only makes it
+    sputter and wait: no fuel, no timer, try again freely. The server scores first-try answers;
+    questions, checks and completion go through GameKit (components/game_kit.jx). -#}
+{#import "@components/shell/game_page.jx" as GamePage #}
+{#import "@components/audio_button.jx" as AudioButton #}
+{#import "@components/base/button.jx" as Button #}
+{#def lesson, already_completed=False #}
+<GamePage title={{ t('learner.rocket.title') ~ ' — ' ~ lesson.title ~ ' - IntegratED' }} lesson={{ lesson }} styles="game-rocket">
+  <div class="rk-layout">
+
+    <!-- ═══ The question side ═══ -->
+    <section class="rk-panel">
+      <div class="rk-panel-inner">
+        <div class="rk-topbar">
+          <div class="flex items-center gap-2">
+            <span class="rk-title-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2c3 2.4 4.4 6 4.2 11l1.8 2.6c.3.5 0 1.1-.6 1.1H15l-.6 1.6H9.6L9 16.7H6.6c-.6 0-.9-.6-.6-1.1L7.8 13C7.6 8 9 4.4 12 2z" fill="currentColor"/><circle cx="12" cy="9.5" r="2" fill="white"/></svg>
+            </span>
+            <h1 class="display-font font-bold text-sm text-sky-700 uppercase tracking-widest">{{ t('learner.rocket.title') }}</h1>
+          </div>
+          <div class="rk-progress">
+            <div class="rk-progress-labels">
+              <span id="progressLabel" class="text-xs font-bold text-ink-muted font-mono">—</span>
+              <span id="streakNote" class="rk-streak" hidden></span>
+            </div>
+            <div class="progress-track"><div id="progressFill" class="progress-fill" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        {% if already_completed %}
+        <div class="rounded-2xl px-4 py-2.5 text-sm font-semibold bg-amber-100 border-2 border-amber-300 text-amber-800">
+          {{ t('learner.rocket.already_completed') }} {{ t('learner.rocket.replay_no_xp') }}
+        </div>
+        {% endif %}
+
+        <div id="errorState" class="hidden py-10 text-center rounded-2xl p-6 bg-red-50 border-2 border-red-200">
+          <p class="text-danger font-bold mb-4">{{ t('learner.rocket.load_failed') }}</p>
+          <Button variant="danger" onclick="location.reload()">{{ t('learner.rocket.reload') }}</Button>
+        </div>
+
+        <div id="questionBlock" class="rk-question-block">
+          <div class="rk-question-card">
+            <AudioButton id="speakerBtn" label={{ t('learner.rocket.read_aloud') }} />
+            <div class="min-w-0">
+              <p id="questionPrompt" class="text-[11px] font-bold uppercase tracking-wider text-primary mb-0.5"></p>
+              <p id="questionText" class="rk-question-text display-font"></p>
+            </div>
+          </div>
+          <p id="contextText" class="rk-context" hidden></p>
+          <div id="contextImage" class="rk-context-image" hidden></div>
+          <p class="rk-tap-hint">{{ t('learner.rocket.tap_answer') }}</p>
+          <div id="answerGrid" class="rk-answers"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ The voyage ═══ -->
+    <section class="rk-scene" id="rkScene" style="--cam:0; --trip:0">
+      <div class="rk-backdrop" aria-hidden="true">
+        <img class="rk-sky" src="{{ url_for('static', filename='svg/games/rocket/nebula/sky.svg') }}" alt="" />
+        <div class="rk-stars"></div>
+        <div class="rk-stars rk-stars-twinkle"></div>
+        <img class="rk-mid" src="{{ url_for('static', filename='svg/games/rocket/nebula/mid.svg') }}" alt="" />
+        <img class="rk-ground" src="{{ url_for('static', filename='svg/games/rocket/nebula/ground.svg') }}" alt="" />
+        <img class="rk-front rk-front-start" src="{{ url_for('static', filename='svg/games/rocket/nebula/front.svg') }}" alt="" />
+        <img class="rk-front rk-front-end" src="{{ url_for('static', filename='svg/games/rocket/nebula/front.svg') }}" alt="" />
+        <div class="rk-edge rk-edge-start" style="background-image:url({{ url_for('static', filename='svg/games/rocket/nebula/edge.svg') }})"></div>
+        <div class="rk-edge rk-edge-end" style="background-image:url({{ url_for('static', filename='svg/games/rocket/nebula/edge.svg') }})"></div>
+      </div>
+
+      <div class="rk-world" id="rkWorld" aria-hidden="true">
+        <svg class="rk-route" id="rkRoute"></svg>
+        <div id="rkStops"></div>
+        <div class="rk-rocket" id="rkRocket" data-mood="calm">
+          <div class="rk-rocket-body" id="rkRocketBody">
+            <svg viewBox="0 0 100 170" aria-hidden="true">
+              <g class="rk-flame" id="rkFlame">
+                <g class="rk-flame-flicker">
+                  <path d="M50 122 C65 137 63 156 50 170 C37 156 35 137 50 122Z" fill="#FF6A3D"/>
+                  <path d="M50 124 C60 137 59 151 50 162 C41 151 40 137 50 124Z" fill="#FFB547"/>
+                  <path d="M50 126 C55.5 135 55.5 145 50 153 C44.5 145 44.5 135 50 126Z" fill="#FFF3B0"/>
+                </g>
+              </g>
+              <path d="M28 90 C16 98 9 113 9.5 129 C9.6 134 14 135.5 17.5 132 L31 119Z" fill="#E8574F"/>
+              <path d="M28 90 C18 98 12.5 110 11.8 124 L30.5 113Z" fill="#FF7365"/>
+              <path d="M72 90 C84 98 91 113 90.5 129 C90.4 134 86 135.5 82.5 132 L69 119Z" fill="#C9433D"/>
+              <path d="M38 117 H62 L58.6 129 H41.4Z" fill="#4A3F6B"/>
+              <path d="M38 117 H62 L61 120.5 H39Z" fill="#6E6296"/>
+              <path d="M50 4 C70 18 78 52 76 92 C75.6 104 74 113 72 119 H28 C26 113 24.4 104 24 92 C22 52 30 18 50 4Z" fill="#FFF6EA"/>
+              <path d="M50 4 C70 18 78 52 76 92 C75.6 104 74 113 72 119 H63 C66.5 100 67.5 70 63 46 C60 28 56 15 50 4Z" fill="#EFDCC6"/>
+              <path d="M30 96 C30 96 29 70 34 50" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none" opacity=".9"/>
+              <path d="M50 4 C60 11 67 22 71 34 C64 38 57 39.5 50 39.5 C43 39.5 36 38 29 34 C33 22 40 11 50 4Z" fill="#FF6B5E"/>
+              <path d="M50 4 C60 11 67 22 71 34 C67.4 36 63.4 37.4 59.6 38.3 C59.6 26 56.4 13.6 50 4Z" fill="#D9504A"/>
+              <path d="M42.5 15 C39.5 20 37.6 24.6 36.6 29.4" stroke="#FFB4A8" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M24.6 99 H75.4 L74.7 107.5 H25.3Z" fill="#F5C443"/>
+              <path d="M63.5 99 H75.4 L74.7 107.5 H62.5Z" fill="#D9A62A"/>
+              <path d="M47 102 H53 L54.4 131 C54.4 134.4 45.6 134.4 45.6 131Z" fill="#FF6B5E"/>
+              <path d="M50 102 H53 L54.4 131 C54.4 133 52.6 134 50 134.2Z" fill="#D9504A"/>
+              <circle cx="50" cy="66" r="19.5" fill="#F5C443"/>
+              <path d="M66.9 75.7 A19.5 19.5 0 0 1 33.1 75.7 A17 17 0 0 0 66.9 75.7Z" fill="#D9A62A"/>
+              <circle cx="50" cy="66" r="14.5" fill="#7AD3F5"/>
+              <path d="M35.5 66 A14.5 14.5 0 0 0 64.5 66Z" fill="#5BBDE6"/>
+              <path d="M40.5 60 A10.5 10.5 0 0 1 48.5 55" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <ellipse cx="40.6" cy="71" rx="2.6" ry="1.6" fill="#FF9EB5" opacity=".85"/>
+              <ellipse cx="59.4" cy="71" rx="2.6" ry="1.6" fill="#FF9EB5" opacity=".85"/>
+              <g class="rk-face rk-face-calm" fill="#1E1B4B">
+                <g class="rk-blink">
+                  <ellipse cx="45" cy="65.5" rx="2.6" ry="3.6"/>
+                  <ellipse cx="55" cy="65.5" rx="2.6" ry="3.6"/>
+                  <circle cx="45.9" cy="64.2" r="1" fill="#FFFFFF"/>
+                  <circle cx="55.9" cy="64.2" r="1" fill="#FFFFFF"/>
+                </g>
+                <path d="M46.4 71.4 Q50 74.6 53.6 71.4" stroke="#1E1B4B" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+              </g>
+              <g class="rk-face rk-face-happy" fill="none" stroke="#1E1B4B" stroke-width="2" stroke-linecap="round">
+                <path d="M42.4 66.4 Q45 62.6 47.6 66.4"/>
+                <path d="M52.4 66.4 Q55 62.6 57.6 66.4"/>
+                <path d="M45.4 70.4 Q50 77.4 54.6 70.4Z" fill="#1E1B4B"/>
+              </g>
+              <g class="rk-face rk-face-oops" fill="none" stroke="#1E1B4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M42.6 63 L46.6 65.6 L42.6 68.2"/>
+                <path d="M57.4 63 L53.4 65.6 L57.4 68.2"/>
+                <ellipse cx="50" cy="72.6" rx="1.8" ry="2.2" fill="#1E1B4B" stroke="none"/>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <p class="sr-only" id="rkStatus" role="status"></p>
+    </section>
+  </div>
+
+  <!-- World pieces the script stamps out with <use>: moons, flags, the launch pad, the home planet. -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <clipPath id="rkMoonClip"><circle r="46"/></clipPath>
+      <symbol id="rkMoon" viewBox="-50 -50 100 100" overflow="visible">
+        <g clip-path="url(#rkMoonClip)">
+          <circle r="46" class="rk-mo-dark"/>
+          <circle cx="-7" cy="-8" r="45" class="rk-mo-lit"/>
+          <ellipse cx="-14" cy="-6" rx="12" ry="9" class="rk-mo-dark" opacity=".55"/>
+          <path d="M-26 -3 C-20 3 -8 3 -2 -3 C-8 1 -20 1 -26 -3Z" class="rk-mo-lit"/>
+          <ellipse cx="16" cy="16" rx="8" ry="6" class="rk-mo-dark" opacity=".55"/>
+          <ellipse cx="10" cy="-24" rx="5" ry="4" class="rk-mo-dark" opacity=".45"/>
+          <ellipse cx="-12" cy="26" rx="4" ry="3" class="rk-mo-dark" opacity=".45"/>
+          <circle cx="-22" cy="-24" r="5" fill="#FFFFFF" opacity=".35"/>
+        </g>
+      </symbol>
+      <symbol id="rkFlag" viewBox="0 0 40 60" overflow="visible">
+        <rect x="4" y="6" width="3.4" height="54" rx="1.7" fill="#E9E2FF"/>
+        <path d="M7.4 8 C16 4 24 12 36 8 V28 C24 32 16 24 7.4 28Z" class="rk-flag-cloth"/>
+        <path d="M7.4 22 C16 18 24 26 36 22 V28 C24 32 16 24 7.4 28Z" class="rk-flag-shade"/>
+        <path class="rk-flag-star" d="M21 11 L22.6 15 L26.8 15.2 L23.5 17.8 L24.6 21.8 L21 19.5 L17.4 21.8 L18.5 17.8 L15.2 15.2 L19.4 15Z" fill="#FFFFFF"/>
+        <circle cx="5.7" cy="5" r="3.4" fill="#F5C443"/>
+      </symbol>
+      <symbol id="rkPad" viewBox="0 0 200 64" overflow="visible">
+        <path d="M30 18 L22 64 H32 L40 18Z" fill="#2B2150"/>
+        <path d="M170 18 L178 64 H168 L160 18Z" fill="#2B2150"/>
+        <path d="M18 8 H182 L174 22 H26Z" fill="#4C3F80"/>
+        <path d="M18 8 H182 L180 11.5 H20Z" fill="#7C6CB8"/>
+        <g fill="#F5C443">
+          <path d="M40 13 H52 L49 20 H37Z"/><path d="M72 13 H84 L81 20 H69Z"/><path d="M104 13 H116 L113 20 H101Z"/><path d="M136 13 H148 L145 20 H133Z"/>
+        </g>
+        <path d="M150 8 V-110 M166 8 V-110 M150 -110 H166 M150 -86 L166 -62 M166 -86 L150 -62 M150 -54 L166 -30 M166 -54 L150 -30 M150 -22 L166 2 M166 -22 L150 2 M150 -86 H166 M150 -54 H166 M150 -22 H166" stroke="#3A2E68" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+        <path d="M150 -98 H128" stroke="#3A2E68" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="158" cy="-116" r="5" fill="#FF6B5E"/>
+      </symbol>
+      <symbol id="rkHome" viewBox="-130 -150 260 280" overflow="visible">
+        <circle r="122" fill="#FFE59A" opacity=".1"/>
+        <circle r="106" fill="#FFE59A" opacity=".14"/>
+        <circle r="93" fill="#FFE59A" opacity=".2"/>
+        <g clip-path="url(#rkHomeClip)">
+          <circle r="80" fill="#24806F"/>
+          <circle cx="-10" cy="-12" r="79" fill="#44C495"/>
+          <path d="M-90 -10 C-60 -26 -40 4 -14 -6 C12 -16 20 -40 46 -34 C66 -30 78 -18 92 -24 V20 C70 30 54 18 34 26 C10 36 2 60 -24 56 C-50 52 -64 30 -90 34Z" fill="#3AA6DA"/>
+          <path d="M-90 4 C-62 -8 -42 16 -16 8 C8 0 18 -22 44 -18 C62 -15 74 -6 92 -10 V-2 C74 2 60 -8 42 -6 C18 -4 8 18 -16 22 C-40 26 -62 6 -90 16Z" fill="#62C6EE"/>
+          <path d="M-60 -50 C-48 -60 -30 -58 -24 -48 C-36 -44 -48 -42 -60 -50Z" fill="#FFFFFF" opacity=".8"/>
+          <path d="M20 48 C34 40 52 42 58 52 C44 56 32 56 20 48Z" fill="#FFFFFF" opacity=".75"/>
+          <path d="M50 40 A80 80 0 0 1 -60 60 A90 90 0 0 0 70 30Z" fill="#1B6B5D" opacity=".35"/>
+        </g>
+        <g transform="translate(-40 -70)">
+          <path d="M-16 4 A16 16 0 0 1 16 4Z" fill="#FFF6EA"/>
+          <path d="M4 4 A16 16 0 0 0 0 -11.5 A16 16 0 0 1 16 4Z" fill="#EFDCC6"/>
+          <path d="M-4 4 V-3 A4 4 0 0 1 4 -3 V4Z" fill="#F5C443"/>
+          <rect x="-18" y="3" width="36" height="4" rx="2" fill="#1B6B5D"/>
+        </g>
+        <g transform="translate(40 -70)">
+          <rect x="-2" y="-12" width="4" height="16" rx="1.5" fill="#8A5A3B"/>
+          <circle cy="-20" r="11" fill="#1F8A5E"/>
+          <circle cx="-3" cy="-23" r="7" fill="#36B377"/>
+        </g>
+        <path class="rk-home-beacon" d="M0 -138 L4 -129 L14 -128 L6.5 -121.5 L9 -112 L0 -117.5 L-9 -112 L-6.5 -121.5 L-14 -128 L-4 -129Z" fill="#FFD84D"/>
+      </symbol>
+      <clipPath id="rkHomeClip"><circle r="80"/></clipPath>
+    </defs>
+  </svg>
+
+  <div class="game-hint-toast" id="tryAgain">{{ t('learner.rocket.try_again') }}</div>
+
+<script>
+// ============================================================
+// Rocket — a star voyage. The route has one hop per question:
+// launch pad → a moon per question → the home planet. A right
+// answer flies the rocket one hop; a wrong one makes it sputter.
+// ============================================================
+const lessonId = {{ lesson.id }};
+GameKit.init({ lessonId, game: 'rocket' });
+const T = {
+  questionOf:  {{ t('learner.rocket.question_of') | tojson }},
+  streak:      {{ t('learner.rocket.streak') | tojson }},
+  allDone:     {{ t('learner.rocket.all_done') | tojson }},
+  tryAgain:    {{ t('learner.rocket.try_again') | tojson }},
+  checkFailed: {{ t('learner.rocket.check_failed') | tojson }},
+  statusStart: {{ t('learner.rocket.status_start') | tojson }},
+  statusLanded:{{ t('learner.rocket.status_landed') | tojson }},
+  statusHome:  {{ t('learner.rocket.status_home') | tojson }},
+  statusOops:  {{ t('learner.rocket.status_oops') | tojson }},
+};
+const LETTERS = ["A", "B", "C", "D", "E", "F"];
+// One shape per answer slot, so a letter is never the only cue (circle, triangle, square, diamond, hexagon, star).
+const BADGE_SHAPES = [
+  '<circle cx="20" cy="20" r="18"/>',
+  '<path d="M20 2.5 L38 35.5 H2Z" stroke-linejoin="round"/>',
+  '<rect x="3" y="3" width="34" height="34" rx="7"/>',
+  '<path d="M20 1 L39 20 L20 39 L1 20Z"/>',
+  '<path d="M11 3 H29 L39 20 L29 37 H11 L1 20Z"/>',
+  '<path d="M20 1 L25 14 L39 14.5 L28 23.5 L32 38 L20 30 L8 38 L12 23.5 L1 14.5 L15 14Z"/>',
+];
+const MOON_TINTS = ["lilac", "peach", "mint", "sky", "pink"];
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let questions = [];
+let qi = 0;          // index of the question on screen = the stop the rocket stands on
+let firstTry = true;
+let streak = 0;
+let mode = "loading"; // loading | question | checking | flying | done
+let geo = null;
+const camera = { y: 0 };
+const flagged = [];  // per stop: "gold" | "coral" | undefined
+
+const scene = document.getElementById("rkScene");
+const world = document.getElementById("rkWorld");
+const route = document.getElementById("rkRoute");
+const stopsEl = document.getElementById("rkStops");
+const rocket = document.getElementById("rkRocket");
+const rocketBody = document.getElementById("rkRocketBody");
+const flame = document.getElementById("rkFlame");
+const answerGrid = document.getElementById("answerGrid");
+
+document.getElementById("speakerBtn").addEventListener("click", () => GameKit.speakQuestion(questions[qi]));
+
+function say(text) { document.getElementById("rkStatus").textContent = text; }
+function fill(tpl, vals) { return Object.keys(vals).reduce((s, k) => s.replace("{" + k + "}", vals[k]), tpl); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// ── World geometry ──────────────────────────────────────────────────────
+// Everything in the world is measured in px up from the world's bottom edge
+// ("yUp"); the camera is how far the world is slid down to show higher parts.
+// Stop 0 is the launch pad, stops 1…n-1 are moons, stop n is the home planet.
+const ZIGZAG = [0.5, 0.3, 0.68, 0.34, 0.7, 0.28, 0.64];
+
+function computeGeometry() {
+  const W = scene.clientWidth, H = scene.clientHeight, n = questions.length;
+  const step = clamp(H * 0.42, 118, 250);
+  const rocketH = clamp(H * 0.25, 74, 150);
+  const moonD = clamp(Math.min(W, H) * 0.19, 54, 96);
+  const homeR = clamp(Math.min(W, H) * 0.2, 62, 120);
+  const padW = clamp(rocketH * 1.35, 100, 190);
+  const groundY = H * 0.16;
+  const stops = [{ x: W * 0.5, y: groundY + padW * 0.05, kind: "pad" }];
+  for (let i = 1; i < n; i++) {
+    stops.push({ x: W * ZIGZAG[i % ZIGZAG.length], y: groundY + i * step, kind: "moon", tint: MOON_TINTS[i % MOON_TINTS.length] });
+  }
+  const homeTop = groundY + n * step + step * 0.3;
+  stops.push({ x: W * 0.5, y: homeTop, kind: "home" });
+  const worldH = homeTop + rocketH + H * 0.3;
+  return { W, H, n, step, rocketH, rocketW: rocketH * 100 / 170, moonD, homeR, padW, groundY, stops, worldH, maxCam: worldH - H };
+}
+
+function camFor(i) {
+  const s = geo.stops[i];
+  if (s.kind === "home") return clamp(s.y - geo.homeR * 0.9 - geo.H * 0.42, 0, geo.maxCam);
+  return clamp(s.y - geo.H * 0.3, 0, geo.maxCam);
+}
+
+function setCamera(y, trip) {
+  camera.y = y;
+  world.style.transform = "translate3d(0," + y + "px,0)";
+  scene.style.setProperty("--cam", y.toFixed(1));
+  if (trip !== undefined) scene.style.setProperty("--trip", trip.toFixed(4));
+}
+
+// Quadratic hop from stop a to stop b: the control point sits above b, so the
+// rocket arcs over the target and settles down onto it.
+function hopCurve(a, b) {
+  const A = geo.stops[a], B = geo.stops[b];
+  const P1 = { x: A.x + (B.x - A.x) * 0.2, y: Math.max(A.y, B.y) + geo.step * 0.45 };
+  return { P0: A, P1, P2: B };
+}
+function bez(c, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * c.P0.x + 2 * u * t * c.P1.x + t * t * c.P2.x,
+    y: u * u * c.P0.y + 2 * u * t * c.P1.y + t * t * c.P2.y,
+    dx: 2 * u * (c.P1.x - c.P0.x) + 2 * t * (c.P2.x - c.P1.x),
+    dy: 2 * u * (c.P1.y - c.P0.y) + 2 * t * (c.P2.y - c.P1.y),
+  };
+}
+
+// ── Building the world ──────────────────────────────────────────────────
+// The viewBox of each symbol above. The <use> must cover exactly that box: without x/y/width/height
+// a symbol whose viewBox starts at a negative origin is drawn shifted by half its size.
+const SYMBOL_BOX = { rkHome: [-130, -150, 260, 280], rkPad: [0, 0, 200, 64], rkFlag: [0, 0, 40, 60], rkMoon: [-50, -50, 100, 100] };
+function svgUse(id, cls, w, h) {
+  const [x, y, bw, bh] = SYMBOL_BOX[id];
+  return `<svg class="${cls}" viewBox="${x} ${y} ${bw} ${bh}" width="${w}" height="${h}" aria-hidden="true"><use href="#${id}" x="${x}" y="${y}" width="${bw}" height="${bh}"/></svg>`;
+}
+
+function buildWorld() {
+  geo = computeGeometry();
+  const { W, worldH, stops, n } = geo;
+  world.style.height = worldH + "px";
+
+  // Route: a dotted line under every hop, plus a gold trail drawn over each hop once flown.
+  route.setAttribute("viewBox", `0 0 ${W} ${worldH}`);
+  route.setAttribute("width", W);
+  route.setAttribute("height", worldH);
+  let paths = "";
+  for (let i = 0; i < n; i++) {
+    const c = hopCurve(i, i + 1);
+    const d = `M${c.P0.x} ${worldH - c.P0.y - geo.rocketH * 0.3} Q${c.P1.x} ${worldH - c.P1.y} ${c.P2.x} ${worldH - c.P2.y - geo.rocketH * 0.3}`;
+    paths += `<path class="rk-route-dots" d="${d}"/><path class="rk-route-trail" data-hop="${i}" d="${d}"/>`;
+  }
+  route.innerHTML = paths;
+  route.querySelectorAll(".rk-route-trail").forEach(p => {
+    const len = p.getTotalLength();
+    p.style.strokeDasharray = len;
+    p.style.strokeDashoffset = (+p.dataset.hop < qi) ? 0 : len;
+  });
+
+  stopsEl.innerHTML = "";
+  stops.forEach((s, i) => {
+    const el = document.createElement("div");
+    el.className = "rk-stop rk-stop-" + s.kind;
+    if (s.kind === "pad") {
+      const w = geo.padW, h = w * 64 / 200;
+      el.style.cssText = `left:${s.x - w / 2}px;bottom:${s.y - h * (14 / 64) - 4}px;width:${w}px;height:${h}px;`;
+      el.innerHTML = svgUse("rkPad", "rk-pad", w, h);
+    } else if (s.kind === "moon") {
+      const d = geo.moonD * (0.9 + ((i * 37) % 5) * 0.05);
+      el.classList.add("rk-moon-" + s.tint);
+      el.style.cssText = `left:${s.x - d / 2}px;bottom:${s.y - d + d * 0.06}px;width:${d}px;height:${d}px;`;
+      el.innerHTML = svgUse("rkMoon", "rk-moon", d, d);
+    } else {
+      const R = geo.homeR, w = R * 260 / 80, h = R * 280 / 80;
+      // The planet's centre is 150 units below the symbol top; its surface is 80 units above that.
+      el.style.cssText = `left:${s.x - w / 2}px;bottom:${s.y - (150 + 80) * R / 80 - h + 280 * R / 80 + R * 0.04}px;width:${w}px;height:${h}px;`;
+      el.innerHTML = svgUse("rkHome", "rk-home", w, h);
+    }
+    const flagEl = document.createElement("div");
+    flagEl.className = "rk-flag";
+    const fh = clamp(geo.rocketH * 0.42, 34, 60);
+    const side = s.x > geo.W * 0.5 ? -1 : 1;
+    flagEl.style.cssText = `left:${s.x + side * geo.rocketW * 0.62 - fh * 0.15}px;bottom:${s.y - 2}px;width:${fh * 40 / 60}px;height:${fh}px;`;
+    flagEl.innerHTML = svgUse("rkFlag", "rk-flag-svg", fh * 40 / 60, fh);
+    if (s.kind === "moon" && flagged[i]) flagEl.classList.add("is-planted", "is-" + flagged[i]);
+    s.flagEl = flagEl;
+    stopsEl.appendChild(el);
+    if (s.kind === "moon") stopsEl.appendChild(flagEl);
+  });
+
+  rocket.style.width = geo.rocketW + "px";
+  rocket.style.height = geo.rocketH + "px";
+  placeRocket(qi);
+}
+
+function placeRocket(i) {
+  const s = geo.stops[i];
+  gsap.set(rocket, { x: s.x - geo.rocketW / 2, y: -s.y, rotation: 0 });
+}
+
+// ── Load questions (the lesson's deal: its questions with options; resume from correct_ids) ──
+async function loadQuestions() {
+  const data = await GameKit.questions();
+  questions = data ? data.questions : [];
+  if (!questions.length) { showError(); return; }
+  const correctIds = new Set(data.progress.correct_ids);
+  qi = questions.findIndex(q => !correctIds.has(q.id));
+  if (qi === -1) qi = questions.length;
+  for (let i = 1; i <= qi && i < questions.length; i++) flagged[i] = "gold";
+
+  buildWorld();
+  updateProgress();
+  if (qi >= questions.length) { finishGame(); return; }
+  say(fill(T.statusStart, { total: questions.length }));
+  introPan();
+  renderQuestion();
+}
+
+function showError() {
+  document.getElementById("errorState").classList.remove("hidden");
+  document.getElementById("questionBlock").hidden = true;
+}
+
+// Opening shot: start on the glowing home planet, then glide down the route to the rocket.
+function introPan() {
+  const to = camFor(qi), trip = qi / questions.length;
+  if (reduceMotion) { setCamera(to, trip); return; }
+  setCamera(geo.maxCam, 1);
+  const state = { y: geo.maxCam, trip: 1 };
+  gsap.to(state, {
+    y: to, trip, duration: 2.4, delay: 0.5, ease: "power2.inOut",
+    onUpdate: () => { if (mode !== "flying") setCamera(state.y, state.trip); },
+  });
+}
+
+// ── Question flow ───────────────────────────────────────────────────────
+function updateProgress() {
+  const n = questions.length;
+  GameKit.progress({
+    label: qi >= n ? T.allDone : fill(T.questionOf, { current: qi + 1, total: n }),
+    fraction: Math.min(qi, n) / n,
+    streak, streakText: fill(T.streak, { n: streak }),
+  });
+}
+
+function renderQuestion() {
+  mode = "question";
+  firstTry = true;
+  const q = questions[qi];
+  document.getElementById("questionPrompt").textContent = q.question_prompt || "";
+  const text = q.question_text || "";
+  const qText = document.getElementById("questionText");
+  qText.textContent = text;
+  qText.classList.toggle("is-long", text.length > 90);
+  const ctx = document.getElementById("contextText");
+  ctx.textContent = q.context_text || "";
+  ctx.hidden = !q.context_text;
+  const img = document.getElementById("contextImage");
+  img.innerHTML = "";
+  img.hidden = !q.context_image;
+  if (q.context_image) {
+    const pic = document.createElement("img");
+    pic.src = q.context_image;
+    pic.alt = "";
+    img.appendChild(pic);
+  }
+
+  answerGrid.innerHTML = "";
+  const opts = GameKit.shuffle(q.options);
+  answerGrid.classList.toggle("is-wide", opts.some(o => String(o).length > 22));
+  opts.forEach((word, k) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "quick-action-card rk-answer";
+    btn.innerHTML = `<span class="rk-badge rk-badge-${k % BADGE_SHAPES.length}" aria-hidden="true">
+        <svg viewBox="0 0 40 40" fill="currentColor">${BADGE_SHAPES[k % BADGE_SHAPES.length]}</svg>
+        <span>${LETTERS[k] || k + 1}</span>
+      </span>
+      <span class="rk-answer-text"></span>
+      <span class="rk-mark" aria-hidden="true"></span>`;
+    btn.querySelector(".rk-answer-text").textContent = word;
+    btn.addEventListener("click", () => onAnswer(word, btn));
+    answerGrid.appendChild(btn);
+  });
+  if (!reduceMotion) {
+    gsap.from(answerGrid.children, { y: 16, opacity: 0, stagger: 0.06, duration: 0.32, ease: "back.out(1.6)", clearProps: "transform,translate,opacity" });
+  }
+}
+
+async function onAnswer(word, btn) {
+  if (mode !== "question") return;
+  const q = questions[qi];
+  mode = "checking";
+  const isCorrect = await GameKit.check(q.id, word);
+  if (isCorrect === null) {
+    // The check never reached the server: not a wrong answer, just ask again.
+    mode = "question";
+    showHint(T.checkFailed);
+    return;
+  }
+  GameKit.track('game_answer', { question_id: q.id, is_correct: isCorrect, first_try: firstTry });
+
+  if (!isCorrect) {
+    firstTry = false;
+    streak = 0;
+    updateProgress();
+    btn.classList.replace("quick-action-card", "quick-action-card-rose");
+    btn.classList.add("is-wrong");
+    btn.disabled = true;
+    if (!reduceMotion) gsap.fromTo(btn, { x: 0 }, { x: 6, duration: 0.06, repeat: 5, yoyo: true, ease: "power1.inOut", clearProps: "transform,translate" });
+    sputter();
+    showHint(T.tryAgain);
+    say(T.statusOops);
+    mode = "question";
+    return;
+  }
+
+  const gold = firstTry;
+  if (gold) { streak++; } else { streak = 0; }
+  btn.classList.replace("quick-action-card", "quick-action-card-green");
+  btn.classList.add("is-correct");
+  answerGrid.querySelectorAll("button").forEach(b => { b.disabled = true; if (b !== btn) b.classList.add("is-faded"); });
+  GameKit.speak(word);
+  mode = "flying";
+  const from = qi, to = qi + 1;
+  qi = to;
+  updateProgress();
+  await hop(from, to, gold);
+  if (qi >= questions.length) { finishGame(); return; }
+  renderQuestion();
+  GameKit.speakQuestion(questions[qi]);
+}
+
+// ── Rocket animation ────────────────────────────────────────────────────
+function setMood(m) { rocket.dataset.mood = m; }
+
+let blinkTimer = null;
+function scheduleBlink() {
+  if (reduceMotion) return;
+  clearTimeout(blinkTimer);
+  blinkTimer = setTimeout(() => {
+    gsap.to(rocket.querySelector(".rk-blink"), { scaleY: 0.12, transformOrigin: "50% 50%", duration: 0.07, yoyo: true, repeat: 1 });
+    scheduleBlink();
+  }, 2400 + Math.random() * 3200);
+}
+
+function flameTo(scale, duration) {
+  gsap.to(flame, { scale, opacity: scale > 0 ? 1 : 0, duration, ease: "power2.out", transformOrigin: "50% 0%" });
+}
+
+// Puffs live in the world layer so they scroll with it and stay behind the foreground.
+function puff(x, yUp, opts = {}) {
+  const p = document.createElement("span");
+  const size = opts.size || 14;
+  p.className = "rk-puff" + (opts.dark ? " is-dark" : "");
+  p.style.cssText = `left:${x - size / 2}px;bottom:${yUp - size / 2}px;width:${size}px;height:${size}px;`;
+  world.appendChild(p);
+  gsap.fromTo(p, { scale: 0.4, opacity: 0.95 }, {
+    x: opts.dx || 0, y: -(opts.dy || 0), scale: opts.grow || 2.2, opacity: 0,
+    duration: opts.duration || 0.8, ease: "power2.out", onComplete: () => p.remove(),
+  });
+}
+
+function dustRing(x, yUp, count, spread) {
+  for (let k = 0; k < count; k++) {
+    const dir = k % 2 ? 1 : -1;
+    puff(x + dir * 6, yUp + 4, { size: 12 + Math.random() * 8, dx: dir * (spread * 0.4 + Math.random() * spread * 0.6), dy: 4 + Math.random() * 10, duration: 0.7 + Math.random() * 0.3 });
+  }
+}
+
+function sparkleBurst(x, yUp, color) {
+  for (let k = 0; k < 9; k++) {
+    const s = document.createElement("span");
+    s.className = "rk-spark";
+    s.style.cssText = `left:${x - 5}px;bottom:${yUp - 5}px;background:${color};`;
+    world.appendChild(s);
+    const a = (Math.PI * 2 * k) / 9 + Math.random() * 0.3, r = 30 + Math.random() * 34;
+    gsap.fromTo(s, { scale: 0.3, rotation: 45 }, {
+      x: Math.cos(a) * r, y: -Math.sin(a) * r, scale: 1, rotation: 225, opacity: 0,
+      duration: 0.75, ease: "power2.out", onComplete: () => s.remove(),
+    });
+  }
+}
+
+// A wrong answer: the engine coughs, the rocket wobbles, then it waits.
+function sputter() {
+  setMood("oops");
+  setTimeout(() => { if (mode !== "flying") setMood("calm"); }, 1300);
+  const s = geo.stops[qi];
+  if (reduceMotion) return;
+  gsap.timeline()
+    .to(flame, { scale: 0.35, opacity: 1, duration: 0.08, transformOrigin: "50% 0%" })
+    .to(flame, { scale: 0, opacity: 0, duration: 0.12 })
+    .to(flame, { scale: 0.25, opacity: 1, duration: 0.08 }, "+=0.12")
+    .to(flame, { scale: 0, opacity: 0, duration: 0.15 });
+  [0, 0.26].forEach(d => setTimeout(() => puff(s.x + (Math.random() - 0.5) * 8, s.y - 2, { size: 16, dark: true, dy: 26, dx: (Math.random() - 0.5) * 20, grow: 2.4, duration: 1 }), d * 1000));
+  gsap.timeline()
+    .to(rocketBody, { rotation: -7, transformOrigin: "50% 100%", duration: 0.09 })
+    .to(rocketBody, { rotation: 6, duration: 0.12 })
+    .to(rocketBody, { rotation: -4, duration: 0.12 })
+    .to(rocketBody, { rotation: 0, duration: 0.25, ease: "elastic.out(1, 0.4)" });
+}
+
+// A right answer: crouch, blast off along the hop, settle onto the next stop, plant a flag.
+function hop(a, b, gold) {
+  const n = questions.length, last = b === n;
+  const c = hopCurve(a, b);
+  const trail = route.querySelector(`.rk-route-trail[data-hop="${a}"]`);
+  const trailLen = trail ? parseFloat(trail.style.strokeDasharray) : 0;
+  const B = geo.stops[b];
+  const landed = () => {
+    if (trail) trail.style.strokeDashoffset = 0;
+    if (B.kind === "moon") {
+      flagged[b] = gold ? "gold" : "coral";
+      B.flagEl.classList.add("is-planted", "is-" + flagged[b]);
+    }
+    say(last ? T.statusHome : fill(T.statusLanded, { current: b, total: n }));
+  };
+
+  if (reduceMotion) {
+    placeRocket(b);
+    setCamera(camFor(b), b / n);
+    landed();
+    setMood("happy");
+    return new Promise(r => setTimeout(() => { setMood("calm"); r(); }, 700));
+  }
+
+  return new Promise(resolve => {
+    const A = geo.stops[a];
+    const camFrom = camera.y, camTo = camFor(b);
+    const tripFrom = a / n, tripTo = b / n;
+    const st = { t: 0 };
+    let lastPuff = 0;
+    setMood("happy");
+    const tl = gsap.timeline({ onComplete: resolve });
+    // Anticipation: the engine catches, the hull crouches and rumbles.
+    tl.to(flame, { scale: 0.45, opacity: 1, duration: 0.2, transformOrigin: "50% 0%", ease: "power2.out" }, 0)
+      .to(rocketBody, { scaleY: 0.82, scaleX: 1.12, transformOrigin: "50% 100%", duration: 0.32, ease: "power2.out" }, 0)
+      .to(rocketBody, { x: 1.6, duration: 0.04, repeat: 7, yoyo: true, ease: "none" }, 0)
+      .add(() => dustRing(A.x, A.y, 8, geo.rocketW * 1.4), 0.12)
+    // Blast off: stretch, big flame, follow the curve while the camera trails behind.
+      .to(rocketBody, { scaleY: 1.16, scaleX: 0.88, x: 0, duration: 0.18, ease: "back.out(3)" }, 0.34)
+      .to(flame, { scale: 1.3, duration: 0.15 }, 0.34)
+      .to(rocketBody, { scaleY: 1, scaleX: 1, duration: 0.5, ease: "power2.out" }, 0.6)
+      .to(st, {
+        t: 1, duration: 1.25, ease: "power1.inOut",
+        onUpdate: () => {
+          const p = bez(c, st.t);
+          let ang = Math.atan2(p.dx, p.dy) * 180 / Math.PI;
+          ang = clamp(ang, -55, 55) * (1 - smoothstep(0.55, 0.92, st.t));
+          gsap.set(rocket, { x: p.x - geo.rocketW / 2, y: -p.y, rotation: ang });
+          if (trail) trail.style.strokeDashoffset = trailLen * (1 - st.t);
+          const now = performance.now();
+          if (now - lastPuff > 55 && st.t < 0.9) {
+            lastPuff = now;
+            const L = geo.rocketH * 0.4, rad = ang * Math.PI / 180;
+            puff(p.x - Math.sin(rad) * L, p.y + geo.rocketH * 0.4 - Math.cos(rad) * L, { size: 10 + Math.random() * 6, duration: 0.9, grow: 2.6 });
+          }
+        },
+      }, 0.34)
+      .to(camera, {
+        y: camTo, duration: 1.45, ease: "power2.inOut",
+        onUpdate: () => setCamera(camera.y, tripFrom + (tripTo - tripFrom) * ((camera.y - camFrom) / ((camTo - camFrom) || 1))),
+      }, 0.42)
+      .to(flame, { scale: 0.6, duration: 0.3 }, 1.15)
+    // Touchdown: flame out, squash, dust, flag.
+      .to(flame, { scale: 0, opacity: 0, duration: 0.22 }, 1.59)
+      .add(() => { dustRing(B.x, B.y, 6, geo.rocketW); landed(); sparkleBurst(B.x, B.y + geo.rocketH * 0.5, gold ? "var(--color-amber-300)" : "var(--color-rose-300)"); }, 1.59)
+      .to(rocketBody, { scaleY: 0.86, scaleX: 1.1, duration: 0.12, ease: "power2.out" }, 1.59)
+      .to(rocketBody, { scaleY: 1, scaleX: 1, duration: 0.6, ease: "elastic.out(1, 0.45)" }, 1.71)
+      .add(() => { setCamera(camTo, tripTo); if (!last) setMood("calm"); }, last ? 2.0 : 2.2);
+  });
+}
+
+function smoothstep(a, b, x) { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+
+function showHint(text) {
+  const hint = document.getElementById("tryAgain");
+  hint.textContent = text;
+  gsap.killTweensOf(hint);
+  gsap.fromTo(hint, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.25, onComplete: () => gsap.to(hint, { opacity: 0, delay: 1.3 }) });
+}
+
+// ── Finish: the rocket is home ──────────────────────────────────────────
+function celebrateHome() {
+  const s = geo.stops[geo.n];
+  setMood("happy");
+  scene.classList.add("is-home");
+  if (reduceMotion) return;
+  const colors = ["var(--color-amber-300)", "var(--color-pink-300)", "var(--color-sky-300)", "var(--color-violet-300)"];
+  for (let k = 0; k < 4; k++) {
+    setTimeout(() => sparkleBurst(s.x + (Math.random() - 0.5) * geo.W * 0.6, s.y + geo.rocketH * (0.6 + Math.random() * 0.9), colors[k % colors.length]), 200 + k * 260);
+  }
+  gsap.timeline({ delay: 0.3 })
+    .to(rocketBody, { y: -geo.rocketH * 0.22, duration: 0.28, ease: "power2.out" })
+    .to(rocketBody, { y: 0, duration: 0.42, ease: "bounce.out" });
+}
+
+async function finishGame() {
+  mode = "done";
+  document.getElementById("questionBlock").hidden = true;
+  updateProgress();
+  placeRocket(geo.n);
+  setCamera(camFor(geo.n), 1);
+  celebrateHome();
+  await GameKit.finish({}, { after: reduceMotion ? 600 : 2000 });
+}
+
+// ── Start ───────────────────────────────────────────────────────────────
+gsap.set(flame, { scale: 0, opacity: 0, transformOrigin: "50% 0%" });
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!questions.length || mode === "flying" || mode === "loading") return;
+    const stop = Math.min(qi, questions.length);
+    buildWorld();
+    placeRocket(stop);
+    setCamera(camFor(stop), stop / questions.length);
+  }, 150);
+});
+scheduleBlink();
+loadQuestions();
+</script>
+</GamePage>

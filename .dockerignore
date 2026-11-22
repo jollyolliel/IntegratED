@@ -1,0 +1,50 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv
+.git
+.gitignore
+.claude/
+.env
+.env.*
+# google-github-actions/auth writes its credentials file into the workspace, and
+# deploy.yml authenticates before `docker build`, so COPY . . would bake it in.
+gha-creds-*.json
+instance/
+.pytest_cache
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+node_modules/
+.DS_Store
+*.log
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.vagrant
+.dockerignore
+DOCKERFILE
+static/css/pages/README.md
+TODO.markdown
+
+# The dev seed never ships, not one file of it: production reads questions,
+# worksheets and announcements from the bucket's content/ folder (helpers/content_source.py).
+seed/
+
+# Dev-only tooling, docs, CI config — no runtime dependency on any of these.
+tests/
+.github/
+scripts/
+# Except the CSS build the tailwind-builder stage runs.
+!scripts/tailwind.py
+lint/
+vide/
+*.md

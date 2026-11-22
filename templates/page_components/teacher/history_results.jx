@@ -1,0 +1,123 @@
+{#- The attendance history's results region (#historyResults, on the page: its own script swaps
+    it, on filter changes too, and edits rows in it, so it is no `data-swap-region`): totals for the current filter, the
+    sheet grouped by day then volunteer, and the pager. `routes/teacher/attendance.py` renders it
+    alone for an `X-Fragment` request; the page's script refetches it on every filter change and
+    edits its rows in place (each row carries its record in `data-*`). -#}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/pagination.jx" as Pagination #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#def records, day_groups, filters, page, page_count, total_sessions, present_sessions, absent_sessions,
+      attendance_rate, total_hours #}
+{#- Totals for the current filter, not for all time: the number the teacher is asked to report is
+    always a filtered one. #}
+<div class="att-counts mb-3">
+  <span class="att-count"><b class="text-sky-700">{{ total_sessions }}</b> {{ t('teacher.attendance_history.stat_sessions') }}</span>
+  <span class="att-count"><b class="text-accent-dark">{{ present_sessions }}</b> {{ t('teacher.attendance_history.stat_present') }}</span>
+  <span class="att-count"><b class="text-rose-700">{{ absent_sessions }}</b> {{ t('teacher.attendance_history.stat_absent') }}</span>
+  <span class="att-count"><b class="text-sky-700">{{ attendance_rate }}%</b> {{ t('teacher.attendance_history.stat_rate') }}</span>
+  <span class="att-count"><b class="text-sky-700">{{ total_hours }}</b> {{ t('teacher.attendance_history.stat_hours') }}</span>
+</div>
+
+{%- if records %}
+<Table class="att-sheet">
+  <thead>
+    <tr>
+      <th>{{ t('teacher.attendance_history.col_learner') }}</th>
+      <th class="att-col-mark">{{ t('teacher.attendance.status_present') }}</th>
+      <th class="att-col-mark">{{ t('teacher.attendance.status_absent') }}</th>
+      <th class="att-col-hours">{{ t('teacher.attendance_history.col_hours') }}</th>
+      <th>{{ t('teacher.attendance_history.col_note') }}</th>
+      <th class="text-right">{{ t('teacher.attendance_history.col_actions') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {%- for day in day_groups %}
+    <tr class="att-day-row">
+      <td colspan="6">{{ day.date.strftime('%A %d %b %Y') }}</td>
+    </tr>
+    {%- for group in day.groups %}
+    {%- set volunteer_name = (group.volunteer.name or group.volunteer.email) if group.volunteer else '' %}
+    {%- set vr = group.volunteer_record %}
+    {#- The volunteer's own record is its own row's id, edited the same way as any learner row
+        below (teacher_ops.log_attendance_batch / update_user_attendance). #}
+    <tr class="att-group-row" data-record-id="{{ vr.id if vr else '' }}"
+        data-date="{{ vr.date.strftime('%Y-%m-%d') if vr else '' }}"
+        data-status="{{ 'present' if vr and vr.is_present else 'absent' if vr else '' }}"
+        data-duration="{{ '%.2f'|format(vr.duration) if vr else '' }}"
+        data-notes="{{ vr.notes or '' if vr else '' }}"
+        data-label="{{ volunteer_name }}">
+      <td>
+        <div class="att-group-bar">
+          <span class="att-group-name">
+            {%- if group.volunteer %}
+            <a href="{{ url_for('teacher.teacher_volunteer_detail', volunteer_id=group.volunteer.id) }}" class="text-primary-dark hover:text-primary transition-colors">{{ volunteer_name }}</a>
+            {%- else %}{{ t('teacher.attendance_history.no_volunteer') }}{% endif %}
+          </span>
+          <span class="att-group-count">{{ t('teacher.attendance.group_learner_count', n=group.rows|length) }}</span>
+        </div>
+      </td>
+      {%- if vr %}
+      <td class="att-col-mark">
+        <span class="att-radio att-radio-static" data-mark-cell="present" aria-hidden="true"><span class="att-radio-dot"></span></span>
+      </td>
+      <td class="att-col-mark">
+        <span class="att-radio att-radio-static att-radio-absent" data-mark-cell="absent" aria-hidden="true"><span class="att-radio-dot"></span></span>
+      </td>
+      <td class="font-bold text-sky-700" data-cell="hours">{{ "%.1f"|format(vr.duration) }}</td>
+      <td class="text-ink-muted" data-cell="notes">{{ vr.notes or '—' }}</td>
+      <td class="text-right" data-cell="actions">
+        <Button variant="sky" flat data-edit-row>{{ t('teacher.attendance_history.btn_edit') }}</Button>
+      </td>
+      {%- else %}
+      <td colspan="5"></td>
+      {%- endif %}
+    </tr>
+    {%- for record in group.rows %}
+    <tr data-record-id="{{ record.id }}"
+        data-date="{{ record.date.strftime('%Y-%m-%d') }}"
+        data-status="{{ 'present' if record.is_present else 'absent' }}"
+        data-duration="{{ '%.2f'|format(record.duration) }}"
+        data-notes="{{ record.notes or '' }}"
+        data-label="{{ record.user.name or record.user.username }}">
+      <td>
+        <a href="{{ url_for('teacher.teacher_learner_detail', learner_id=record.user.id) }}" class="text-primary hover:text-primary-dark font-semibold transition-colors">{{ record.user.name or record.user.username }}</a>
+        {#- The mark columns are colour only; this is what a screen reader reads. #}
+        <span class="sr-only" data-status-text>
+          {{ t('teacher.attendance.status_present') if record.is_present else t('teacher.attendance.status_absent') }}
+        </span>
+      </td>
+      <td class="att-col-mark">
+        <span class="att-radio att-radio-static" data-mark-cell="present" aria-hidden="true"><span class="att-radio-dot"></span></span>
+      </td>
+      <td class="att-col-mark">
+        <span class="att-radio att-radio-static att-radio-absent" data-mark-cell="absent" aria-hidden="true"><span class="att-radio-dot"></span></span>
+      </td>
+      <td class="font-bold text-sky-700" data-cell="hours">{{ "%.1f"|format(record.duration) }}</td>
+      <td class="text-ink-muted" data-cell="notes">{{ record.notes or '—' }}</td>
+      <td class="text-right" data-cell="actions">
+        <Button variant="sky" flat data-edit-row>{{ t('teacher.attendance_history.btn_edit') }}</Button>
+      </td>
+    </tr>
+    {%- endfor %}
+    {%- endfor %}
+    {%- endfor %}
+  </tbody>
+</Table>
+
+{%- set page_args = {
+  'learner': filters.learner_id or none, 'volunteer': filters.volunteer_id or none,
+  'status': filters.status or none, 'range': filters.range or none,
+  'from': filters.date_from.strftime('%Y-%m-%d') if filters.date_from else none,
+  'to': filters.date_to.strftime('%Y-%m-%d') if filters.date_to else none,
+} %}
+<Pagination endpoint="teacher.teacher_attendance_history" page={{ page }} total_pages={{ page_count }} args={{ page_args }}
+  label={{ t('teacher.attendance_history.pagination_label') }}
+  prev_label={{ t('teacher.attendance_history.prev') }} next_label={{ t('teacher.attendance_history.next') }} />
+
+<p class="text-xs text-ink-faint text-center mt-3">
+  {{ t('teacher.attendance_history.showing', shown=records|length, total=total_sessions) }}
+</p>
+{%- else %}
+<EmptyState message={{ t('teacher.attendance_history.no_records') }} />
+{%- endif %}

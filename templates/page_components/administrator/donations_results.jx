@@ -1,0 +1,42 @@
+{#- The donations table and its pager: the swap region on
+    `pages/administrator/donations.jx`. `routes/administrator/people.py` renders it alone for an
+    `X-Fragment` request. -#}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/pagination.jx" as Pagination #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#def donations, page, page_count, page_args #}
+<div data-swap-region>
+{%- if donations %}
+<div class="mb-4">
+  <SectionBadge>{{ t('admin.donations.all_donations') }}</SectionBadge>
+</div>
+<Table wrap_class="overflow-x-auto" class="min-w-[700px]">
+  <thead>
+    <tr>
+      <th>{{ t('admin.donations.col_date') }}</th>
+      <th>{{ t('admin.donations.col_donor') }}</th>
+      <th>{{ t('admin.donations.col_email') }}</th>
+      <th>{{ t('admin.donations.col_school') }}</th>
+      <th>{{ t('admin.donations.col_amount') }}</th>
+      <th>{{ t('admin.donations.col_message') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {%- for d in donations %}
+    <tr>
+      <td class="text-ink-faint text-xs">{{ d.created_at.strftime('%b %d, %Y') }}</td>
+      <td class="font-medium text-sky-900">{{ d.donor_name or t('admin.donations.anonymous') }}</td>
+      <td class="text-ink-faint text-xs font-mono">{{ d.donor_email or '—' }}</td>
+      <td class="text-ink-faint text-xs">{{ d.school.name if d.school else '—' }}</td>
+      <td class="text-accent font-bold">${{ "%.2f"|format(d.amount / 100) }}</td>
+      <td class="text-ink-faint text-xs max-w-xs truncate">{{ d.message or '—' }}</td>
+    </tr>
+    {%- endfor %}
+  </tbody>
+</Table>
+<Pagination endpoint="administrator.donations" page={{ page }} total_pages={{ page_count }} args={{ page_args }} />
+{%- else %}
+<EmptyState message={{ t('admin.donations.empty') }} />
+{%- endif %}
+</div>

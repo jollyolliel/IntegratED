@@ -1,0 +1,125 @@
+/* =========================================
+   Feature announcement popup — the "what's new" modal shown once per user on
+   their dashboard. Markup + JS in header.html, content authored in
+   data/announcements.json. Detail: docs/ui-design/page-behaviour.md
+   Sky, not rose: this announces a feature, it is not a destructive-action
+   confirm. Green stays the one primary action (the CTA).
+   ========================================= */
+
+/* .announce-overlay: Feature popup backdrop */
+.announce-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgb(var(--color-ink-heading-rgb) / 0.45);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  animation: announce-fade-in 180ms ease-out;
+}
+.announce-overlay.hidden { display: none; }
+
+/* The surface is NOT clay-card: the popup carries the 6px modal elevation and
+   a heavier 2.5px border so it reads as lifted off the blurred dashboard,
+   where clay-card is a flat 2px/4px in-page card. */
+/* .announce-card: Feature popup surface (2.5px border, 6px modal elevation) */
+.announce-card {
+  position: relative;
+  width: 100%;
+  background: white;
+  border: 2.5px solid var(--color-sky-200);
+  border-radius: 22px;
+  box-shadow: 6px 6px 0 var(--color-sky-100);
+  overflow: hidden;
+  animation: announce-pop-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Layout widths — text_only and text_image_top are single-column, the side
+   layout needs room for two. */
+/* .announce-card-narrow: Feature popup width — text_only / text_image_top */
+.announce-card-narrow { max-width: 420px; }
+/* .announce-card-wide: Feature popup width — text_image_side */
+.announce-card-wide   { max-width: 740px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .announce-overlay, .announce-card { animation: none; }
+}
+
+@keyframes announce-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes announce-pop-in {
+  from { transform: translateY(12px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Close button. Sits over the image in the media layouts, so it carries its
+   own translucent plate rather than relying on the card background. */
+/* .announce-close: Feature popup — X button, plated so it reads over an image */
+.announce-close {
+  position: absolute; top: 14px; inset-inline-end: 14px; z-index: 2;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 12px;
+  background: rgb(var(--color-surface-rgb) / 0.85);
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.announce-close:hover { background: var(--color-gray-50); color: var(--color-gray-800); }
+
+/* .announce-body: Feature popup — padded text column */
+.announce-body { padding: 32px; }
+/* The side layout's text column is vertically centred against a full-height
+   image, so it gets its own roomier padding. */
+/* .announce-split: Feature popup — two-column text/image grid (text_image_side) */
+.announce-split { display: grid; grid-template-columns: 1.2fr 1fr; min-height: 300px; }
+.announce-split .announce-body {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 40px; min-width: 0;
+}
+/* The badge is inline-block, but a flex column stretches it edge to edge.
+   Contextual alignment only — never redeclare .clay-badge itself. */
+.announce-split .announce-body .clay-badge { align-self: flex-start; }
+
+/* .announce-media: Feature popup — image cell */
+.announce-media {
+  background: var(--color-sky-50);
+  min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.announce-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Top layout: a fixed-height banner, so a tall or short image can't reflow the
+   card. The side layout stretches to the text column instead. */
+/* .announce-media-top: Feature popup — fixed 170px banner (text_image_top) */
+.announce-media-top { height: 170px; }
+
+/* Icon tile for the text-only layout — the standard icon box at popup scale. */
+/* .announce-icon: Feature popup — sky icon tile (text_only layout only) */
+.announce-icon {
+  width: 52px; height: 52px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-sky-50); border: 2px solid var(--color-sky-200); color: var(--color-primary);
+  margin-bottom: 18px;
+}
+
+/* .announce-title: Feature popup heading */
+.announce-title {
+  font-weight: 800; font-size: 1.5rem; line-height: 1.15;
+  color: var(--color-ink-heading); margin: 0 0 12px;
+}
+/* .announce-text: Feature popup body copy */
+.announce-text {
+  font-size: 0.95rem; line-height: 1.7; color: var(--color-ink-body); margin: 0 0 26px;
+}
+
+/* Stacked so a long CTA label never squeezes the secondary onto two lines. */
+/* .announce-actions: Feature popup — stacked CTA + secondary column */
+.announce-actions { display: flex; flex-direction: column; gap: 10px; }
+.announce-actions .btn-clay { width: 100%; justify-content: center; }
+
+@media (max-width: 640px) {
+  .announce-split { grid-template-columns: 1fr; }
+  /* Image first on mobile: the split layout's media column is source-ordered
+     after the text, so it would otherwise land below the buttons. */
+  .announce-split .announce-media { order: -1; height: 160px; }
+  .announce-split .announce-body { padding: 28px 24px; }
+  .announce-body { padding: 28px 24px; }
+  .announce-title { font-size: 1.3rem; }
+}

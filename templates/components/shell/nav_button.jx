@@ -1,0 +1,13 @@
+{#- A header button: register (green), login (sky outline) or logout (shadowless ghost). `icon`
+    makes an icon-only square in gray (assistant, settings), which needs an aria-label or title;
+    `active` marks it as the current page (aria-current). `href` renders an <a>, else a
+    <button type="button">. -#}
+{#def variant=None, href=None, icon=False, active=False #}
+{%- set classes = look("NavButton", "variant", variant, "button") ~ (" w-9 h-9 p-0 justify-center rounded-[10px] shrink-0 font-normal btn-nav-icon" if icon else "") -%}
+{%- if active %}{% do attrs.setdefault(aria_current="page") %}{% endif -%}
+{%- if href is not none -%}
+<a {{ attrs.render(class=classes, href=href) }}>{{ content }}</a>
+{%- else -%}
+{%- do attrs.setdefault(type="button") -%}
+<button {{ attrs.render(class=classes) }}>{{ content }}</button>
+{%- endif %}

@@ -1,0 +1,45 @@
+{#- The public News index of articles. The pager swaps only the cards. -#}
+{# import "@components/shell/page.jx" as Page #}
+{# import "@page_components/public/articles_results.jx" as ArticlesResults #}
+{#import "@components/shell/main.jx" as Main #}
+{# def articles, page, page_count #}
+{%- set head %}
+<style>
+  .articles-masthead { text-align: center; margin-bottom: clamp(36px, 5vw, 56px); }
+  .articles-masthead-rules { padding-block: 18px 14px; border-block: 4px double var(--color-sky-300); margin-bottom: 18px; }
+  .articles-masthead-title { font-size: clamp(2.6rem, 6vw, 5.2rem); line-height: 1; letter-spacing: -0.02em; color: var(--color-ink-heading); }
+  .articles-masthead-line { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 14px; margin-top: 10px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-primary-dark); }
+  .articles-masthead-line span + span::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-inline-end: 14px; border-radius: 50%; background: var(--color-amber-400); vertical-align: middle; }
+  .articles-masthead-lead { font-size: clamp(1.05rem, 1.2vw, 1.3rem); line-height: 1.6; color: var(--color-ink-body); max-width: 38em; margin-inline: auto; }
+  .article-index { display: grid; gap: 24px; }
+  .article-feature { display: grid; color: var(--color-ink-heading); }
+  .article-feature:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+  @media (min-width: 768px) { .article-feature { grid-template-columns: 1fr 1.3fr; } }
+  .article-feature-stage { min-height: 220px; display: grid; place-items: center; background-color: var(--color-sky-50); background-image: radial-gradient(rgb(var(--color-primary-rgb) / 0.12) 2px, transparent 2.5px); background-size: 22px 22px; }
+  .article-feature-stage img { width: min(50%, 200px); rotate: -6deg; }
+  .article-feature-stage-photo { background-image: none; }
+  .article-feature-stage-photo img { width: 100%; height: 100%; min-height: 220px; object-fit: cover; rotate: none; }
+  .article-feature-body { padding: clamp(24px, 3.5vw, 40px); display: flex; flex-direction: column; justify-content: center; }
+  .article-feature-date { margin-bottom: 8px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-muted); }
+  .article-feature-title { font-size: 2.2rem; line-height: 1.08; margin-bottom: 10px; color: var(--color-ink-heading); }
+  .article-feature-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; font-size: 1.05rem; line-height: 1.6; color: var(--color-ink-body); margin-bottom: 16px; }
+  .article-feature-go { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; color: var(--color-primary); }
+  @media (max-width: 559px) { .article-feature-title { font-size: 1.7rem; } }
+  /* The featured article: a clickable card. */
+  .article-card { background: white; border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 150ms; border: 2px solid var(--color-sky-200); box-shadow: 3px 3px 0 var(--color-sky-200); cursor: pointer; }
+  .article-card:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--color-sky-300); border-color: var(--color-sky-300); }
+  .article-card:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--color-sky-300); }
+</style>
+{%- endset %}
+<Page title={{ t('articles.heading') ~ " - IntegratED" }} styles="public" head={{ head }}>
+  <Main width="5xl">
+    <div class="articles-masthead">
+      <div class="articles-masthead-rules">
+        <h1 class="articles-masthead-title display-font font-extrabold">{{ t('articles.heading') }}</h1>
+        <p class="articles-masthead-line"><span>IntegratED</span><span>{{ t('index.hero_badge') }}</span></p>
+      </div>
+      <p class="articles-masthead-lead">{{ t('articles.description') }}</p>
+    </div>
+    <ArticlesResults articles={{ articles }} page={{ page }} page_count={{ page_count }} />
+  </Main>
+</Page>

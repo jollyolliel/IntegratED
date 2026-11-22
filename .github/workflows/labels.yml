@@ -1,0 +1,32 @@
+name: Sync labels
+
+# Keeps the CI labels that auto-tag.yml and deploy.yml read present in the repo
+# so they can be attached to PRs from the GitHub UI: the release:* bump labels
+# and the deploy:skip label. Runs when this file changes on master (creates them
+# the first time it lands) and on manual dispatch.
+on:
+  push:
+    branches: [master]
+    paths: [".github/workflows/labels.yml"]
+  workflow_dispatch:
+
+permissions:
+  issues: write # labels are managed through the issues API
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Ensure CI labels exist
+        run: |
+          set -euo pipefail
+          # --force = create if missing, update colour/description if present.
+          ensure() { gh label create "$1" --repo "$REPO" --color "$2" --description "$3" --force; }
+          ensure "release:major" "b60205" "Auto-tag: bump the 1st version number - vX+1.0.0 (breaking change)"
+          ensure "release:minor" "fbca04" "Auto-tag: bump the 2nd version number - the middle digit (new feature)"
+          ensure "release:patch" "0e8a16" "Auto-tag: bump the 3rd version number - the last digit (fix/tweak)"
+          ensure "release:skip" "c5def5" "Auto-tag: do not cut a release when this PR merges"
+          ensure "deploy:skip" "5319e7" "Deploy: do not redeploy to Cloud Run when this PR merges"

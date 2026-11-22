@@ -1,0 +1,62 @@
+{#- One worksheet in the library grid (teacher worksheets, volunteer resources). `matched_pairs`
+    (teacher only) lists up to two pairs it suits; none hides that section. With `assign_url`
+    the card has two actions (preview + assign), otherwise one full-width primary action.
+    `highlighted` marks a recommended worksheet in amber. Its level and tags, when set, sit under the topic. -#}
+{#import "@components/base/badge.jx" as Badge #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/file_type_badge.jx" as FileTypeBadge #}
+{#import "@components/base/button.jx" as Button #}
+{#def ws, primary_url, primary_label, matched_pairs=None, assign_url="", assign_label="", highlighted=False #}
+<Card tag="article" tone={{ "amber" if highlighted else "sky" }}
+  id={{ "ws-card-" ~ ws.id }} data-title={{ ws.title | lower }} data-subject={{ ws.subject | lower }}
+  data-topic={{ (ws.topic or "") | lower }}
+  class={{ "ws-card flex flex-col" ~ (" ws-card-highlighted" if highlighted else "") }} attrs={{ attrs }}>
+  <div class="flex items-start justify-between gap-3 mb-3">
+    <div class="min-w-0">
+      <p class="text-[10px] uppercase tracking-widest text-sky-500 font-bold">{{ ws.subject }}</p>
+      <h3 class="text-base font-bold text-sky-900 mt-0.5 leading-snug">{{ ws.title }}</h3>
+      {%- if ws.topic %}<p class="text-xs text-ink-faint mt-0.5">{{ ws.topic }}</p>{% endif %}
+      {%- if ws.level or ws.tags %}
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2">
+        {%- if ws.level %}<Badge class="text-[10px] font-bold px-2 py-0.5">{{ t("components.worksheet_card.level", level=ws.level) }}</Badge>{% endif %}
+        {%- if ws.tags %}
+        <ul class="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-ink-faint" aria-label="{{ t('components.worksheet_card.tags_label') }}">
+          {%- for tag in ws.tags %}<li>{{ tag }}</li>{% endfor %}
+        </ul>
+        {%- endif %}
+      </div>
+      {%- endif %}
+      {%- if highlighted %}
+      <span class="text-[10px] font-bold text-amber-700 uppercase tracking-wide inline-block mt-1.5 px-2 py-0.5 rounded-full bg-yellow-100 border-[1.5px] border-amber-200">{{ t("components.worksheet_card.recommended") }}</span>
+      {%- endif %}
+    </div>
+    <span class="shrink-0"><FileTypeBadge type={{ ws.file_type }} /></span>
+  </div>
+  {%- if matched_pairs is not none %}
+  <div class="flex-1 pt-3 mt-1 border-t-[1.5px] border-primary-soft">
+    {%- set suggested = namespace(count=0) %}
+    {%- for pair in matched_pairs if ws in pair.worksheets %}
+    {%- if loop.index <= 2 %}
+    {%- if loop.first %}
+    <p class="text-[10px] uppercase tracking-widest text-ink-faint font-bold mb-1.5">{{ t("teacher.worksheets.suggested_for") }}</p>
+    {%- endif %}
+    <p class="text-xs text-gray-600 leading-snug">{{ pair.learner.name or pair.learner.username }} &amp; {{ pair.volunteer.name or pair.volunteer.email.split("@")[0] }}</p>
+    {%- set suggested.count = suggested.count + 1 %}
+    {%- endif %}
+    {%- endfor %}
+    {%- if suggested.count == 0 %}
+    <p class="text-xs text-ink-faint">{{ t("teacher.worksheets.no_pair_rec") }}</p>
+    {%- endif %}
+  </div>
+  {%- else %}
+  <div class="flex-1"></div>
+  {%- endif %}
+  <div class="mt-4 flex gap-2">
+    {%- if assign_url %}
+    <Button variant="sky" href={{ primary_url }} class="flex-1">{{ primary_label }}</Button>
+    <Button href={{ assign_url }} class="flex-1">{{ assign_label }}</Button>
+    {%- else %}
+    <Button href={{ primary_url }} class="w-full">{{ primary_label }}</Button>
+    {%- endif %}
+  </div>
+</Card>

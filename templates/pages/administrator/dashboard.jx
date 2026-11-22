@@ -1,0 +1,166 @@
+{#- The administrator's home: platform totals, quick navigation, recent donations, and the CMS
+    (site copy, team members, articles) edited in place. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/quick_action.jx" as QuickAction #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/textarea.jx" as Textarea #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def total_schools, total_learners, total_volunteers, total_teachers, total_donations, total_hours,
+    recent_donations, articles, article_count, team_members, site_content, pending_announcement=None #}
+<Page title="Master Admin — IntegratED" announcement={{ pending_announcement }}>
+  <Main>
+    <div class="mb-8">
+      <SectionBadge>{{ t('admin.dashboard.eyebrow') }}</SectionBadge>
+      <h1 class="display-font text-4xl font-extrabold text-sky-950">{{ t('admin.dashboard.platform_overview') }}</h1>
+      <p class="text-sm mt-1 text-ink-heading/60">{{ t('admin.dashboard.platform_wide_overview') }}</p>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+      <StatTile label={{ t('admin.dashboard.stat_schools') }} value={{ total_schools }} />
+      <StatTile label={{ t('admin.dashboard.stat_learners') }} value={{ total_learners }} />
+      <StatTile tone="green" label={{ t('admin.dashboard.stat_volunteers') }} value={{ total_volunteers }} />
+      <StatTile tone="amber" label={{ t('admin.dashboard.stat_teachers') }} value={{ total_teachers }} />
+      <StatTile label={{ t('admin.dashboard.stat_hours') }} value={{ total_hours }} />
+      <StatTile tone="green" label={{ t('admin.dashboard.stat_donations') }} value={{ "$%.0f" | format(total_donations) }} />
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
+      <QuickAction href={{ url_for('administrator.schools') }} icon="building-office"
+        title={{ t('admin.dashboard.stat_schools') }} description={{ t('admin.dashboard.nav_schools_desc') }} />
+      <QuickAction href={{ url_for('administrator.users') }} icon="users"
+        title={{ t('admin.dashboard.nav_users') }} description={{ t('admin.dashboard.nav_users_desc') }} />
+      <QuickAction tone="green" href={{ url_for('administrator.donations') }} icon="heart"
+        title={{ t('admin.dashboard.nav_donations') }} description={{ t('admin.dashboard.nav_donations_desc') }} />
+      <QuickAction tone="amber" href={{ url_for('administrator.db_stats') }} icon="circle-stack"
+        title={{ t('admin.dashboard.nav_database') }} description={{ t('admin.dashboard.nav_database_desc') }} />
+      <QuickAction tone="green" href={{ url_for('administrator.create_school') }} icon="plus"
+        title={{ t('admin.dashboard.nav_new_school') }} description={{ t('admin.dashboard.nav_new_school_desc') }} />
+    </div>
+
+    {%- if recent_donations %}
+    <div class="mb-10">
+      <div class="flex items-center gap-3 mb-4">
+        <SectionBadge>{{ t('admin.dashboard.recent_donations') }}</SectionBadge>
+        <h2 class="display-font text-xl font-bold text-sky-900">{{ t('admin.dashboard.recent_donations') }}</h2>
+      </div>
+      <Table>
+        <thead>
+          <tr>
+            <th>{{ t('admin.dashboard.col_date') }}</th>
+            <th>{{ t('admin.dashboard.col_donor') }}</th>
+            <th>{{ t('admin.dashboard.col_school') }}</th>
+            <th>{{ t('admin.dashboard.col_amount') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {%- for d in recent_donations %}
+          <tr>
+            <td class="text-ink-faint">{{ d.created_at.strftime('%b %d, %Y') }}</td>
+            <td class="font-medium text-sky-900">{{ d.donor_name or t('admin.donations.anonymous') }}</td>
+            <td class="text-ink-faint">{{ d.school.name if d.school else '—' }}</td>
+            <td class="text-accent font-bold">${{ "%.2f"|format(d.amount / 100) }}</td>
+          </tr>
+          {%- endfor %}
+        </tbody>
+      </Table>
+    </div>
+    {%- endif %}
+
+    <div class="mb-6">
+      <SectionBadge>{{ t('admin.dashboard.cms') }}</SectionBadge>
+      <h2 class="display-font text-2xl font-bold text-sky-900">{{ t('admin.dashboard.content_management') }}</h2>
+    </div>
+
+    <section class="mb-10">
+      <h3 class="text-base font-bold text-sky-800 mb-4">{{ t('admin.dashboard.site_content') }}</h3>
+      <Card>
+        <form action="{{ url_for('administrator.update_settings') }}" method="POST" class="space-y-5">
+          <Field label={{ t('admin.dashboard.team_statement_label') }} for_id="site-team-statement">
+            <Textarea name="team_statement" id="site-team-statement" rows="3">{{ site_content.get('team_statement', '') }}</Textarea>
+          </Field>
+          <Field label={{ t('admin.dashboard.how_we_work_label') }} for_id="site-how-we-work">
+            <Textarea name="how_we_work" id="site-how-we-work" rows="4">{{ site_content.get('how_we_work', '') }}</Textarea>
+          </Field>
+          <Field label={{ t('admin.dashboard.mission_statement_label') }} for_id="site-mission-statement">
+            <Textarea name="mission_statement" id="site-mission-statement" rows="3">{{ site_content.get('mission_statement', '') }}</Textarea>
+          </Field>
+          <Button type="submit">{{ t('admin.dashboard.save_settings') }}</Button>
+        </form>
+      </Card>
+    </section>
+
+    <div class="grid md:grid-cols-2 gap-8">
+      <section>
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="display-font text-lg font-bold text-sky-900">{{ t('admin.dashboard.team_members') }}</h3>
+          <Button flat href={{ url_for('administrator.create_team_member') }}>{{ t('admin.dashboard.add_member') }}</Button>
+        </div>
+        <Table>
+          <thead>
+            <tr>
+              <th>{{ t('admin.dashboard.col_name') }}</th>
+              <th class="text-right">{{ t('admin.dashboard.col_actions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {%- for member in team_members %}
+            <tr>
+              <td class="font-medium text-sky-900">{{ member.name }}</td>
+              <td class="text-end">
+                <div class="flex items-center justify-end gap-3">
+                  <Button variant="sky" flat href={{ url_for('administrator.edit_team_member', id=member.id) }}>{{ t('common.edit') }}</Button>
+                  <form action="{{ url_for('administrator.delete_team_member', id=member.id) }}" method="POST" class="js-ajax-form" data-remove-selector="tr" data-confirm="{{ t('confirm.delete_team_member') }}">
+                    <Button type="submit" variant="danger" flat>{{ t('common.delete') }}</Button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {%- endfor %}
+          </tbody>
+        </Table>
+      </section>
+
+      <section>
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="display-font text-lg font-bold text-sky-900">{{ t('admin.dashboard.articles') }} ({{ article_count }})</h3>
+          <Button variant="sky" flat href={{ url_for('administrator.create_article') }}>{{ t('admin.dashboard.new_article') }}</Button>
+        </div>
+        <Table>
+          <thead>
+            <tr>
+              <th>{{ t('admin.dashboard.col_title') }}</th>
+              <th class="text-right">{{ t('admin.dashboard.col_actions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {%- for article in articles %}
+            <tr>
+              <td class="font-medium text-sky-900 truncate max-w-[200px]">{{ article.title }}</td>
+              <td class="text-end">
+                <div class="flex items-center justify-end gap-3">
+                  <Button variant="sky" flat href={{ url_for('administrator.edit_article', id=article.id) }}>{{ t('common.edit') }}</Button>
+                  <form action="{{ url_for('administrator.delete_article', id=article.id) }}" method="POST" class="js-ajax-form" data-remove-selector="tr" data-confirm="{{ t('confirm.delete_article') }}">
+                    <Button type="submit" variant="danger" flat>{{ t('common.delete') }}</Button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {%- endfor %}
+          </tbody>
+        </Table>
+        {%- if article_count > articles|length %}
+        <div class="text-end mt-2">
+          <Button variant="sky" flat href={{ url_for('base.articles_list') }}>
+            {{- t('admin.dashboard.view_all_articles', count=article_count) -}}
+          </Button>
+        </div>
+        {%- endif %}
+      </section>
+    </div>
+  </Main>
+</Page>

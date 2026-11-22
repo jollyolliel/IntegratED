@@ -1,0 +1,16 @@
+{#- A labelled form field: the label, then the control (or a group of choices) in the slot.
+    `for_id` is the control's id; `required` adds the red asterisk (the control carries its own
+    `required`). `error` is the validation message under it, hidden until the page's script
+    removes `hidden` from `error_id`. With no `label`, it is just the slot and its error. -#}
+{#def label="", for_id=None, required=False, error=None, error_id=None #}
+<div {{ attrs.render() }}>
+  {%- if label %}
+  <label{% if for_id %} for="{{ for_id }}"{% endif %} class="block text-sm font-semibold text-primary-dark mb-1.5">
+    {{- label }}{% if required %} <span class="text-red-500">*</span>{% endif -%}
+  </label>
+  {%- endif %}
+  {{ content }}
+  {%- if error %}
+  <p{% if error_id %} id="{{ error_id }}"{% endif %} class="error-msg hidden">{{ error }}</p>
+  {%- endif %}
+</div>

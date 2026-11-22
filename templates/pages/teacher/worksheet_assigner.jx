@@ -1,0 +1,262 @@
+{#- The worksheet packet builder: steps through the teacher's active pairs one at a time, picking
+    worksheets for each (recommended first, or from the whole library), then posts the lot and
+    gets back one PDF packet. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/choice.jx" as Choice #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def matched_pairs, all_worksheets #}
+{%- set head %}
+  <style>
+    .ws-select-btn { text-align: left; border-radius: 16px; border: 2px solid var(--color-sky-100); background: var(--color-surface-card); padding: 14px 16px; cursor: pointer; transition: border-color 150ms, background 150ms; width: 100%; }
+    .ws-select-btn:hover { border-color: var(--color-sky-200); background: white; }
+    .ws-select-btn.selected { border-color: var(--color-primary); background: var(--color-sky-50); }
+    .skip-btn { display: inline-flex; align-items: center; padding: 6px 14px; font-size: 0.78rem; font-weight: 700; border-radius: 10px; border: 2px solid var(--color-line); background: white; color: var(--color-ink-muted); cursor: pointer; transition: border-color 150ms, color 150ms; }
+    .skip-btn:hover { border-color: var(--color-ink-faint); color: var(--color-ink-body); }
+    .skip-btn.selected { border-color: var(--color-sky-200); background: var(--color-sky-50); color: var(--color-primary); }
+    .progress-item { background: var(--color-surface-card); border-radius: 14px; padding: 12px 14px; border: 2px solid var(--color-sky-100); }
+    .clay-select-large { width: 100%; padding: 10px 14px; background: var(--color-surface-card); color: var(--color-ink-heading); border: 2px solid var(--color-sky-200); border-radius: 12px; font-size: 0.88rem; }
+    .clay-select-large:focus { border-color: var(--color-primary); outline: none; }
+  </style>
+{%- endset %}
+<Page title={{ t('teacher.packet.page_title') }} styles="admin" head={{ head }}>
+  <Main>
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+      <div class="max-w-2xl">
+        <BackLink href={{ url_for('teacher.teacher_worksheets') }} label={{ t('teacher.packet.back') }} />
+        <SectionBadge>{{ t('teacher.packet.badge') }}</SectionBadge>
+        <h1 class="display-font text-2xl md:text-3xl font-extrabold text-sky-950">{{ t('teacher.packet.heading') }}</h1>
+        <p class="text-sm md:text-base mt-1 text-ink-heading/60">
+          {{ t('teacher.packet.intro') }}
+        </p>
+      </div>
+      <Card class="px-5 py-4 min-w-[160px] text-center">
+        <p class="text-[10px] uppercase tracking-widest text-sky-400 font-bold">{{ t('teacher.packet.pairs_count') }}</p>
+        <p class="display-font text-3xl font-extrabold text-sky-900 mt-1">{{ matched_pairs|length }}</p>
+      </Card>
+    </div>
+
+    {%- if matched_pairs %}
+    <form method="post" id="worksheet-packet-form" class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-5">
+      <Card tag="section">
+        {%- for pair in matched_pairs %}
+        <article data-pair-step="{{ loop.index0 }}" data-learner-id="{{ pair.learner.id }}" class="{% if not loop.first %}hidden{% endif %}">
+          <div data-selection-inputs></div>
+
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+            <div>
+              <p class="text-[10px] uppercase tracking-widest text-sky-400 font-bold">{{ t('teacher.packet.pair_of', current=loop.index, total=matched_pairs|length) }}</p>
+              <h2 class="display-font text-xl md:text-2xl font-extrabold text-sky-950 mt-1">
+                {{ pair.learner.name or pair.learner.username }} &amp; {{ pair.volunteer.short_name }}
+              </h2>
+              <p class="text-sm text-ink-muted mt-1">
+                {{ t('teacher.packet.current_focus', focus=pair.subject ~ (' / ' ~ pair.topic if pair.topic else '')) }}
+              </p>
+            </div>
+            <div class="rounded-xl px-4 py-3 bg-surface-card border-2 border-primary-soft min-w-[180px]">
+              <p class="text-[10px] uppercase tracking-widest text-sky-400 font-bold">{{ t('teacher.packet.current_selection') }}</p>
+              <p class="text-sm font-semibold text-primary-dark mt-1" data-selection-label>{{ t('teacher.packet.skipped') }}</p>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <h3 class="display-font text-base font-bold text-sky-900">{{ t('teacher.packet.recommended_heading') }}</h3>
+                <p class="text-sm text-ink-muted mt-0.5">{{ t('teacher.packet.recommended_hint') }}</p>
+              </div>
+              <button type="button" data-skip-button class="skip-btn">
+                {{ t('teacher.packet.clear') }}
+              </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {%- for ws in pair.worksheets %}
+              <button type="button"
+                      data-select-button
+                      data-value="{{ ws.id }}"
+                      data-label="{{ ws.title|e }}"
+                      class="ws-select-btn">
+                <p class="text-[10px] uppercase tracking-widest text-sky-500 font-bold">{{ ws.subject }}</p>
+                <h4 class="display-font text-base font-bold text-sky-900 mt-0.5">{{ ws.title }}</h4>
+                <p class="text-sm text-ink-faint mt-0.5">{{ ws.topic or t('teacher.packet.general_practice') }}</p>
+              </button>
+              {%- endfor %}
+            </div>
+          </div>
+
+          <div class="rounded-xl p-5 bg-surface-card border-2 border-primary-soft">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4">
+              <div>
+                <h3 class="display-font text-base font-bold text-sky-900">{{ t('teacher.packet.more_heading') }}</h3>
+                <p class="text-sm text-ink-muted mt-0.5">{{ t('teacher.packet.more_hint') }}</p>
+              </div>
+              <label class="block">
+                <span class="block text-sm font-semibold text-sky-700 mb-1.5">{{ t('teacher.packet.search_label') }}</span>
+                <Input type="search" data-library-search class="w-full min-w-[220px]"
+                  placeholder={{ t('teacher.worksheets.search_by_title_placeholder') }} />
+              </label>
+            </div>
+
+            <label class="block">
+              <span class="block text-sm font-semibold text-sky-700 mb-1.5">{{ t('teacher.packet.all_label') }}</span>
+              <select size="7" multiple data-library-select class="clay-select-large">
+                {%- for ws in all_worksheets %}
+                <option value="{{ ws.id }}">{{ ws.title }} | {{ ws.subject }}{% if ws.topic %} | {{ ws.topic }}{% endif %}</option>
+                {%- endfor %}
+              </select>
+            </label>
+          </div>
+
+          <div class="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <Button variant="gray" data-prev-button icon="arrow-left" class={{ 'invisible' if loop.first else '' }}>{{ t('teacher.packet.previous') }}</Button>
+
+            {%- if loop.last %}
+            <Button type="submit" icon="document-arrow-down">{{ t('teacher.packet.done') }}</Button>
+            {%- else %}
+            <Button data-next-button icon_end="arrow-right">{{ t('teacher.packet.next') }}</Button>
+            {%- endif %}
+          </div>
+        </article>
+        {%- endfor %}
+      </Card>
+
+      <Card tag="aside" class="h-fit xl:sticky xl:top-24 p-5">
+        <Choice name="double_sided" value="on" checked class="mb-4">
+          <span class="block">{{ t('teacher.worksheets.double_sided_label') }}</span>
+          <span class="block text-sm font-normal text-ink-muted mt-0.5">{{ t('teacher.worksheets.double_sided_hint') }}</span>
+        </Choice>
+        <h2 class="display-font text-base font-bold text-sky-900 mb-4 pb-3 border-b-2 border-primary-soft">{{ t('teacher.packet.progress') }}</h2>
+        <div class="space-y-2">
+          {%- for pair in matched_pairs %}
+          <div class="progress-item">
+            <p class="text-sm font-semibold text-sky-900">{{ pair.learner.name or pair.learner.username }} &amp; {{ pair.volunteer.short_name }}</p>
+            <p class="text-[10px] text-sky-400 font-bold uppercase tracking-wider mt-0.5">{{ pair.subject }}</p>
+            <p class="text-sm text-ink-muted mt-1 font-medium" data-summary-label>{{ t('teacher.packet.skipped') }}</p>
+          </div>
+          {%- endfor %}
+        </div>
+      </Card>
+    </form>
+    {%- else %}
+    <div class="py-14 text-center rounded-2xl border-2 border-dashed border-primary-light bg-white">
+      <svg class="w-12 h-12 text-primary-light mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <p class="display-font text-lg font-bold text-sky-900">{{ t('teacher.packet.empty_title') }}</p>
+      <p class="text-sm text-ink-faint mt-2">{{ t('teacher.packet.empty_hint') }}</p>
+    </div>
+    {%- endif %}
+  </Main>
+
+  {%- if matched_pairs %}
+  <script>
+    const PACKET_T = {
+      skipped: {{ t('teacher.packet.skipped') | tojson }},
+      selectedOne: {{ t('teacher.packet.selected_one') | tojson }},
+      selectedMany: {{ t('teacher.packet.selected_many') | tojson }},
+    };
+    const steps = Array.from(document.querySelectorAll("[data-pair-step]"));
+    const summaryLabels = Array.from(document.querySelectorAll("[data-summary-label]"));
+    const learnerIds = steps.map((step) => step.dataset.learnerId);
+    const selections = steps.map(() => new Map()); // worksheetId -> label
+    let currentStep = 0;
+
+    function showStep(index) {
+      steps.forEach((step, stepIndex) => {
+        step.classList.toggle("hidden", stepIndex !== index);
+      });
+      currentStep = index;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function renderSelection(index) {
+      const step = steps[index];
+      const selected = selections[index];
+      const inputsContainer = step.querySelector("[data-selection-inputs]");
+      inputsContainer.innerHTML = "";
+      selected.forEach((label, value) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = `worksheet_for_${learnerIds[index]}`;
+        input.value = value;
+        inputsContainer.appendChild(input);
+      });
+
+      const labelText = selected.size
+        ? Array.from(selected.values()).join(", ")
+        : PACKET_T.skipped;
+      step.querySelector("[data-selection-label]").textContent = labelText;
+      summaryLabels[index].textContent = !selected.size
+        ? PACKET_T.skipped
+        : selected.size === 1 ? PACKET_T.selectedOne : PACKET_T.selectedMany.replace("{count}", selected.size);
+
+      step.querySelectorAll("[data-select-button]").forEach((button) => {
+        button.classList.toggle("selected", selected.has(button.dataset.value));
+      });
+      const librarySelect = step.querySelector("[data-library-select]");
+      Array.from(librarySelect.options).forEach((option) => {
+        option.selected = selected.has(option.value);
+      });
+    }
+
+    function toggleSelection(index, value, label) {
+      const selected = selections[index];
+      if (selected.has(value)) {
+        selected.delete(value);
+      } else {
+        selected.set(value, label);
+      }
+      renderSelection(index);
+    }
+
+    steps.forEach((step, index) => {
+      step.querySelectorAll("[data-select-button]").forEach((button) => {
+        button.addEventListener("click", () => {
+          toggleSelection(index, button.dataset.value, button.dataset.label);
+        });
+      });
+
+      const skipButton = step.querySelector("[data-skip-button]");
+      skipButton.addEventListener("click", () => {
+        selections[index].clear();
+        renderSelection(index);
+      });
+
+      const librarySelect = step.querySelector("[data-library-select]");
+      librarySelect.addEventListener("change", () => {
+        const selected = selections[index];
+        Array.from(librarySelect.options).forEach((option) => {
+          if (option.selected) {
+            selected.set(option.value, option.text);
+          } else {
+            selected.delete(option.value);
+          }
+        });
+        renderSelection(index);
+      });
+
+      const searchInput = step.querySelector("[data-library-search]");
+      searchInput.addEventListener("input", () => {
+        const query = searchInput.value.trim().toLowerCase();
+        Array.from(librarySelect.options).forEach((option) => {
+          option.hidden = query && !option.text.toLowerCase().includes(query);
+        });
+      });
+
+      const nextButton = step.querySelector("[data-next-button]");
+      if (nextButton) {
+        nextButton.addEventListener("click", () => showStep(index + 1));
+      }
+
+      const prevButton = step.querySelector("[data-prev-button]");
+      if (prevButton) {
+        prevButton.addEventListener("click", () => showStep(index - 1));
+      }
+
+      renderSelection(index);
+    });
+  </script>
+  {%- endif %}
+</Page>

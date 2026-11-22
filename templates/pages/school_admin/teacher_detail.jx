@@ -1,0 +1,70 @@
+{#- One teacher at the admin's school: profile, headline stats, and a preview of the sessions they
+    logged, linking out to the full attendance ledger. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/page_header.jx" as PageHeader #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def school, teacher, attendance_records, attendance_total, total_hours #}
+<Page title={{ (teacher.name or teacher.email) ~ " — " ~ school.name }}>
+  <Main>
+    <BackLink href={{ url_for('school_admin.people') }} label="People" />
+
+    <Card tone="amber" class="mb-6">
+      <PageHeader class="!mb-0" badge={{ t('school_admin.teacher_detail.eyebrow') }} badge_tone="amber"
+        title={{ teacher.name or teacher.email }} subtitle={{ school.name }}>
+        {% fill lead %}<IconBox icon="user" tone="amber" size="xl" />{% endfill %}
+      </PageHeader>
+    </Card>
+
+    <div class="grid grid-cols-3 gap-4 mb-8">
+      <StatTile icon="users" label={{ t('school_admin.teacher_detail.stat_learners') }}
+        value={{ teacher.managed_learners|length }} />
+      <StatTile tone="green" icon="user-group" label={{ t('school_admin.teacher_detail.stat_volunteers') }}
+        value={{ teacher.managed_volunteers|length }} />
+      <StatTile tone="amber" icon="book-open" label={{ t('school_admin.teacher_detail.stat_hours_logged') }}
+        value={{ total_hours }} />
+    </div>
+
+    <div class="mb-3">
+      <SectionBadge>{{ t('school_admin.teacher_detail.attendance_records') }} ({{ attendance_total }})</SectionBadge>
+    </div>
+    {%- if attendance_records %}
+    <Table>
+      <thead>
+        <tr>
+          <th>{{ t('school_admin.teacher_detail.col_date') }}</th>
+          <th>{{ t('school_admin.teacher_detail.col_learner') }}</th>
+          <th>{{ t('school_admin.teacher_detail.col_volunteer') }}</th>
+          <th>{{ t('school_admin.teacher_detail.col_duration') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for r in attendance_records %}
+        <tr>
+          <td class="text-ink-faint">{{ r.date.strftime('%b %d, %Y') }}</td>
+          <td class="font-medium text-sky-900">{{ r.user.name or r.user.username }}</td>
+          <td>{{ r.partner.name if r.partner else '—' }}</td>
+          <td><span class="font-bold text-sky-700">{{ "%.1f"|format(r.duration) }}</span></td>
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </Table>
+    {%- if attendance_total > attendance_records|length %}
+    <div class="text-end mt-2">
+      <Button variant="sky" flat href={{ url_for('school_admin.attendance', teacher=teacher.id) }}>
+        {{- t('school_admin.teacher_detail.view_all', count=attendance_total) -}}
+      </Button>
+    </div>
+    {%- endif %}
+    {%- else %}
+    <EmptyState message={{ t('school_admin.teacher_detail.no_records') }} />
+    {%- endif %}
+  </Main>
+</Page>

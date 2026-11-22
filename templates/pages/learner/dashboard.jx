@@ -1,0 +1,376 @@
+{#- The learner's home, in two tabs. "My Learning": the placement-test reminder, stats and XP,
+    the recommended first topic, current progress, open worksheets and the volunteer match.
+    "My Character": the Face preview and the wardrobe, which equips items through
+    /api/equip-item and redraws the preview in place (docs/learning/learner-journey.md). -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/quick_action.jx" as QuickAction #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/base/progress_bar.jx" as ProgressBar #}
+{#import "@components/shell/main.jx" as Main #}
+{#def snapshot, topic_progress, recommended_start, assigned_worksheets, face_equipped, face_items, face_categories,
+    face_layer_order, face_unlock_level, current_level, current_level_name, level_names, level, next_unlock_count,
+    pending_announcement=None #}
+<Page title={{ t('learner.dashboard.title') }} styles="dashboard" announcement={{ pending_announcement }}>
+  <Main class="dash-root">
+      {#- level_progress (helpers/gamification/_xp.py) owns the formula; past the last level the
+          bar stays full and nothing is "next". #}
+      {%- set xp = current_user.xp or 0 %}
+      {%- set at_top = level.at_top %}
+      {%- set xp_in_level = level.xp_in_level %}
+      {%- set xp_left = level.xp_left %}
+      {%- set xp_pct = level.percent %}
+      {%- set next_level = level.next_level %}
+      {%- set next_name = level.next_name %}
+      {%- set unlock = namespace(n=next_unlock_count) %}
+      {%- if not current_user.completed_map_test or current_user.map_test_deferred %}
+      <Card tone="amber" class="!p-4 sm:!p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <IconBox icon="exclamation-triangle" tone="amber" />
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-bold uppercase tracking-wider text-amber-600 mb-0.5">{{ t('learner.dashboard.map_status') }}</p>
+          <h3 class="display-font text-lg font-bold text-sky-900">
+            {{ t('learner.dashboard.map_deferred') if current_user.map_test_deferred else t('learner.dashboard.map_not_completed') }}
+          </h3>
+          <p class="text-sm text-ink-muted">{{ t('learner.dashboard.map_not_completed_desc') }}</p>
+        </div>
+        <Button href={{ url_for('learner.learner_map_intro') }} icon_end="arrow-right" class="shrink-0 w-full sm:w-auto">
+          {{- t('learner.dashboard.take_map_test') -}}
+        </Button>
+      </Card>
+      {%- endif %}
+      {%- set map_done = current_user.completed_map_test and not current_user.map_test_deferred %}
+      {%- set placement %}
+        {%- for subject, subject_level in current_user.subject_levels.items() %}{{ subject }}: {{ t('learner.dashboard.level_label') }} {{ subject_level }}{% if not loop.last %} · {% endif %}
+        {%- else %}{{ t('learner.dashboard.no_levels') }}{%- endfor %}
+      {%- endset %}
+      {%- set map_text %}
+        {%- if current_user.map_test_deferred %}{{ t('learner.dashboard.map_saved_for_later') }}
+        {%- elif current_user.completed_map_test %}{{ t('learner.dashboard.completed') }}
+        {%- else %}{{ t('learner.dashboard.not_started') }}{% endif -%}
+      {%- endset %}
+
+      <div class="dash-top">
+        <Card tone="green" class="dash-in">
+          <div class="dash-hello">
+            <img src="{{ url_for('static', filename='svg/garden-pot.svg') }}" alt="" aria-hidden="true" class="dash-garden dash-art" />
+            <div class="min-w-0">
+              <h1 class="display-font text-2xl md:text-3xl font-extrabold text-sky-950">{{ t('learner.dashboard.welcome', name=current_user.name) }}</h1>
+              <p class="text-sky-600 font-medium text-sm md:text-base">{{ t('learner.dashboard.subtitle') }}</p>
+            </div>
+          </div>
+        </Card>
+        <Card tone="amber" class="dash-in" style="animation-delay:80ms">
+          <div class="dash-lvl-head">
+            <IconBox icon="trophy" tone="amber" />
+            {%- if at_top %}
+            <div><b>{{ t('learner.dashboard.top_level') }}</b><small>{{ t('learner.dashboard.level') }} {{ current_level }} · {{ current_level_name }}</small></div>
+            {%- else %}
+            <div><b>{{ t('learner.dashboard.xp_to_level', xp=xp_left, level=next_level) }}</b><small>{{ t('learner.dashboard.level') }} {{ current_level }} · {{ current_level_name }} → {{ next_name }}</small></div>
+            {%- endif %}
+          </div>
+          <ol class="dash-mini" aria-label="{{ t('learner.dashboard.level') }} {{ current_level }} / {{ level_names | length }}">
+            {%- for name in level_names %}
+            {%- set n = loop.index %}
+            <li class="dash-md {{ 'done' if n < current_level else ('now' if n == current_level else '') }}" title="{{ name }}">
+              {%- if n < current_level %}<Icon name="check" size="3" />
+              {%- elif n == current_level %}<img src="{{ url_for('static', filename='svg/star.svg') }}" alt="" />{% endif -%}
+            </li>
+            {%- endfor %}
+          </ol>
+          <ProgressBar value={{ xp_pct }} tone="amber" size="sm" />
+        </Card>
+      </div>
+      <div class="dash-tabs" role="tablist">
+        <button type="button" id="tab-learning" role="tab" aria-selected="true" aria-controls="section-learning" onclick="switchTab('learning')" class="dash-tab active"><Icon name="book-open" size="5" />{{ t('learner.dashboard.tab_learning') }}</button>
+        <button type="button" id="tab-character" role="tab" aria-selected="false" aria-controls="section-character" tabindex="-1" onclick="switchTab('character')" class="dash-tab"><Icon name="face-smile" size="5" />{{ t('learner.dashboard.tab_character') }}</button>
+      </div>
+
+      <div id="section-learning" role="tabpanel" aria-labelledby="tab-learning">
+        <Card class="dash-statcard">
+          <div class="dash-kv"><IconBox icon="clock" tone="amber" size="sm" /><span><b>{{ current_user.hours_learned }}</b><small>{{ t('learner.dashboard.hours_learned') }}</small></span></div>
+          <div class="dash-kv"><IconBox icon="check-circle" tone="green" size="sm" /><span><b>{{ current_user.completed_topic_ids | length }}</b><small>{{ t('learner.dashboard.topics_completed') }}</small></span></div>
+          <div class="dash-kv"><IconBox icon="academic-cap" tone="sky" size="sm" /><span><b class="!text-sm">{{ placement }}</b><small>{{ t('learner.dashboard.placement_levels') }}</small></span></div>
+          <div class="dash-kv"><IconBox icon="map" tone={{ 'green' if map_done else 'amber' }} size="sm" /><span><b class="!text-sm">{{ map_text }}</b><small>{{ t('learner.dashboard.map_status') }}</small></span></div>
+        </Card>
+        {%- if recommended_start %}
+        <QuickAction layout="row" tone="green" class="mb-5" icon="bookmark"
+          href={{ url_for('learner.learner_topic_lessons', topic_id=recommended_start.topic_id) }}
+          eyebrow={{ t('learner.dashboard.recommended_start_label') }} title={{ recommended_start.topic_title }}
+          description={{ t('learner.dashboard.recommended_start_course_hint', course=recommended_start.subject) }}
+          onclick={{ "window.analytics?.trackEvent?.('map_recommendation_clicked', {topic_id: " ~ recommended_start.topic_id ~ ", topic_level: " ~ recommended_start.topic_level ~ ", course_id: " ~ recommended_start.subject_id ~ ", source: 'dashboard'});" }} />
+        {%- endif %}
+        <div class="dash-cols">
+          <div class="dash-col">
+            <Card>
+              <h3 class="display-font font-bold text-lg text-sky-900 mb-3 flex items-center gap-2"><Icon name="book-open" size="5" class="text-primary" />{{ t('learner.dashboard.learning_progress') }}</h3>
+              <div class="flex justify-between text-sm mb-2">
+                <span class="font-semibold text-primary-dark">{{ topic_progress.topic or snapshot.subject }}</span>
+                <span class="font-bold text-primary">{{ topic_progress.progress }}%</span>
+              </div>
+              {%- if topic_progress.topic %}
+              <div class="flex gap-1.5" role="progressbar" aria-valuemin="0" aria-valuemax="{{ topic_progress.total }}" aria-valuenow="{{ topic_progress.done }}">
+                {%- for i in range(topic_progress.total) %}<span class="flex-1 h-3 rounded-full {{ 'bg-sky-500' if i < topic_progress.done else 'bg-sky-100' }}"></span>{%- endfor %}
+              </div>
+              <p class="text-sm font-semibold text-primary-dark mt-3 flex items-center gap-1.5"><Icon name="sparkles" size="4" class="text-amber-500" />{{ t('learner.overview.lessons_done', done=topic_progress.done, total=topic_progress.total) }}</p>
+              {%- else %}
+              <ProgressBar value={{ topic_progress.progress }} />
+              {%- endif %}
+            </Card>
+            {%- if assigned_worksheets %}
+            <Card>
+              <h3 class="display-font font-bold text-lg text-sky-900 mb-4 flex items-center gap-2"><Icon name="clipboard-document-list" size="5" class="text-amber-500" />{{ t('learner.dashboard.assigned_worksheets') }}<span class="level-badge !py-0 !px-2 text-xs">{{ assigned_worksheets | length }}</span></h3>
+              {%- for assignment in assigned_worksheets %}
+              <div class="dash-row dash-ws">
+                <IconBox icon="document-text" tone="amber" class="dash-ws-ico" />
+                <p class="dash-ws-title">{{ assignment.worksheet.title }}</p>
+                <div class="dash-ws-meta">
+                  <span class="dash-chip">{{ assignment.worksheet.subject }}</span>
+                  <span class="dash-date"><Icon name="calendar" size="3.5" />{{ assignment.assigned_at.strftime('%Y-%m-%d') }}</span>
+                </div>
+                <div class="dash-ws-actions" id="assignment-status-{{ assignment.id }}">
+                  <Button variant="amber" flat onclick={{ "markWorksheetDone(" ~ assignment.id ~ ", this)" }}>{{ t('learner.dashboard.mark_done') }}</Button>
+                  <Button variant="sky" flat href={{ url_for('learner.learner_worksheet_view', assignment_id=assignment.id) }}>{{ t('common.view') }}</Button>
+                </div>
+              </div>
+              {%- endfor %}
+            </Card>
+            {%- endif %}
+          </div>
+          <div class="dash-col">
+            <Card tone="pink">
+              <h3 class="display-font font-bold mb-3 text-sky-900 flex items-center gap-2"><Icon name="heart" size="5" class="text-pink-500" />{{ t('learner.dashboard.volunteer_match') }}</h3>
+              {%- if current_user.is_matched %}
+              <div class="flex items-center gap-3">
+                <span class="dash-av">{{ current_user.volunteer_match.name[0] if current_user.volunteer_match.name else '?' }}</span>
+                <p class="font-bold text-lg text-sky-900 min-w-0 truncate">{{ current_user.volunteer_match.name }}</p>
+              </div>
+              {%- else %}
+              <div class="flex items-center gap-3">
+                <IconBox icon="magnifying-glass" tone="pink" />
+                <p class="text-sm text-sky-600 font-medium">{{ t('learner.dashboard.searching_match') }}</p>
+              </div>
+              {%- endif %}
+            </Card>
+          </div>
+        </div>
+      </div>
+      <div id="section-character" role="tabpanel" aria-labelledby="tab-character" class="hidden">
+        {%- set art = url_for('static', filename='svg/avatar/') %}
+        {%- set sp = face_equipped.get('species') or 'face_species_cat' %}
+        {%- set required = ['species', 'top', 'bottom', 'shoes', 'colour'] %}
+        {%- set crop = {'species': '16 6 168 168', 'hair': '8 0 184 184', 'extra': '8 0 184 184', 'eyes': '58 62 84 84', 'mouth': '70 100 60 60', 'top': '38 138 124 124', 'bottom': '50 196 100 100', 'shoes': '56 228 88 88', 'colour': '38 138 124 124'} %}
+        {%- set slot_names = {'species': t('learner.character.slot_species'), 'eyes': t('learner.character.slot_eyes'), 'mouth': t('learner.character.slot_mouth'), 'hair': t('learner.character.slot_hair'), 'extra': t('learner.character.slot_extra'), 'top': t('learner.character.slot_top'), 'bottom': t('learner.character.slot_bottom'), 'shoes': t('learner.character.slot_shoes'), 'colour': t('learner.character.slot_colour')} %}
+        <div class="av wardrobe" data-av data-art="{{ art }}" data-colour="{{ face_equipped.get('colour') or '' }}" data-required="{{ required | join(',') }}">
+          <Card class="av-stage !p-0 overflow-hidden">
+            <div class="av-room">
+              <div class="av-fig-in">
+                <svg class="av-fig" viewBox="0 0 200 300" role="img" aria-label="{{ t('learner.dashboard.tab_character') }}">
+                  {%- for layer in face_layer_order %}
+                  {%- set lid = face_equipped.get(layer) %}
+                  <use data-layer="{{ layer }}" href="{{ art ~ lid ~ '.svg#art' if lid else '' }}"{{ '' if lid else ' hidden' }} />
+                  {%- endfor %}
+                </svg>
+              </div>
+            </div>
+            <div class="av-meta">
+              <div class="flex items-center justify-center gap-2">
+                <span class="level-badge">{{ t('learner.dashboard.level') }} {{ current_level }}</span>
+                <span class="xp-badge">{{ xp }} XP</span>
+              </div>
+              <p class="display-font text-xl font-extrabold text-sky-900 mt-1">{{ current_level_name }}</p>
+              <ProgressBar value={{ xp_pct }} tone="amber" class="mt-2" />
+              <p class="text-sm font-bold text-amber-700 mt-2">{{ t('learner.dashboard.top_level') if at_top else t('learner.dashboard.xp_to_level', xp=xp_left, level=next_level) }}</p>
+              {%- if unlock.n %}
+              <p class="dash-unlock"><Icon name="gift" size="4" />{{ t('learner.dashboard.unlock_one', level=next_level) if unlock.n == 1 else t('learner.dashboard.unlock_many', count=unlock.n, level=next_level) }}</p>
+              {%- endif %}
+            </div>
+          </Card>
+          {%- set groups = [('face', t('learner.character.group_face'), ['species', 'eyes', 'mouth', 'hair', 'extra']), ('clothes', t('learner.character.group_clothes'), ['top', 'bottom', 'shoes']), ('colour', t('learner.character.group_colours'), ['colour'])] %}
+          <div>
+            <div class="av-ftabs" role="tablist" aria-label="{{ t('learner.character.wardrobe') }}" data-av-tabs="group" onkeydown="avTabKey(event)">
+              {%- for key, label, cats in groups %}
+              <button type="button" role="tab" class="av-ftab" data-av-tab="{{ key }}" aria-selected="{{ 'true' if loop.first else 'false' }}" tabindex="{{ '0' if loop.first else '-1' }}" onclick="avTab(this)">
+                <span class="av-ico">{%- if key == 'colour' %}<span class="av-dot"></span>{%- else %}<svg class="av-thumb" viewBox="{{ crop[cats[0]] }}" aria-hidden="true">{%- if cats[0] != 'species' %}<use data-layer="species" href="{{ art ~ sp }}.svg#art" />{%- endif %}<use data-layer="{{ cats[0] }}" href="{{ art ~ face_equipped.get(cats[0]) ~ '.svg#art' if face_equipped.get(cats[0]) else '' }}"{{ '' if face_equipped.get(cats[0]) else ' hidden' }} /></svg>{%- endif %}</span>
+                {{ label }}
+              </button>
+              {%- endfor %}
+            </div>
+            <div class="av-folder">
+              {%- for key, label, cats in groups %}
+              <div data-av-panel="group:{{ key }}"{{ '' if loop.first else ' hidden' }}>
+                {%- if cats | length > 1 %}
+                <div class="av-stabs" role="tablist" aria-label="{{ label }}" data-av-tabs="{{ key }}" onkeydown="avTabKey(event)">
+                  {%- for c in cats %}
+                  <button type="button" role="tab" class="av-stab" data-av-tab="{{ c }}" aria-selected="{{ 'true' if loop.first else 'false' }}" tabindex="{{ '0' if loop.first else '-1' }}" onclick="avTab(this)">
+                    <span class="av-ico"><svg class="av-thumb" viewBox="{{ crop[c] }}" aria-hidden="true">{%- if c != 'species' %}<use data-layer="species" href="{{ art ~ sp }}.svg#art" />{%- endif %}<use data-layer="{{ c }}" href="{{ art ~ face_equipped.get(c) ~ '.svg#art' if face_equipped.get(c) else '' }}"{{ '' if face_equipped.get(c) else ' hidden' }} /></svg></span>
+                    {{ slot_names[c] }}
+                  </button>
+                  {%- endfor %}
+                </div>
+                {%- endif %}
+                {%- for c in cats %}
+                {%- set cat = c %}
+                <div class="av-grid" role="tabpanel" aria-label="{{ slot_names[cat] }}" data-av-panel="{{ key }}:{{ c }}"{{ '' if loop.first else ' hidden' }}>
+                  {%- if cat not in required %}
+                  <button type="button" class="av-tile{{ '' if face_equipped.get(cat) else ' is-on' }}" data-item-type="{{ cat }}" data-none aria-pressed="{{ 'false' if face_equipped.get(cat) else 'true' }}" onclick="avEquip(this)">
+                    <span class="av-tile-art"><svg class="av-thumb" viewBox="{{ crop[cat] }}" aria-hidden="true"><use data-layer="species" href="{{ art ~ sp }}.svg#art" /></svg><span class="av-none"><Icon name="no-symbol" size="6" /></span></span>
+                    <span class="av-label">{{ t('learner.character.none') }}</span>
+                    <span class="av-check" aria-hidden="true"><Icon name="check" size="3.5" /></span>
+                  </button>
+                  {%- endif %}
+                  {%- for item in face_items[cat] %}
+                  {%- set need = face_unlock_level.get(item.id, 1) %}
+                  {%- set locked = current_level < need %}
+                  {%- set on = face_equipped.get(cat) == item.id %}
+                  <button type="button" class="av-tile{{ ' is-on' if on else '' }}{{ ' is-locked' if locked else '' }}" data-item-id="{{ item.id }}" data-item-type="{{ cat }}"{% if cat == 'colour' %} data-colour="{{ item.id }}"{% endif %} aria-pressed="{{ 'true' if on else 'false' }}"{% if locked %} aria-disabled="true" title="{{ t('learner.character.locked_until', n=need) }}"{% endif %} onclick="avEquip(this)">
+                    <span class="av-tile-art">
+                      {%- if cat == 'colour' %}<svg class="av-thumb" viewBox="{{ crop.top }}" aria-hidden="true"><use data-layer="species" href="{{ art ~ sp }}.svg#art" /><use data-layer="top" href="{{ art ~ face_equipped.top }}.svg#art" /></svg>
+                      {%- else %}<svg class="av-thumb" viewBox="{{ crop[cat] }}" aria-hidden="true">{%- if cat != 'species' %}<use data-layer="species" href="{{ art ~ sp }}.svg#art" />{%- endif %}<use href="{{ art ~ item.id }}.svg#art" /></svg>
+                      {%- endif %}
+                    </span>
+                    <span class="av-label">{{ item.label }}</span>
+                    {%- if locked %}
+                    <span class="av-lock"><Icon name="lock-closed" size="3" />{{ need }}</span>
+                    {%- else %}
+                    <span class="av-check" aria-hidden="true"><Icon name="check" size="3.5" /></span>
+                    {%- endif %}
+                  </button>
+                  {%- endfor %}
+                </div>
+                {%- endfor %}
+              </div>
+              {%- endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+  </Main>
+
+  <script>
+    // ── Mark worksheet done (no full page reload) ─────────────────────────────
+    async function markWorksheetDone(assignmentId, btn) {
+      btn.disabled = true;
+      try {
+        const resp = await fetch('/learner/worksheets/' + assignmentId + '/complete', {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        if (!resp.ok) { btn.disabled = false; return; }
+        const data = await resp.json();
+        if (!data.success) { btn.disabled = false; return; }
+        const status = document.getElementById('assignment-status-' + assignmentId);
+        const badge = document.createElement('span');
+        badge.className = 'px-3 py-1 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold border-2 border-green-200 uppercase tracking-wider';
+        badge.textContent = {{ t('learner.dashboard.done') | tojson }};
+        btn.replaceWith(badge);
+      } catch (e) {
+        console.error('mark worksheet done error', e);
+        btn.disabled = false;
+      }
+    }
+
+    // ── Tab switching ──────────────────────────────────────────────────────────
+    function switchTab(tab) {
+      document.getElementById('section-learning').classList.toggle('hidden', tab !== 'learning');
+      document.getElementById('section-character').classList.toggle('hidden', tab !== 'character');
+      ['learning', 'character'].forEach(name => {
+        const el = document.getElementById('tab-' + name);
+        el.classList.toggle('active', tab === name);
+        el.setAttribute('aria-selected', String(tab === name));
+        el.tabIndex = tab === name ? 0 : -1;
+      });
+    }
+    document.querySelector('.dash-tabs').addEventListener('keydown', e => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+      e.preventDefault();
+      const next = e.key === 'Home' ? 'learning' : e.key === 'End' ? 'character'
+        : (e.target.id === 'tab-learning' ? 'character' : 'learning');
+      switchTab(next);
+      document.getElementById('tab-' + next).focus();
+    });
+
+    // ── Wardrobe ─────────────────────────────────────────────────────────────────
+    var faceState = {{ face_equipped | tojson }};
+    // Wardrobe: equips through /api/equip-item, then repaints every [data-layer] and tile in this root.
+    function avRoot(el) { return el.closest('[data-av]'); }
+    function avNudge(el, cls) {
+      if (!el) return;
+      el.classList.remove(cls);
+      void el.getBoundingClientRect();
+      el.classList.add(cls);
+      el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
+    }
+    function avTab(btn) {
+      const list = btn.closest('[data-av-tabs]');
+      const name = list.dataset.avTabs;
+      list.querySelectorAll('[data-av-tab]').forEach(b => {
+        const on = b === btn;
+        b.setAttribute('aria-selected', String(on));
+        b.tabIndex = on ? 0 : -1;
+      });
+      avRoot(btn).querySelectorAll('[data-av-panel^="' + name + ':"]').forEach(p => {
+        p.hidden = p.dataset.avPanel !== name + ':' + btn.dataset.avTab;
+      });
+    }
+    function avTabKey(e) {
+      const keys = e.currentTarget.getAttribute('aria-orientation') === 'vertical'
+        ? { ArrowDown: 1, ArrowUp: -1 } : { ArrowRight: 1, ArrowLeft: -1 };
+      if (!(e.key in keys) && e.key !== 'Home' && e.key !== 'End') return;
+      const tabs = [...e.currentTarget.querySelectorAll(':scope > [data-av-tab]')];
+      const i = tabs.indexOf(document.activeElement);
+      if (i < 0) return;
+      e.preventDefault();
+      const flip = document.dir === 'rtl' && e.key.startsWith('Arrow') && !e.key.endsWith('Up') && !e.key.endsWith('Down') ? -1 : 1;
+      const next = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (i + keys[e.key] * flip + tabs.length) % tabs.length;
+      avTab(tabs[next]);
+      tabs[next].focus();
+    }
+    function avPaint(root) {
+      const base = root.dataset.art;
+      root.dataset.colour = faceState.colour || '';
+      Object.keys(faceState).forEach(slot => {
+        const item = faceState[slot];
+        root.querySelectorAll('[data-layer="' + slot + '"]').forEach(u => {
+          if (item) { u.setAttribute('href', base + item + '.svg#art'); u.removeAttribute('hidden'); }
+          else u.setAttribute('hidden', '');
+        });
+        root.querySelectorAll('[data-item-type="' + slot + '"]').forEach(b => {
+          const on = b.hasAttribute('data-none') ? !item : b.dataset.itemId === item;
+          b.classList.toggle('is-on', on);
+          b.setAttribute('aria-pressed', String(on));
+        });
+      });
+    }
+    async function avEquip(btn) {
+      const root = avRoot(btn);
+      const type = btn.dataset.itemType;
+      if (btn.getAttribute('aria-disabled') === 'true') { avNudge(btn, 'av-nope'); return; }
+      const itemId = btn.hasAttribute('data-none') ? faceState[type] : btn.dataset.itemId;
+      const required = root.dataset.required.split(',');
+      if (!itemId || (required.includes(type) && faceState[type] === itemId) || root.dataset.busy) return;
+      root.dataset.busy = '1';
+      try {
+        const resp = await fetch('/api/equip-item', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_id: itemId }),
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (data.status !== 'ok') return;
+        const equipped = data.equipped || {};
+        Object.keys(faceState).forEach(k => { if (k in equipped) faceState[k] = equipped[k]; });
+        avPaint(root);
+        window.analytics?.trackEvent?.('wardrobe_item_equipped', { item_id: itemId, item_type: type, equipped: faceState[type] === itemId });
+      } catch (e) {
+        console.error('equip-item error', e);
+      } finally {
+        delete root.dataset.busy;
+      }
+    }
+  </script>
+</Page>

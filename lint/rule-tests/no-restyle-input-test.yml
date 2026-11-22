@@ -1,0 +1,8 @@
+id: no-restyle-input
+valid:
+  - '<input class="clay-input w-full">'
+  - '<select class="clay-select-large rounded-lg"></select>'
+invalid:
+  - '<input class="clay-input rounded-lg">'
+  - '<textarea class="clay-textarea border-2"></textarea>'
+  - '<input class="clay-input px-2 text-xs">'

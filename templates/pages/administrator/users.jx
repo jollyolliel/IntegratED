@@ -1,0 +1,54 @@
+{#- Every user across schools. The filters reload the page; the pager swaps only the table
+   . -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@page_components/administrator/users_results.jx" as UsersResults #}
+{#import "@components/shell/main.jx" as Main #}
+{#def users, user_type, schools, selected_school_id, page, page_count, page_args, total_users #}
+{%- set head %}
+  <style>
+    .badge-learner   { background: var(--color-blue-50); color: var(--color-blue-700); border-color: var(--color-blue-200); }
+    .badge-volunteer { background: var(--color-green-50); color: var(--color-accent-dark); border-color: var(--color-green-300); }
+    .badge-teacher   { background: var(--color-purple-50); color: var(--color-purple-700); border-color: var(--color-sky-200); }
+    .badge-school_admin { background: var(--color-orange-50); color: var(--color-orange-700); border-color: var(--color-orange-300); }
+    .badge-other     { background: var(--color-gray-50); color: var(--color-ink-muted); border-color: var(--color-line); }
+  </style>
+{%- endset %}
+<Page title={{ t('admin.users.heading') ~ " — Admin" }} styles="admin" head={{ head }}>
+  <Main>
+    {%- set type_options = [
+      ("all", "admin.users.filter_all_types"), ("learner", "admin.users.filter_learners"),
+      ("volunteer", "admin.users.filter_volunteers"), ("teacher", "admin.users.filter_teachers"),
+      ("school_admin", "admin.users.filter_school_admins"),
+    ] %}
+    <BackLink href={{ url_for('administrator.dashboard') }} label="Dashboard" />
+    <div class="mb-6">
+      <h1 class="display-font text-4xl font-extrabold text-sky-950">{{ t('admin.users.heading') }}</h1>
+    </div>
+
+    <Card class="mb-6">
+      <form method="GET" class="flex flex-wrap gap-3 items-center">
+        <select name="type">
+          <button><selectedcontent></selectedcontent></button>
+          {%- for value, key in type_options %}
+          <option value="{{ value }}" {% if user_type == value %}selected{% endif %}>{{ t(key) }}</option>
+          {%- endfor %}
+        </select>
+        <select name="school_id">
+          <button><selectedcontent></selectedcontent></button>
+          <option value="">{{ t('admin.users.filter_all_schools') }}</option>
+          {%- for s in schools %}
+          <option value="{{ s.id }}" {% if selected_school_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+          {%- endfor %}
+        </select>
+        <Button variant="sky" type="submit" icon="funnel">{{ t('admin.users.filter_button') }}</Button>
+      </form>
+    </Card>
+
+    <p class="text-sm font-medium mb-4 text-ink-heading/55">{{ t('admin.users.showing_count').replace('{count}', total_users|string) }}</p>
+
+    <UsersResults users={{ users }} page={{ page }} page_count={{ page_count }} page_args={{ page_args }} />
+  </Main>
+</Page>

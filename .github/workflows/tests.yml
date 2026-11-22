@@ -1,0 +1,76 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  # Full suite for everything except Dependabot PRs.
+  pytest:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Type check (ty)
+        run: uv run ty check
+
+      # Coverage lives here rather than in pyproject.toml's addopts: instrumenting
+      # every module roughly quadruples the wall time, which is a bad trade on
+      # a developer's machine and a fine one in CI.
+      - name: Run tests
+        run: >-
+          uv run -m pytest tests/ -v --suite=all
+          --cov --cov-report=term-missing:skip-covered
+          --cov-fail-under=78
+        env:
+          SECRET_KEY: test-secret-key
+          GOOGLE_CLIENT_ID: test-id
+          GOOGLE_CLIENT_SECRET: test-secret
+          # TEST_DATABASE_URL (not DATABASE_URL) is what main.py reads when
+          # APP_ENV=development; conftest.py sets it too, this is belt-and-braces.
+          TEST_DATABASE_URL: "sqlite:///:memory:"
+          APP_ENV: development
+
+  # Dependabot PRs get a fast SQLite smoke test instead of the full suite:
+  # importing main runs create_app() (blueprints, models, dev seeding) on
+  # SQLite, so a bump that breaks an install or an import fails right here. The
+  # Claude review (dependabot-claude-review.yml) covers the judgement call.
+  smoke:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --no-dev
+
+      - name: Smoke test (app boots on SQLite)
+        run: uv run python -c "import main; print('App import + create_app() OK')"
+        env:
+          SECRET_KEY: test-secret-key
+          GOOGLE_CLIENT_ID: test-id
+          GOOGLE_CLIENT_SECRET: test-secret
+          # No TEST_DATABASE_URL here on purpose — the smoke test should exercise
+          # the real dev path (instance/site.db + full seeding) on a clean runner.
+          APP_ENV: development

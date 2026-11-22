@@ -1,0 +1,120 @@
+{#- Two lists on one page: a subject's topics (each a <TopicCard> in the state the route worked
+    out), or, with `is_lesson`, one topic's lessons, each badged with
+    its game and offering a redo once finished. Topic and lesson icons are Font Awesome names
+    stored on the row. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/shell/main.jx" as Main #}
+{#import "@components/topic_card.jx" as TopicCard #}
+{#import "@components/base/button.jx" as Button #}
+{#def is_lesson, subject=None, topics=None, topic_states=None, lessons=None, completed_lesson_ids=None #}
+{%- set head %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css" />
+{%- endset %}
+<Page title={{ (t('learner.topics.lessons_heading', topic=lessons[0].topic.title) if is_lesson else t('learner.topics.topics_heading', subject=subject.name)) ~ ' - IntegratED' }}
+  styles="learning-nav" head={{ head }}>
+    {% if not is_lesson %}
+    <!-- ── TOPICS view ── -->
+    <Main>
+      <div class="max-w-3xl mx-auto">
+
+        <!-- Back + heading -->
+        <div class="flex items-center gap-4 mb-8">
+          <Button variant="soft" icon="arrow-left" href={{ url_for('learner.learner_subjects') }}>{{ t('learner.topics.back_to_subjects') }}</Button>
+          <h1 class="display-font text-2xl md:text-3xl font-extrabold text-sky-950">{{ t('learner.topics.topics_heading', subject=subject.name) }}</h1>
+        </div>
+
+        <!-- Topic list -->
+        <div class="space-y-4">
+          {% for topic in topics %}
+          <TopicCard topic={{ topic }} state={{ topic_states[topic.id] }}
+            href={{ url_for('learner.learner_topic_lessons', topic_id=topic.id) }} />
+          {% endfor %}
+        </div>
+
+      </div>
+    </Main>
+
+    {% elif is_lesson %}
+    <!-- ── LESSONS view ── -->
+    <main class="flex-1">
+      <div class="container mx-auto px-4 py-10">
+        <div class="max-w-3xl mx-auto">
+
+          <!-- Back + heading -->
+          <div class="flex items-center gap-4 mb-8">
+            <Button variant="soft" icon="arrow-left" href={{ url_for('learner.learner_subject_topics', subject_id=lessons[0].topic.subject_id) }}>{{ t('learner.topics.back_to_topics') }}</Button>
+            <h1 class="display-font text-2xl md:text-3xl font-extrabold text-sky-950">
+              {{ t('learner.topics.lessons_heading', topic=lessons[0].topic.title) }}
+            </h1>
+          </div>
+
+          <!-- Lesson list -->
+          {% set game_meta = {
+            'quiz':             {'icon': 'fa-list-check',  'key': 'learner.quiz.title'},
+            'rocket':           {'icon': 'fa-rocket',      'key': 'learner.rocket.title'},
+            'word_storm':       {'icon': 'fa-bolt',        'key': 'learner.word_storm.title'},
+            'match_up':         {'icon': 'fa-link',        'key': 'learner.match_up.title'},
+            'garden_grow':      {'icon': 'fa-seedling',    'key': 'learner.garden_grow.title'},
+            'potion_workshop':  {'icon': 'fa-flask',       'key': 'learner.potion_workshop.title'}
+          } %}
+          <div class="space-y-4">
+            {% for lesson in lessons %}
+            {% set is_completed = lesson.id in completed_lesson_ids %}
+            {% set game_key = lesson.game_type if lesson.game_type in game_meta else 'quiz' %}
+            {% set game = game_meta[game_key] %}
+            <a
+              class="topic-card {{ 'topic-card-redo' if is_completed else '' }}"
+              href="{{ url_for('learner.learner_overview', lesson_id=lesson.id) }}"
+            >
+              <!-- Icon -->
+              <div class="topic-icon {{ 'topic-icon-completed' if is_completed else 'topic-icon-default' }}">
+                {% if is_completed %}
+                  <i class="fas fa-check"></i>
+                {% else %}
+                  <i class="fas fa-{{ lesson.icon or 'book' }}"></i>
+                {% endif %}
+                <span class="game-icon-badge game-badge-{{ game_key }}" role="img" title="{{ t(game.key) }}" aria-label="{{ t(game.key) }}">
+                  <i class="fas {{ game.icon }}" aria-hidden="true"></i>
+                </span>
+              </div>
+
+              <!-- Text -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <h3 class="display-font text-lg font-bold {{ 'text-accent-dark' if is_completed else 'text-sky-950' }}">
+                    {{ lesson.title }}
+                  </h3>
+                  {% if is_completed %}
+                  <span class="finished-pill">
+                    <i class="fas fa-check" style="font-size:0.55rem;"></i>
+                    {{ t('learner.topics.finished') }}
+                  </span>
+                  {% endif %}
+                </div>
+                <p class="text-sm {{ 'text-accent' if is_completed else 'text-sky-400' }} leading-relaxed">{{ lesson.description }}</p>
+              </div>
+
+              <!-- Right indicator -->
+              {% if is_completed %}
+              <div class="redo-badge flex-shrink-0">
+                {{ t('learner.topics.redo') }}
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </div>
+              {% else %}
+              <div class="arrow-circle flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                </svg>
+              </div>
+              {% endif %}
+            </a>
+            {% endfor %}
+          </div>
+
+        </div>
+      </div>
+    </main>
+    {% endif %}
+</Page>

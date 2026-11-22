@@ -1,0 +1,5 @@
+{#- Every pill-shaped label: one standalone class per tone (sky neutral, green positive, amber
+    pending, red alert). The composed badges add their own size and case on `class`. -#}
+{#def tone=None, tag=None #}
+{%- set tag = prop("Badge", "tag", tag) -%}
+<{{ tag }} {{ attrs.render(class=look("Badge", "tone", tone, "badge")) }}>{{ content }}</{{ tag }}>

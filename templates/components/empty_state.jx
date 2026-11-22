@@ -1,0 +1,5 @@
+{#- Dashed placeholder for a list with no rows. Content, when given, replaces the message. -#}
+{#def message="" #}
+<div {{ attrs.render(class="empty-state") }}>
+  {%- if content %}{{ content }}{% else %}<p class="text-ink-faint text-sm">{{ message }}</p>{% endif -%}
+</div>

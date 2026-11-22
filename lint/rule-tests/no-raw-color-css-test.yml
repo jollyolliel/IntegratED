@@ -1,0 +1,11 @@
+id: no-raw-color-css
+valid:
+  - ".a { color: var(--color-primary); }"
+  - ".a { background: white; border-color: transparent; }"
+  - ".a { box-shadow: 0 12px 24px -8px rgb(var(--color-primary-rgb) / 0.18); }"
+  - "/* border #BAE6FD, shadow #E0F2FE */ .a { color: inherit; }"
+invalid:
+  - ".a { color: #0284C7; }"
+  - ".a { box-shadow: 4px 4px 0 #fecdd3; }"
+  - ".a { background: rgba(30, 27, 75, 0.45); }"
+  - ".a { box-shadow: 0 0 0 5px hsl(217 91% 60% / 0); }"

@@ -1,0 +1,824 @@
+{#- The site header on every page: impersonation banner, logo, per-role nav with the dynamic
+    "More" overflow, language menus, mobile menu, the toast host (window.showToast), the confirm
+    modal (window.confirmDelete) and, when given, the feature announcement; the teacher's AI
+    assistant panel. `announcement` is the dashboard route's `pending_announcement`. -#}
+{#import "@components/shell/nav_link.jx" as NavLink #}
+{#import "@components/shell/nav_button.jx" as NavButton #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/feature_announcement.jx" as FeatureAnnouncement #}
+{#import "@components/assistant_panel.jx" as AssistantPanel #}
+{#def announcement=None #}
+{#- Each role's nav links, once, for the desktop bar and the mobile menu: (endpoint, label key,
+    whether this page lights it up). None: signed in as a role with no nav. The learner's Learn link
+    is active on every page under /learner/learn/ (subjects through quiz and games) and pulses
+    until their first lesson is finished. -#}
+{%- set ep = request.endpoint or '' %}
+{%- set on_learn = request.path.startswith('/learner/learn/') %}
+{%- set nav_links = {
+  'anonymous': [
+    ('base.home', 'nav.home', ep == 'base.home'),
+    ('base.schools', 'nav.schools', ep == 'base.schools'),
+    ('base.donations', 'nav.donations', ep == 'base.donations'),
+    ('base.articles_list', 'nav.news', ep in ('base.articles_list', 'base.article_detail')),
+    ('base.about', 'nav.about', ep == 'base.about'),
+  ],
+  'learner': [
+    ('learner.learner_dashboard', 'nav.dashboard', ep == 'learner.learner_dashboard'),
+    ('learner.learner_subjects', 'nav.learn', on_learn),
+  ],
+  'volunteer': [
+    ('volunteer.volunteer_dashboard', 'nav.dashboard', ep == 'volunteer.volunteer_dashboard'),
+  ],
+  'teacher': [
+    ('teacher.teacher_dashboard', 'nav.dashboard', ep == 'teacher.teacher_dashboard'),
+    ('teacher.teacher_people', 'nav.people_pairs', ep.startswith(('teacher.teacher_people', 'teacher.teacher_learner', 'teacher.teacher_volunteer', 'teacher.teacher_pair'))),
+    ('teacher.teacher_attendance', 'nav.attendance', ep.startswith('teacher.teacher_attendance')),
+    ('teacher.teacher_worksheets', 'nav.worksheets', ep in ('teacher.teacher_worksheets', 'teacher.teacher_bulk_assign_worksheets', 'teacher.teacher_worksheet_preview', 'teacher.teacher_worksheet_assignments')),
+  ],
+  'school_admin': [
+    ('school_admin.dashboard', 'nav.dashboard', ep == 'school_admin.dashboard'),
+    ('school_admin.people', 'nav.people', ep.startswith(('school_admin.people', 'school_admin.teacher', 'school_admin.volunteer', 'school_admin.learner'))),
+    ('school_admin.attendance', 'nav.attendance', ep == 'school_admin.attendance'),
+    ('school_admin.donations', 'nav.donations', ep == 'school_admin.donations'),
+    ('school_admin.settings', 'nav.settings', ep == 'school_admin.settings'),
+  ],
+  'administrator': [
+    ('administrator.dashboard', 'nav.dashboard', ep == 'administrator.dashboard'),
+    ('administrator.schools', 'nav.schools', ep.startswith('administrator.school')),
+    ('administrator.users', 'nav.users', ep == 'administrator.users'),
+    ('administrator.donations', 'nav.donations', ep == 'administrator.donations'),
+    ('administrator.db_stats', 'nav.db', ep.startswith('administrator.db')),
+  ],
+}.get(current_user.user_type if current_user.is_authenticated else 'anonymous') %}
+{%- set pulse_endpoint = 'learner.learner_subjects' if current_user.is_authenticated
+    and current_user.user_type == 'learner' and not current_user.completed_lesson_ids and not on_learn else none %}
+{% if 'impersonating_admin_id' in session %}
+<!-- Impersonation Banner -->
+<div
+  class="bg-yellow-500 text-black text-sm py-2 px-4 flex items-center justify-center gap-4 sticky top-0 z-[60]"
+>
+  <span class="font-semibold"
+    >Impersonating: {{ current_user.name or current_user.id }} ({{
+    current_user.user_type }})</span
+  >
+  <a
+    href="{{ url_for('administrator.impersonate_stop') }}"
+    class="underline font-bold hover:no-underline"
+    >Stop Impersonating</a
+  >
+</div>
+{% endif %}
+
+<!-- Header -->
+{% if current_user.is_authenticated and current_user.user_type != 'learner' %}
+{% set lang_options = [('en', t('lang.en')), ('el', t('lang.el'))] %} {% else %}
+{% set lang_options = [('en', t('lang.en')), ('el', t('lang.el')), ('ar',
+t('lang.ar')), ('tr', t('lang.tr')), ('es', t('lang.es')), ('fr', t('lang.fr')),
+('uk', t('lang.uk')), ('fa', t('lang.fa')), ('ps', t('lang.ps')), ('so',
+t('lang.so')), ('rhg', t('lang.rhg')), ('ti', t('lang.ti')), ('sw',
+t('lang.sw'))] %} {% endif %}
+<header
+  class="border-b border-sky-100 sticky top-0 z-50 bg-white/96 backdrop-blur-sm"
+>
+  <div class="container mx-auto px-4">
+    <nav class="flex items-center justify-between h-16">
+      <!-- Logo -->
+      <a
+        href="{{ url_for('base.home') }}"
+        class="flex items-center gap-2.5 logo-group"
+      >
+        <div class="logo-icon">
+          <svg
+            class="w-5 h-5 text-white"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+          >
+            <path
+              d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+            />
+          </svg>
+        </div>
+        <span class="nav-logo-font text-xl font-bold text-sky-700"
+          >IntegratED</span
+        >
+      </a>
+
+      <!-- Desktop Navigation -->
+      <div class="hidden md:flex items-center gap-3">
+        {% if nav_links is none %}
+        <p class="text-sm text-gray-500">{{ t('nav.error_signin') }}</p>
+        {% else %}
+        <div class="flex gap-1 nav-links-group">
+          {%- for endpoint, label, active in nav_links %}
+          <NavLink href={{ url_for(endpoint) }} label={{ t(label) }} active={{ active }} pulse={{ endpoint == pulse_endpoint }} />
+          {%- endfor %}
+        </div>
+        {% endif %}
+        {% if current_user.is_authenticated %}
+        <NavButton variant="logout" href={{ url_for('auth.logout') }} data-no-instant>{{ t('nav.logout') }}</NavButton>
+        {% else %}
+        <NavButton variant="register" href={{ url_for('auth.register') }}>
+          <svg
+            class="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.5"
+              d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+            />
+          </svg>
+          {{ t('nav.register') }}
+        </NavButton>
+        <NavButton href={{ url_for('auth.login') }}>{{ t('nav.login') }}</NavButton>
+        {% endif %} {% if current_user.is_authenticated and current_user.user_type
+        == 'teacher' %}
+        <!-- Assistant. Deliberately outside .nav-links-group so
+             recalcNavOverflow never folds it into "More". -->
+        <NavButton icon data-assist-toggle title={{ t('assistant.open') }} aria-label={{ t('assistant.open') }}
+          aria-expanded="false" aria-controls="assist-panel">
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+        </NavButton>
+        {% endif %} {% if current_user.is_authenticated %}
+        <NavButton icon href={{ url_for('base.settings') }} title={{ t('nav.settings') }} active={{ request.endpoint == 'base.settings' }}>
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+        </NavButton>
+        {% endif %}
+
+        <!-- Language Selector (Desktop) -->
+        <div class="relative" id="lang-dropdown-wrapper">
+          <button
+            id="lang-btn"
+            type="button"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-transparent hover:border-sky-200 hover:bg-sky-50 transition-colors text-sm text-gray-500 font-medium"
+            aria-haspopup="true"
+            aria-expanded="false"
+          >
+            <svg
+              class="w-4 h-4 text-sky-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+              />
+            </svg>
+            <span class="uppercase font-semibold tracking-wide text-sky-600"
+              >{{ ui_lang }}</span
+            >
+            <svg
+              class="w-3 h-3 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div
+            id="lang-menu"
+            class="hidden absolute end-0 mt-2 w-48 bg-white border-2 border-sky-200 rounded-2xl shadow-[4px_4px_0_var(--color-card-sky-shadow)] overflow-hidden z-50"
+            role="menu"
+          >
+            {% for code, label in lang_options %}
+            <form method="POST" action="{{ url_for('set_language') }}">
+              <input type="hidden" name="lang" value="{{ code }}" />
+              <input type="hidden" name="next" value="{{ request.url }}" />
+              <button
+                type="submit"
+                role="menuitem"
+                class="w-full text-start px-4 py-2.5 text-sm hover:bg-sky-50 transition-colors flex items-center gap-2 {% if ui_lang == code %}text-sky-600 font-semibold bg-sky-50{% else %}text-gray-600{% endif %}"
+              >
+                {% if ui_lang == code %}
+                <svg
+                  class="w-3.5 h-3.5 text-sky-500 flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+                {% else %}
+                <span class="w-3.5 flex-shrink-0"></span>
+                {% endif %} {{ label }}
+              </button>
+            </form>
+            {% endfor %}
+          </div>
+        </div>
+        <!-- /Language Selector -->
+      </div>
+
+      <!-- Mobile Menu Button -->
+      <div class="flex items-center gap-2 md:hidden">
+        <!-- Mobile Language Toggle -->
+        <div class="relative" id="lang-dropdown-wrapper-mobile">
+          <button
+            id="lang-btn-mobile"
+            type="button"
+            class="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-sky-50 transition-colors text-xs text-sky-600 font-semibold border border-sky-100"
+          >
+            <svg
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+              />
+            </svg>
+            <span class="uppercase">{{ ui_lang }}</span>
+          </button>
+          <div
+            id="lang-menu-mobile"
+            class="hidden absolute end-0 mt-1 w-44 bg-white border-2 border-sky-200 rounded-2xl shadow-[4px_4px_0_var(--color-card-sky-shadow)] overflow-hidden z-50"
+          >
+            {% for code, label in lang_options %}
+            <form method="POST" action="{{ url_for('set_language') }}">
+              <input type="hidden" name="lang" value="{{ code }}" />
+              <input type="hidden" name="next" value="{{ request.url }}" />
+              <button
+                type="submit"
+                class="w-full text-start px-3 py-2 text-sm hover:bg-sky-50 transition-colors {% if ui_lang == code %}text-sky-600 font-semibold{% else %}text-gray-600{% endif %}"
+              >
+                {{ label }}
+              </button>
+            </form>
+            {% endfor %}
+          </div>
+        </div>
+
+        <button
+          id="mobile-menu-btn"
+          class="p-2 hover:bg-sky-50 rounded-xl transition-colors border border-transparent hover:border-sky-100"
+          aria-label="{{ t('nav.toggle_menu') }}"
+        >
+          <svg
+            class="w-6 h-6 text-sky-700"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Mobile Navigation Menu -->
+    <div id="mobile-menu" class="md:hidden mobile-menu">
+      <div class="py-4 space-y-1 px-3">
+        {% if nav_links is none %}
+        <p class="px-4 py-3 text-sm text-gray-500">
+          {{ t('nav.error_signin') }}
+        </p>
+        {% else %}
+        {%- for endpoint, label, active in nav_links %}
+        <NavLink variant="menu" href={{ url_for(endpoint) }} label={{ t(label) }} active={{ active }} pulse={{ endpoint == pulse_endpoint }} />
+        {%- endfor %}
+        {% endif %}
+        <div class="pt-3 border-t border-sky-100 space-y-2 mt-2">
+          {% if current_user.is_authenticated %}
+          <NavButton variant="logout" href={{ url_for('auth.logout') }} class="w-full justify-center" data-no-instant>{{ t('nav.logout') }}</NavButton>
+          {% else %}
+          <NavButton variant="register" href={{ url_for('auth.register') }} class="w-full justify-center">
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+              />
+            </svg>
+            {{ t('nav.register') }}
+          </NavButton>
+          <NavButton href={{ url_for('auth.login') }} class="w-full justify-center">{{ t('nav.login') }}</NavButton>
+          {% endif %}
+        </div>
+        {% if current_user.is_authenticated and current_user.user_type == 'teacher' %}
+        <button
+          type="button"
+          data-assist-toggle
+          aria-expanded="false"
+          aria-controls="assist-panel"
+          class="w-full text-start px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-sky-50 hover:text-sky-700 transition-colors flex items-center gap-2 mt-1"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+          {{ t('assistant.open') }}
+        </button>
+        {% endif %} {% if current_user.is_authenticated %}
+        <NavLink variant="menu" href={{ url_for('base.settings') }} label={{ t('nav.settings') }} active={{ request.endpoint == 'base.settings' }}
+          class="flex items-center gap-2 mt-1">
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+          {{ t('nav.settings') }}
+        </NavLink>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</header>
+
+  <!-- Toast Container -->
+  <div
+    id="toast-container"
+    class="fixed top-20 end-4 z-[100] flex flex-col gap-3 pointer-events-none"
+  ></div>
+
+  <!-- Confirm Modal (window.confirmDelete) -->
+  <div id="confirm-modal-overlay" class="confirm-modal-overlay hidden">
+    <Card tone="rose" class="max-w-[360px] w-full text-center" role="alertdialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+      <div class="confirm-modal-icon">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+        </svg>
+      </div>
+      <p id="confirm-modal-title" class="confirm-modal-message"></p>
+      <label class="confirm-modal-checkbox-row">
+        <input type="checkbox" id="confirm-modal-skip" />
+        <span>{{ t('confirm.dont_ask_again') }}</span>
+      </label>
+      <div class="confirm-modal-actions">
+        <Button variant="gray" id="confirm-modal-cancel">{{ t('confirm.cancel') }}</Button>
+        <Button variant="danger" id="confirm-modal-confirm">{{ t('confirm.confirm') }}</Button>
+      </div>
+    </Card>
+  </div>
+
+  <script id="flash-messages" type="application/json">
+    [
+      {%- for category, message in get_flashed_messages(with_categories=true) %}
+        {"category": {{ (category if category in ('success', 'error', 'warning') else 'info') | tojson }}, "message": {{ message | tojson }}}{% if not loop.last %},{% endif %}
+      {%- endfor %}
+    ]
+  </script>
+
+  <script>
+    document.documentElement.lang = "{{ ui_lang }}";
+    document.documentElement.dir = "{{ ui_dir }}";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const mobileBtn = document.getElementById("mobile-menu-btn");
+      const mobileMenu = document.getElementById("mobile-menu");
+      if (mobileBtn && mobileMenu) {
+        mobileBtn.addEventListener("click", () => {
+          const open = mobileMenu.classList.toggle("open");
+          mobileBtn.setAttribute("aria-expanded", String(open));
+        });
+      }
+      document.querySelectorAll("#mobile-menu a").forEach((link) => {
+        link.addEventListener("click", () => {
+          if (mobileMenu) mobileMenu.classList.remove("open");
+        });
+      });
+
+      // --- Dynamic overflow nav: collapse links that would wrap onto a 2nd line into a "More" menu ---
+      const navGroup = document.querySelector(".nav-links-group");
+      if (navGroup) {
+        const items = Array.from(navGroup.querySelectorAll(":scope > a"));
+        if (items.length > 1) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "relative hidden";
+          const moreBtn = document.createElement("button");
+          moreBtn.type = "button";
+          moreBtn.className = "nav-link-inactive nav-more-btn";
+          moreBtn.setAttribute("aria-haspopup", "true");
+          moreBtn.setAttribute("aria-expanded", "false");
+          moreBtn.innerHTML =
+            `<span>{{ t('nav.more') }}</span>` +
+            `<svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
+          const moreMenu = document.createElement("div");
+          moreMenu.className =
+            "hidden absolute end-0 mt-2 nav-more-menu z-50";
+          moreMenu.setAttribute("role", "menu");
+          wrapper.appendChild(moreBtn);
+          wrapper.appendChild(moreMenu);
+          navGroup.appendChild(wrapper);
+
+          // Intrinsic single-line width of each link's label — measured once via an
+          // off-screen nowrap clone. Flexbox stretches all siblings to equal height,
+          // so comparing rendered heights can't reveal which label wrapped; comparing
+          // rendered width to this intrinsic width can.
+          const naturalWidths = items.map((a) => {
+            const clone = a.cloneNode(true);
+            clone.style.cssText =
+              "position:absolute; visibility:hidden; white-space:nowrap; width:auto; height:auto; left:-9999px; top:0;";
+            document.body.appendChild(clone);
+            const w = clone.getBoundingClientRect().width;
+            document.body.removeChild(clone);
+            return w;
+          });
+
+          moreBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const isOpen = !moreMenu.classList.contains("hidden");
+            moreMenu.classList.toggle("hidden", isOpen);
+            moreBtn.setAttribute("aria-expanded", String(!isOpen));
+          });
+          moreMenu.addEventListener("click", (e) => e.stopPropagation());
+          document.addEventListener("click", () => {
+            moreMenu.classList.add("hidden");
+            moreBtn.setAttribute("aria-expanded", "false");
+          });
+
+          const recalcNavOverflow = () => {
+            items.forEach((a) => a.classList.remove("hidden"));
+            wrapper.classList.add("hidden");
+            moreMenu.classList.add("hidden");
+            moreMenu.innerHTML = "";
+
+            // A link has wrapped onto a 2nd line when it renders narrower than its
+            // intrinsic single-line width — that's what blows the navbar out
+            // vertically (link ~85px tall vs navbar's fixed 65px).
+            const wraps = () =>
+              items.some(
+                (a, i) =>
+                  !a.classList.contains("hidden") &&
+                  naturalWidths[i] > a.getBoundingClientRect().width + 1,
+              );
+            if (!wraps()) return;
+
+            wrapper.classList.remove("hidden");
+            let hidden = 0;
+            while (hidden < items.length - 1 && wraps()) {
+              hidden++;
+              items[items.length - hidden].classList.add("hidden");
+            }
+            if (hidden === 0) {
+              wrapper.classList.add("hidden");
+              return;
+            }
+
+            for (let i = items.length - hidden; i < items.length; i++) {
+              const original = items[i];
+              const clone = document.createElement("a");
+              clone.href = original.href;
+              clone.textContent = original.textContent.trim();
+              clone.setAttribute("role", "menuitem");
+              const active = original.classList.contains("nav-link-active");
+              clone.className =
+                "block w-full text-start px-4 py-2.5 text-sm transition-colors " +
+                (active
+                  ? "text-sky-600 font-semibold bg-sky-50"
+                  : "text-gray-600 hover:bg-sky-50 hover:text-sky-700");
+              moreMenu.appendChild(clone);
+            }
+          };
+
+          let resizeTimer;
+          window.addEventListener("resize", () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(recalcNavOverflow, 120);
+          });
+          window.addEventListener("load", recalcNavOverflow);
+          recalcNavOverflow();
+        }
+      }
+
+      [
+        ["lang-btn", "lang-menu"],
+        ["lang-btn-mobile", "lang-menu-mobile"],
+      ].forEach(([btnId, menuId]) => {
+        const btn = document.getElementById(btnId);
+        const menu = document.getElementById(menuId);
+        if (!btn || !menu) return;
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const isOpen = !menu.classList.contains("hidden");
+          document
+            .querySelectorAll("#lang-menu, #lang-menu-mobile")
+            .forEach((m) => m.classList.add("hidden"));
+          if (!isOpen) menu.classList.remove("hidden");
+          btn.setAttribute("aria-expanded", String(!isOpen));
+        });
+      });
+
+      document.addEventListener("click", () => {
+        document
+          .querySelectorAll("#lang-menu, #lang-menu-mobile")
+          .forEach((m) => m.classList.add("hidden"));
+      });
+      document
+        .querySelectorAll("#lang-menu, #lang-menu-mobile")
+        .forEach((m) => {
+          m.addEventListener("click", (e) => e.stopPropagation());
+        });
+
+      const flashData = document.getElementById("flash-messages");
+      if (flashData) {
+        try {
+          const messages = JSON.parse(flashData.textContent);
+          messages.forEach((msg) => {
+            window.showToast(msg.message, msg.category || "info");
+          });
+        } catch (e) {
+          console.error("Failed to parse flash messages", e);
+          window.analytics?.trackError?.(e, {
+            context: "flash_messages_parse",
+          });
+        }
+      }
+
+      // --- Confirm modal: window.confirmDelete(message) returns a Promise<boolean>.
+      // Checking "don't ask me again this session" stores a sessionStorage flag so
+      // subsequent calls in the same tab session resolve true without showing the modal.
+      const confirmOverlay = document.getElementById("confirm-modal-overlay");
+      const confirmMessageEl = document.getElementById("confirm-modal-title");
+      const confirmSkipCheckbox = document.getElementById("confirm-modal-skip");
+      const confirmCancelBtn = document.getElementById("confirm-modal-cancel");
+      const confirmConfirmBtn = document.getElementById("confirm-modal-confirm");
+      const CONFIRM_SKIP_KEY = "skipDeleteConfirm";
+
+      window.confirmDelete = function (message) {
+        if (sessionStorage.getItem(CONFIRM_SKIP_KEY) === "1") {
+          return Promise.resolve(true);
+        }
+        return new Promise((resolve) => {
+          confirmMessageEl.textContent = message;
+          confirmSkipCheckbox.checked = false;
+          confirmOverlay.classList.remove("hidden");
+          const cleanup = (result) => {
+            confirmOverlay.classList.add("hidden");
+            confirmCancelBtn.removeEventListener("click", onCancel);
+            confirmConfirmBtn.removeEventListener("click", onConfirm);
+            confirmOverlay.removeEventListener("click", onOverlayClick);
+            resolve(result);
+          };
+          const onCancel = () => cleanup(false);
+          const onConfirm = () => {
+            if (confirmSkipCheckbox.checked) {
+              sessionStorage.setItem(CONFIRM_SKIP_KEY, "1");
+            }
+            cleanup(true);
+          };
+          const onOverlayClick = (e) => {
+            if (e.target === confirmOverlay) cleanup(false);
+          };
+          confirmCancelBtn.addEventListener("click", onCancel);
+          confirmConfirmBtn.addEventListener("click", onConfirm);
+          confirmOverlay.addEventListener("click", onOverlayClick);
+        });
+      };
+
+      // Any <form data-confirm="message"> shows the confirm modal before submitting
+      // (replaces native onsubmit="return confirm(...)" so the checkbox can apply).
+      // Any <form class="js-ajax-form"> submits via fetch instead of a full page
+      // navigation. Backend route must check helpers.utils.wants_json() and return
+      // JSON {success, message}. data-remove-selector="<css>" removes the closest
+      // matching ancestor on success (e.g. deleting a table row) without a reload.
+      // Pages can also listen for the "ajaxform:success" event for custom updates
+      // (e.g. swapping a regenerated code into the DOM).
+      //
+      // Exposed as window.bindDynamicForms(root) so pages that swap in fresh HTML
+      // (e.g. after an AJAX action re-renders a section) can re-bind the new forms
+      // without a full page reload — call it on the new root after inserting it.
+      window.bindDynamicForms = function (root = document) {
+        root.querySelectorAll("form[data-confirm]").forEach((form) => {
+          if (form.dataset.confirmBound === "1") return;
+          form.dataset.confirmBound = "1";
+          // The gate is the submit button's click, never the form's own submit
+          // event: requestSubmit() does nothing while the form is still firing
+          // the submit event it would be called from, so confirming out of a
+          // cancelled submit silently swallows the press.
+          form.addEventListener("click", (e) => {
+            const submitter = e.target.closest(
+              'button:not([type]), button[type="submit"], input[type="submit"]',
+            );
+            if (!submitter || submitter.form !== form) return;
+            e.preventDefault();
+            window.confirmDelete(form.dataset.confirm).then((ok) => {
+              if (ok) form.requestSubmit(submitter);
+            });
+          });
+        });
+
+        root.querySelectorAll("form.js-ajax-form").forEach((form) => {
+          if (form.dataset.ajaxBound === "1") return;
+          form.dataset.ajaxBound = "1";
+          form.addEventListener("submit", async (e) => {
+            if (e.submitter?.hasAttribute("data-skip-ajax")) return; // e.g. a "print" button that needs a real file download
+            e.preventDefault();
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            try {
+              const res = await fetch(form.action, {
+                method: (form.method || "POST").toUpperCase(),
+                body: new FormData(form, e.submitter),
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok || !data.success) {
+                window.showToast(
+                  data.message || "Something went wrong.",
+                  "error",
+                );
+                return;
+              }
+              if (data.message) window.showToast(data.message, "success");
+              const removeSelector = form.dataset.removeSelector;
+              if (removeSelector) {
+                form.closest(removeSelector)?.remove();
+              }
+              form.dispatchEvent(
+                new CustomEvent("ajaxform:success", {
+                  detail: data,
+                  bubbles: true,
+                }),
+              );
+            } catch (err) {
+              window.showToast("Network error. Please try again.", "error");
+              window.analytics?.trackError?.(err, {
+                context: "ajax_form_submit",
+              });
+            } finally {
+              if (submitBtn) submitBtn.disabled = false;
+            }
+          });
+        });
+      };
+
+      window.bindDynamicForms(document);
+
+      // A pager (the Pagination component) inside a [data-swap-region] — a results component's root — fetches
+      // its page as a fragment (the same component, alone) and swaps the region for it. Delegated
+      // on document: the region, its nav included, is replaced wholesale on every hop.
+      document.addEventListener("click", async function (event) {
+        const link = event.target.closest("nav.clay-pagination a.pagination-link");
+        const region = link?.closest("[data-swap-region]");
+        // No region = leave the browser to follow the href normally.
+        if (!region) return;
+        event.preventDefault();
+        region.setAttribute("aria-busy", "true");
+        try {
+          const res = await fetch(link.href, { headers: { "X-Fragment": "1" } });
+          // A redirect (session expired -> login) or non-2xx means the fragment
+          // branch didn't fire -- fall back to a real navigation rather than
+          // swapping a login form into this region.
+          if (!res.ok || res.redirected) { window.location.href = link.href; return; }
+          // Parsed through a <template> (its scripts stay inert, as with outerHTML) so the new
+          // region is in hand for bindDynamicForms: its delete forms need the confirm + AJAX gates.
+          const parsed = document.createElement("template");
+          parsed.innerHTML = await res.text();
+          const swapped = parsed.content.firstElementChild;
+          region.replaceWith(parsed.content);
+          if (swapped) window.bindDynamicForms(swapped);
+          // replaceState: a paging hop gets no back-button stop of its own.
+          window.history.replaceState({}, "", link.href);
+        } catch (err) {
+          window.location.href = link.href;
+        } finally {
+          region.removeAttribute("aria-busy");
+        }
+      });
+    });
+
+    window.showToast = function (message, type = "info", duration = 5000) {
+      const container = document.getElementById("toast-container");
+      if (!container) return;
+      const toast = document.createElement("div");
+      const icons = {
+        error:
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+        success:
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+        warning:
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>',
+        info: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+      };
+      const typeKey = icons[type] ? type : "info";
+      toast.className = `glass-notification glass-notification-${typeKey} pointer-events-auto flex items-center gap-3 px-4 py-3.5 min-w-[300px] max-w-md toast-animate-in`;
+      toast.innerHTML = `
+        <div class="toast-icon-circle toast-icon-circle-${typeKey}">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">${icons[typeKey]}</svg>
+        </div>
+        <div class="flex-1 text-sm font-semibold text-gray-700" data-toast-message></div>
+        <button class="toast-close-btn" aria-label="Dismiss notification">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>`;
+      // Text, never markup: messages carry user data (a school or worksheet title).
+      toast.querySelector("[data-toast-message]").textContent = message;
+      const closeToast = () => {
+        if (toast.parentElement) {
+          toast.classList.replace("toast-animate-in", "toast-animate-out");
+          toast.addEventListener("animationend", () => toast.remove());
+        }
+      };
+      toast.querySelector("button").onclick = closeToast;
+      container.appendChild(toast);
+      setTimeout(closeToast, duration);
+    };
+  </script>
+
+  <!-- Feature announcement popup. Rendered only when a dashboard route passed
+       one (helpers/announcements.py) — every other page leaves it out. -->
+  {% if announcement %}
+    <FeatureAnnouncement announcement={{ announcement }} />
+  {% endif %}
+
+  <!-- Teacher AI assistant. Included AFTER the block above so its own
+       DOMContentLoaded handler registers last and window.showToast /
+       window.confirmDelete already exist by the time it runs. -->
+  {% if current_user.is_authenticated and current_user.user_type == 'teacher' %}
+    <AssistantPanel />
+  {% endif %}

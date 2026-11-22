@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" aria-hidden="true">
+  <!-- Potion Workshop, cottage: dark foreground framing drawn over the cauldron.
+       Darkest plane in the scene; only the corners, so the shelf and cauldron stay clear. -->
+  <defs>
+    <style>
+      .sway { transform-box: fill-box; transform-origin: 30% 0; animation: cf-sway 9s ease-in-out infinite; }
+      @keyframes cf-sway { 0%,100% { transform: rotate(-1.2deg) } 50% { transform: rotate(1.4deg) } }
+      @media (prefers-reduced-motion: reduce) { .sway { animation: none } }
+    </style>
+  </defs>
+
+  <!-- Top-left: trailing ivy from a hanging basket -->
+  <g class="sway">
+    <path d="M0 0 H58 Q60 40 34 58 Q14 66 0 62 Z" fill="#2A1A12"/>
+    <g fill="#1E2A1C">
+      <path d="M40 54 C52 60 58 74 52 86 C40 82 34 68 40 54 Z"/>
+      <path d="M22 62 C34 74 34 92 24 102 C14 92 12 76 22 62 Z"/>
+      <path d="M8 96 C20 106 22 122 12 132 C2 124 0 108 8 96 Z"/>
+      <path d="M30 116 C44 122 48 138 40 148 C28 144 24 128 30 116 Z"/>
+      <path d="M6 150 C18 160 20 176 10 186 C0 178 -2 162 6 150 Z"/>
+      <path d="M24 176 C36 184 38 198 30 208 C20 202 18 188 24 176 Z"/>
+      <path d="M4 210 C14 220 14 234 6 242 C-2 234 -4 220 4 210 Z"/>
+    </g>
+    <g fill="#2C3D29">
+      <path d="M48 64 C50 72 50 78 46 84 C44 76 44 70 48 64 Z"/>
+      <path d="M22 72 C26 82 26 90 22 98 C18 90 18 80 22 72 Z"/>
+      <path d="M32 124 C38 130 40 138 38 144 C32 138 30 130 32 124 Z"/>
+    </g>
+    <path d="M30 58 C20 90 30 120 12 160 C4 180 22 200 8 240" fill="none" stroke="#1A2418" stroke-width="3"/>
+  </g>
+
+  <!-- Bottom-left: a stack of old books with a mortar and pestle -->
+  <g>
+    <rect x="-10" y="560" width="150" height="40" rx="4" fill="#2A1A20"/>
+    <rect x="-10" y="560" width="150" height="5" rx="2" fill="#4A2E36"/>
+    <rect x="-6" y="528" width="128" height="34" rx="4" fill="#1D2630"/>
+    <rect x="-6" y="528" width="128" height="5" rx="2" fill="#344452"/>
+    <rect x="4" y="500" width="104" height="30" rx="4" fill="#2E2116"/>
+    <rect x="4" y="500" width="104" height="5" rx="2" fill="#4E3A26"/>
+    <rect x="92" y="508" width="6" height="22" fill="#5A4A2E" opacity="0.6"/>
+    <path d="M30 500 q0 -22 26 -22 q26 0 26 22 Z" fill="#241A16"/>
+    <rect x="28" y="496" width="56" height="6" rx="3" fill="#3A2C24"/>
+    <path d="M62 482 l22 -40 q4 -4 7 0 l-20 44 Z" fill="#30241D"/>
+  </g>
+
+  <!-- Bottom-right: barrel and a lumpy sack -->
+  <g>
+    <path d="M664 600 Q648 520 670 452 H780 Q802 520 786 600 Z" fill="#26170F"/>
+    <path d="M670 452 H780 Q786 470 788 486 H662 Q664 470 670 452 Z" fill="#2F1D13"/>
+    <ellipse cx="725" cy="452" rx="55" ry="10" fill="#3A2418"/>
+    <ellipse cx="725" cy="452" rx="46" ry="6" fill="#20130C"/>
+    <rect x="652" y="494" width="146" height="8" rx="3" fill="#160D08"/>
+    <rect x="650" y="560" width="148" height="8" rx="3" fill="#160D08"/>
+    <path d="M676 470 Q668 530 678 590" fill="none" stroke="#3E271A" stroke-width="5" stroke-linecap="round"/>
+    <path d="M800 600 H740 Q726 572 744 548 Q760 532 784 540 Q794 528 800 532 Z" fill="#33251A"/>
+    <path d="M790 536 q-6 -12 2 -18 q8 6 4 18 Z" fill="#33251A"/>
+  </g>
+</svg>

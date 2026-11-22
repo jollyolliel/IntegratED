@@ -1,0 +1,4 @@
+{#- Matched / unmatched dot pill (docs/ui-design/building-ui.md): green for matched, amber for pending. -#}
+{#import "@components/base/badge.jx" as Badge #}
+{#def status=None #}
+<Badge tone={{ look("StatusPill", "status", status, "tone") }} class="text-[0.78rem] px-3 py-1 border-[1.5px]" attrs={{ attrs }}><span class="w-1.5 h-1.5 rounded-full {{ look("StatusPill", "status", status, "dot") }}"></span>{{ content }}</Badge>

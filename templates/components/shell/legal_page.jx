@@ -1,0 +1,22 @@
+{#- The terms and privacy pages: the policy (the content, as legal-prose) in a card under its
+    heading and date, then a link to the other policy and, when signed in, back to settings. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/page_header.jx" as PageHeader #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#def title, updated, other_href, other_label, other_icon="document-text" #}
+<Page title={{ title ~ " — IntegratED" }} styles="legal" body_class="min-h-screen flex flex-col bg-slate-50">
+  <main class="flex-1 py-10">
+    <div class="container mx-auto px-4 max-w-3xl">
+      <PageHeader badge={{ t("components.legal.badge") }} title={{ title }}
+        subtitle={{ t("components.legal.last_updated", date=updated) }} />
+      <Card class="legal-prose">{{ content }}</Card>
+      <div class="mt-6 flex gap-3">
+        <Button variant="sky" href={{ other_href }} icon={{ other_icon }}>{{ other_label }}</Button>
+        {%- if current_user.is_authenticated %}
+        <Button variant="gray" href={{ url_for("base.settings") }} icon="arrow-left">{{ t("components.legal.back_to_settings") }}</Button>
+        {%- endif %}
+      </div>
+    </div>
+  </main>
+</Page>

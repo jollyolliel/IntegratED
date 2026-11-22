@@ -1,0 +1,203 @@
+{#- The public donation form: a sky hero with the programme's numbers, then three steps (school,
+    amount, optional details) and a summary that unlocks the submit, which goes to Stripe. -#}
+{#import "@page_components/public/school_photo.jx" as SchoolPhoto #}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/base/card.jx" as Card #}
+{#def stats, schools, selected, impact_lines #}
+<Page title={{ t('donations.page_title') }} styles="donations">
+  <main class="flex-1">
+
+    <section class="donate-hero">
+      <span class="donate-hero-float donate-hero-f1" aria-hidden="true"><img src="{{ url_for('static', filename='svg/book.svg') }}" alt="" /></span>
+      <span class="donate-hero-float donate-hero-f2" aria-hidden="true"><img src="{{ url_for('static', filename='svg/letters.svg') }}" alt="" /></span>
+      <span class="donate-hero-float donate-hero-f3" aria-hidden="true"><img src="{{ url_for('static', filename='svg/backpack.svg') }}" alt="" /></span>
+      <span class="donate-hero-float donate-hero-f4" aria-hidden="true"><img src="{{ url_for('static', filename='svg/garden-pot.svg') }}" alt="" /></span>
+      <span class="donate-hero-float donate-hero-f5" aria-hidden="true"><img src="{{ url_for('static', filename='svg/globe.svg') }}" alt="" /></span>
+      <span class="donate-hero-float donate-hero-f6" aria-hidden="true"><img src="{{ url_for('static', filename='svg/tablet.svg') }}" alt="" /></span>
+      <img class="donate-hero-spark donate-hero-s1" src="{{ url_for('static', filename='svg/star.svg') }}" alt="" />
+      <img class="donate-hero-spark donate-hero-s2" src="{{ url_for('static', filename='svg/star.svg') }}" alt="" />
+      <div class="donate-hero-inner">
+        <img class="donate-hero-badge" src="{{ url_for('static', filename='svg/heart.svg') }}" alt="" />
+        <h1 class="donate-hero-title display-font font-extrabold">{{ t('donations.hero_heading') }}</h1>
+        <p class="donate-hero-lead">{{ t('donations.hero_subtext') }}</p>
+        <div class="donate-hero-stats">
+          <Card class="px-4 py-3"><span class="donate-hero-num text-primary">{{ stats.learners }}</span><span class="donate-hero-label">{{ t('donations.learners_enrolled') }}</span></Card>
+          <Card tone="amber" class="px-4 py-3"><span class="donate-hero-num text-amber-600">{{ stats.hours | round | int }}h</span><span class="donate-hero-label">{{ t('donations.learning_hours') }}</span></Card>
+          <Card tone="rose" class="px-4 py-3"><span class="donate-hero-num text-rose-500">{{ schools | length }}</span><span class="donate-hero-label">{{ t('donations.partner_school') }}</span></Card>
+        </div>
+      </div>
+      <svg class="donate-hero-wave" viewBox="0 0 1440 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40V20C180 0 360 0 540 20S900 40 1080 20 1440 0 1440 20V40Z" /></svg>
+    </section>
+
+    <section class="py-12 md:py-16">
+      <div class="container mx-auto px-4 max-w-3xl">
+        <form method="POST" action="{{ url_for('base.donations_submit') }}" id="donation-form">
+          <input type="hidden" name="school" id="school-input" value="{{ selected.name if selected else '' }}" />
+          <input type="hidden" name="amount" id="amount-input" value="" />
+
+          <div class="donation-step-card p-6 md:p-8 mb-6">
+            <div class="step-head">
+              <div class="step-circle">1</div>
+              <h2 class="display-font text-xl font-bold text-ink-heading">{{ t('donations.choose_school') }}</h2>
+            </div>
+            <div class="school-grid" id="school-cards">
+              {%- for school in schools %}
+              <Card clickable class="school-tile p-0 overflow-hidden w-full text-start" data-school={{ school.name }} aria-pressed={{ 'true' if school == selected else 'false' }}>
+                <span class="school-pic">
+                  <SchoolPhoto school={{ school }} variant="tile" />
+                  <span class="school-plate">
+                    <span class="school-name">{{ school.name }}</span>
+                    <span class="school-mission">{{ school.mission_statement or t('donations.school_mission_fallback') }}</span>
+                  </span>
+                  <span class="school-check{% if school != selected %} hidden{% endif %}"><Icon name="check" size="5" /></span>
+                </span>
+              </Card>
+              {%- endfor %}
+              {%- if not schools %}
+              <div class="school-empty"><p>{{ t('donations.more_schools_soon') }}</p></div>
+              {%- endif %}
+            </div>
+          </div>
+
+          <div class="donation-step-card p-6 md:p-8 mb-6">
+            <div class="step-head">
+              <div class="step-circle">2</div>
+              <h2 class="display-font text-xl font-bold text-ink-heading">{{ t('donations.choose_amount') }}</h2>
+            </div>
+            <div class="amount-grid">
+              {%- for amt in [10, 25, 50, 100, 250, 500] %}
+              <button type="button" class="amount-btn" data-amount="{{ amt }}" aria-pressed="false">${{ amt }}</button>
+              {%- endfor %}
+            </div>
+            <div class="amount-custom">
+              <span aria-hidden="true">$</span>
+              <input type="number" id="custom-amount" placeholder="{{ t('donations.custom_amount') }}" aria-label="{{ t('donations.custom_amount') }}" min="1" step="any" class="donation-input donation-input-currency" oninput="selectCustomAmount(this.value)" />
+            </div>
+            <div id="impact-message" class="hidden amount-impact" aria-live="polite">
+              <img src="{{ url_for('static', filename='svg/heart.svg') }}" alt="" />
+              <p id="impact-text"></p>
+            </div>
+          </div>
+
+          <div class="donation-step-card p-6 md:p-8 mb-6">
+            <div class="step-head">
+              <div class="step-circle step-circle-amber">3</div>
+              <h2 class="display-font text-xl font-bold text-ink-heading">{{ t('donations.your_details') }}<span class="details-optional">({{ t('donations.optional') }})</span></h2>
+            </div>
+            <div class="details-fields">
+              <Field label={{ t('donations.label_name') }} for_id="donor_name">
+                <input type="text" id="donor_name" name="donor_name" placeholder="{{ t('donations.your_name') }}" autocomplete="name" class="donation-input" />
+              </Field>
+              <Field label={{ t('donations.label_email') }} for_id="donor_email">
+                <input type="email" id="donor_email" name="donor_email" placeholder="{{ t('donations.email_placeholder') }}" autocomplete="email" class="donation-input" />
+              </Field>
+              <Field label={{ t('donations.label_message') }} for_id="donor_message">
+                <textarea id="donor_message" name="message" placeholder="{{ t('donations.message_placeholder') }}" rows="4" class="donation-input resize-none clay-scroll"></textarea>
+              </Field>
+            </div>
+          </div>
+
+          <div class="donation-step-card give-card p-6 md:p-8">
+            <img class="give-art" src="{{ url_for('static', filename='svg/heart.svg') }}" alt="" />
+            {%- set summary_amount %}<span class="give-amount" id="summary-amount">—</span>{% endset %}
+            {%- set summary_school %}<span class="give-school" id="summary-school">{{ selected.name if selected else '' }}</span>{% endset %}
+            <p id="submit-summary" class="hidden give-summary" aria-live="polite">{{ t('donations.summary_line', amount=summary_amount, school=summary_school) | safe }}</p>
+            <p class="give-wait">{{ t('donations.choose_amount_to_continue') }}</p>
+            <button type="submit" id="donate-btn" disabled class="donation-submit-btn give-btn">
+              <Icon name="heart" size="5" />
+              {{ t('donations.donate_now') }}
+            </button>
+            <p class="give-note">{{ t('donations.payment_confirm_note') }}</p>
+          </div>
+
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // [minimum amount, translated impact line], largest first (impact_tier in routes/base/_donations.py).
+    const IMPACT = {{ impact_lines | tojson }};
+
+    // The summary, impact line, custom field and submit are found by id through every copy, so
+    // the page keeps working when several versions of a step are in it at once (a live session).
+    const each = (id, fn) => document.querySelectorAll(`[id="${id}"]`).forEach(fn);
+
+    let selectedAmount = null;
+    let selectedSchool = document.getElementById("school-input").value || null;
+
+    document.querySelectorAll("[data-school]").forEach((card) => {
+      card.addEventListener("click", () => {
+        document.querySelectorAll("[data-school]").forEach((c) => {
+          c.setAttribute("aria-pressed", c.dataset.school === card.dataset.school ? "true" : "false");
+          const check = c.querySelector(".school-check");
+          if (check) check.classList.toggle("hidden", c.dataset.school !== card.dataset.school);
+        });
+        selectedSchool = card.dataset.school;
+        document.getElementById("school-input").value = selectedSchool;
+        updateSummary();
+      });
+    });
+
+    document.querySelectorAll(".amount-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        each("custom-amount", (el) => { el.value = ""; });
+        selectAmount(parseInt(btn.dataset.amount));
+      });
+    });
+
+    function selectAmount(amt) {
+      selectedAmount = amt;
+      document.getElementById("amount-input").value = amt;
+
+      document.querySelectorAll(".amount-btn").forEach((b) => {
+        const active = parseInt(b.dataset.amount) === amt;
+        b.classList.toggle("active", active);
+        b.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+
+      const msg = amt > 0 ? IMPACT.find(([min]) => amt >= min)[1] : null;
+      each("impact-text", (el) => { el.textContent = msg || ""; });
+      each("impact-message", (el) => el.classList.toggle("hidden", !msg));
+
+      updateSummary();
+    }
+
+    function selectCustomAmount(val) {
+      document.querySelectorAll(".amount-btn").forEach((b) => {
+        b.classList.remove("active");
+        b.setAttribute("aria-pressed", "false");
+      });
+      const num = parseFloat(val);
+      if (!isNaN(num) && num > 0) {
+        selectAmount(num);
+      } else {
+        selectedAmount = null;
+        document.getElementById("amount-input").value = "";
+        each("impact-message", (el) => el.classList.add("hidden"));
+        updateSummary();
+      }
+    }
+
+    function updateSummary() {
+      const ready = Boolean(selectedAmount && selectedSchool);
+      each("donate-btn", (btn) => { btn.disabled = !ready; });
+      each("submit-summary", (el) => el.classList.toggle("hidden", !ready));
+      if (!ready) return;
+      const display = Number.isInteger(selectedAmount) ? selectedAmount : selectedAmount.toFixed(2);
+      each("summary-school", (el) => { el.textContent = selectedSchool; });
+      each("summary-amount", (el) => { el.textContent = "$" + display; });
+    }
+
+    // Prevent double-submit: a second click before the Stripe redirect
+    // would start a second checkout session.
+    document.getElementById("donation-form").addEventListener("submit", () => {
+      each("donate-btn", (btn) => {
+        btn.disabled = true;
+        btn.style.opacity = "0.6";
+      });
+    });
+  </script>
+</Page>

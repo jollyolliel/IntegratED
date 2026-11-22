@@ -1,0 +1,27 @@
+# Coverage is a CI-only concern — see .github/workflows/tests.yml. Instrumenting
+# every module roughly quadruples the suite's wall time.
+#
+# `source = .`, not a list of modules. Two traps rule the alternatives out: a
+# bare module filename under `source` makes coverage hang while it tries to
+# resolve the name as an importable package, and the same filename under
+# `include` is matched against the basename, so `models.py` silently drags in
+# `requests/models.py` and every other third-party file sharing the name. The
+# virtualenv lives outside the repo, so measuring the tree and omitting the
+# non-application directories is both correct and stable.
+[run]
+branch = False
+source = .
+omit =
+    tests/*
+    migrations/*
+    scripts/*
+    helpers/scripts/*
+    docs/*
+    */__pycache__/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    raise NotImplementedError
+    if __name__ == .__main__.:

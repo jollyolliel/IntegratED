@@ -1,0 +1,105 @@
+[project]
+name = "integrated"
+version = "0.1.0"
+description = "IntegratED — Y2Y learning platform for ACS Athens"
+requires-python = ">=3.12"
+license = "PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE"]
+dependencies = [
+    "Flask",
+    "Flask-Login",
+    "Flask-SQLAlchemy",
+    "flask-migrate",
+    "Flask-Limiter",
+    "flask-compress",
+    "Authlib",
+    "Werkzeug",
+    "Markdown",
+    "SQLAlchemy",
+    "click",
+    "python-dotenv",
+    "requests",
+    "posthog",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp",
+    "psycopg2-binary",
+    "deep-translator",
+    "stripe",
+    "google-cloud-storage",
+    "gunicorn",
+    "pypdf",
+    "Pygments>=2.17",
+    "jx==0.16.0",
+    "heroicons==2.14.0",
+    "fpdf2>=2.9.0",
+    "uharfbuzz>=0.57.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "coverage",
+    "ruff>=0.17.1",
+    "ty>=0.0.88",
+    "ast-grep-cli>=0.51.0",
+    "pyyaml>=6.0.3",
+    # Reference only: tests/unit/test_assignment.py checks helpers/assignment.py
+    # against scipy's solver. Production matching never imports it.
+    "scipy>=1.18.1",
+    {include-group = "css"},
+]
+# Build-time only: the Docker builder stage installs just this group to run
+# scripts/tailwind.py; the runtime image (`--no-dev`) never gets it.
+css = [
+    "pytailwindcss>=0.4.2",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff.lint]
+# Naive datetimes are this app's deliberate architecture: dev SQLite and prod
+# Postgres both use naive TIMESTAMP columns (see docs/backend/data-model.md
+# and helpers/utils.py's utcnow_naive/day_bounds), so every datetime compared
+# against or stored into a DB column is naive on purpose, not by oversight.
+ignore = ["DTZ001", "DTZ007", "DTZ011"]
+extend-select = ["TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"flask_login.current_user".msg = "untyped LocalProxy — use `from helpers.current_user import current_user` (or a role-specific name, e.g. `current_learner as current_user`); see docs/development/python-conventions.md."
+"flask.render_template".msg = "use `from helpers.render import render_template` — it also renders `.jx` pages through the jx catalog."
+
+[tool.ruff.lint.per-file-ignores]
+# The one module that wraps flask_login's proxy in typed casts.
+"helpers/current_user.py" = ["TID251"]
+# The one module that wraps Flask's render_template for `.jx` dispatch.
+"helpers/render.py" = ["TID251"]
+
+[tool.ty.environment]
+# Analyse every `sys.platform` branch, not just the host's. Without this ty
+# infers the platform from whatever machine it runs on, so a `win32`-guarded
+# block is dead code on Linux CI and its suppression comments become
+# `unused-ignore-comment` failures — green locally, red in CI.
+python-platform = "all"
+
+[tool.ty.rules]
+# Flask-SQLAlchemy's `db.Model` base is a runtime-generated declarative class
+# (`_FSAModel`) ty cannot resolve a consistent MRO for — every one of the 24
+# model classes in models.py/models_learning.py trips this, and there is no
+# fix on the model side (no stub/plugin exists for ty the way mypy has one).
+unsupported-base = "ignore"
+
+[tool.pytest.ini_options]
+# Keep collection focused on the replacement suite's three explicit layers.
+testpaths = ["tests/unit", "tests/web", "tests/integration"]
+addopts = "-ra --strict-markers"
+markers = [
+    "unit: fast deterministic helper and model behavior",
+    "web: Flask request and public route contracts",
+    "integration: database, filesystem, PDF, and CLI boundaries",
+    "slow: intentionally expensive tests outside the fast default",
+    "external: requires a real external service and is excluded by default",
+]

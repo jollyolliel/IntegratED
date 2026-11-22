@@ -1,0 +1,689 @@
+{#- The teacher's roster: learners and volunteers in two columns, each pair drawn as a connector
+    between them (docs/features/matching.md), a people search, the default learner limit, and the two matching
+    modals (priorities, Auto-Match review). -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/page_header.jx" as PageHeader #}
+{#import "@components/status_pill.jx" as StatusPill #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@page_components/teacher/match_priorities.jx" as MatchPriorities #}
+{#import "@page_components/teacher/match_preview.jx" as MatchPreview #}
+{#import "@components/shell/main.jx" as Main #}
+{#def teacher, pair_scores, unmatched_learners, unmatched_volunteers, learners, volunteers, max_capacity,
+      default_capacity, match_factors, match_levels, weight_level_count, spread_level_count #}
+<Page title={{ t('teacher.people.title') }} styles="admin matching">
+  <Main>
+    <PageHeader badge={{ t('teacher.portal_badge') }} title={{ t('teacher.people.heading') }} subtitle={{ t('teacher.people.subheading') }} />
+
+    <div class="people-toolbar mb-8">
+      <div class="att-field att-field-grow att-combo" data-people-combo>
+        <label for="peopleSearch">{{ t('teacher.people.search_label') }}</label>
+        <Input type="search" id="peopleSearch" role="combobox" autocomplete="off"
+          aria-expanded="false" aria-autocomplete="list" aria-controls="peopleSearchList"
+          placeholder={{ t('teacher.people.search_placeholder') }} />
+        <ul class="att-combo-list" id="peopleSearchList" role="listbox" hidden></ul>
+      </div>
+
+      <form id="default-capacity-form"
+            method="post"
+            action="{{ url_for('teacher.teacher_set_default_capacity') }}"
+            class="js-ajax-form att-field att-field-narrow">
+        <label for="defaultCapacity">{{ t('teacher.people.default_limit_label') }}</label>
+        <select id="defaultCapacity" name="default_capacity" title="{{ t('teacher.people.default_limit_hint') }}">
+          <button><selectedcontent></selectedcontent></button>
+          {%- for n in range(1, max_capacity + 1) %}
+          <option value="{{ n }}" {% if n == default_capacity %}selected{% endif %}>{{ n }}</option>
+          {%- endfor %}
+        </select>
+        <button type="submit" class="sr-only">{{ t('teacher.people.btn_set') }}</button>
+      </form>
+
+      <Button variant="sky" id="priorities-btn" class="justify-center" icon="adjustments-vertical"
+        aria-expanded="false" aria-controls="priorities-panel">{{ t('teacher.people.priorities_button') }}</Button>
+
+      <Button id="auto-match-btn" class="justify-center" icon="bolt" onclick="runAutoMatch()">{{ t('teacher.people.auto_match') }}</Button>
+    </div>
+
+    <MatchPriorities match_factors={{ match_factors }} match_levels={{ match_levels }}
+      weight_level_count={{ weight_level_count }} spread_level_count={{ spread_level_count }} />
+
+    <MatchPreview />
+
+    {#- What the connector colours mean: the line is the only place a pair's match quality shows
+        on this page, so the key has to be on it. #}
+    <div class="people-legend mb-4">
+      <span class="people-legend-label">{{ t('teacher.people.legend_label') }}</span>
+      {%- for band in ['strong', 'good', 'fair', 'weak'] %}
+      <span class="people-legend-item">
+        <span class="people-legend-swatch people-legend-{{ band }}"></span>
+        {{ t('teacher.match_score.band_' ~ band) }}
+      </span>
+      {%- endfor %}
+    </div>
+
+    <div id="people-dynamic-content">
+      {#- The pairing IS the line between the two columns: there is no third list repeating both
+          sides. #}
+      <div class="people-map" id="peopleMap">
+        <svg class="people-map-lines" id="peopleMapLines" aria-hidden="true" focusable="false"></svg>
+
+        <div class="people-map-cols">
+          <section>
+            <div class="flex items-center gap-2 mb-4">
+              <Icon name="users" class="text-sky-400" aria-hidden="true" />
+              <h2 class="display-font text-xl font-bold text-sky-900">{{ t('teacher.people.all_learners') }} (<span data-count-learners data-total="{{ learners|length }}">{{ learners|length }}</span>)</h2>
+            </div>
+            <div class="space-y-2">
+              {%- for learner in learners %}
+              <div class="people-item flex flex-col gap-3"
+                   data-learner-id="{{ learner.id }}"
+                   data-pair-volunteer="{{ learner.volunteer_id or '' }}"
+                   data-pair-band="{{ pair_scores[learner.id].band if pair_scores.get(learner.id) else '' }}"
+                   data-pair-score="{{ pair_scores[learner.id].score if pair_scores.get(learner.id) else '' }}"
+                   data-name="{{ learner.name or learner.username }}"
+                   data-search="{{ ((learner.name or learner.username) ~ ' ' ~ learner.username)|lower }}">
+                <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="avatar-circle-sm avatar-circle-sky">
+                      {{ (learner.name or learner.username)[:2]|upper }}
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-sky-900 truncate">{{ learner.name or learner.username }}</p>
+                      <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                        <span id="learner-status-{{ learner.id }}" class="inline-flex">
+                          <span data-status="on" class="{{ '' if learner.is_matched else 'hidden' }}"><StatusPill status="matched">{{ t('teacher.people.matched_badge') }}</StatusPill></span>
+                          <span data-status="off" class="{{ 'hidden' if learner.is_matched else '' }}"><StatusPill status="unmatched">{{ t('teacher.people.unmatched_badge') }}</StatusPill></span>
+                        </span>
+                        {%- if learner.subject_levels %}
+                        <span class="text-[10px] text-ink-faint font-medium whitespace-nowrap">
+                          {%- for subject, level in learner.subject_levels.items() -%}
+                            {{ subject[0] }}: Lvl {{ level }}{% if not loop.last %} | {% endif %}
+                          {%- endfor -%}
+                        </span>
+                        {%- endif %}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0 ms-auto">
+                    <Button variant="sky" flat id={{ "match-btn-" ~ learner.id }} class={{ "hidden" if learner.is_matched else "" }}
+                      onclick={{ "document.getElementById('match-form-" ~ learner.id ~ "').classList.toggle('hidden')" }}>{{ t('teacher.people.btn_match') }}</Button>
+                    <Button variant="gray" flat href={{ url_for('teacher.teacher_learner_detail', learner_id=learner.id) }}>{{ t('teacher.people.btn_profile') }}</Button>
+                  </div>
+                </div>
+                <form id="match-form-{{ learner.id }}"
+                      method="post"
+                      action="{{ url_for('teacher.teacher_manual_match') }}"
+                      class="js-ajax-form match-form hidden flex items-center gap-2">
+                  <input type="hidden" name="learner_id" value="{{ learner.id }}">
+                  <select name="volunteer_id" class="flex-1">
+                    <button><selectedcontent></selectedcontent></button>
+                    <option value="">{{ t('teacher.people.select_volunteer') }}</option>
+                    {%- for v in unmatched_volunteers %}
+                    <option value="{{ v.id }}">{{ v.short_name }}</option>
+                    {%- endfor %}
+                  </select>
+                  <Button variant="accent" flat type="submit">{{ t('teacher.people.btn_confirm') }}</Button>
+                </form>
+              </div>
+              {%- endfor %}
+              {%- if not learners %}
+              <EmptyState message={{ t('teacher.people.no_learners') }} />
+              {%- endif %}
+              <p class="people-no-match" data-empty-learners hidden>{{ t('teacher.people.search_no_match') }}</p>
+            </div>
+          </section>
+
+          <section>
+            <div class="flex items-center gap-2 mb-4">
+              <Icon name="heart" class="text-green-500" aria-hidden="true" />
+              <h2 class="display-font text-xl font-bold text-sky-900">{{ t('teacher.people.all_volunteers') }} (<span data-count-volunteers data-total="{{ volunteers|length }}">{{ volunteers|length }}</span>)</h2>
+            </div>
+            <div class="space-y-2" data-volunteer-list>
+              {%- for volunteer in volunteers %}
+              <div class="people-item flex flex-col gap-3"
+                   data-volunteer-id="{{ volunteer.id }}"
+                   data-name="{{ volunteer.short_name }}"
+                   data-search="{{ (volunteer.short_name ~ ' ' ~ volunteer.email)|lower }}">
+                <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="avatar-circle-sm avatar-circle-green">
+                      {{ volunteer.name[:2]|upper if volunteer.name else volunteer.email[:2]|upper }}
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-sky-900 truncate">{{ volunteer.short_name }}</p>
+                      <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                        <span id="volunteer-status-{{ volunteer.id }}" class="inline-flex">
+                          <span data-status="on" class="{{ '' if volunteer.is_full else 'hidden' }}"><StatusPill status="matched">{{ t('teacher.people.full_badge') }}</StatusPill></span>
+                          <span data-status="off" class="{{ 'hidden' if volunteer.is_full else '' }}"><StatusPill status="unmatched">{{ t('teacher.people.available_badge') }}</StatusPill></span>
+                        </span>
+                        <span id="volunteer-slots-{{ volunteer.id }}" class="text-[10px] text-ink-faint font-medium whitespace-nowrap">{{ t('teacher.people.slots_used', count=volunteer.learner_matches|length, limit=volunteer.capacity) }}</span>
+                        <span class="text-[10px] text-ink-faint font-medium whitespace-nowrap">{{ t('teacher.people.hours_short', hours=volunteer.hours_volunteered) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0 ms-auto">
+                    <Button variant="sky" flat
+                      onclick={{ "document.getElementById('capacity-form-" ~ volunteer.id ~ "').classList.toggle('hidden')" }}>{{ t('teacher.people.btn_limit') }}</Button>
+                    <Button variant="gray" flat href={{ url_for('teacher.teacher_volunteer_detail', volunteer_id=volunteer.id) }}>{{ t('teacher.people.btn_profile') }}</Button>
+                  </div>
+                </div>
+                <form id="capacity-form-{{ volunteer.id }}"
+                      method="post"
+                      action="{{ url_for('teacher.teacher_set_volunteer_capacity', volunteer_id=volunteer.id) }}"
+                      class="js-ajax-form capacity-form hidden flex items-center gap-2">
+                  <label class="text-xs font-bold text-sky-400 uppercase tracking-wider" for="capacity-select-{{ volunteer.id }}">
+                    {{ t('teacher.people.learner_limit_label') }}
+                  </label>
+                  <select id="capacity-select-{{ volunteer.id }}" name="capacity" class="flex-1">
+                    <button><selectedcontent></selectedcontent></button>
+                    {%- for n in range(1, max_capacity + 1) %}
+                    <option value="{{ n }}" {% if n == volunteer.capacity %}selected{% endif %}>{{ n }}</option>
+                    {%- endfor %}
+                  </select>
+                  <Button variant="accent" flat type="submit">{{ t('teacher.people.btn_set') }}</Button>
+                </form>
+              </div>
+              {%- endfor %}
+              {%- if not volunteers %}
+              <EmptyState message={{ t('teacher.people.no_volunteers') }} />
+              {%- endif %}
+              <p class="people-no-match" data-empty-volunteers hidden>{{ t('teacher.people.search_no_match') }}</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </Main>
+
+  <script>
+    const slotsUsedTemplate = {{ t('teacher.people.slots_used', count='__COUNT__', limit='__LIMIT__')|tojson }};
+    const comboNoMatchLabel = {{ t('teacher.people.combo_no_match')|tojson }};
+    const COMBO_MAX_RESULTS = 8;
+
+    function peopleMap() { return document.getElementById("peopleMap"); }
+    // Every card lookup is scoped to `.people-item`. The connector groups
+    // `drawPairLines` stamps into the SVG carry the same data-learner-id and
+    // data-volunteer-id, and the SVG sits above the columns in the DOM — an
+    // unscoped querySelector finds a line, whose dataset has no `name`.
+    function peopleCards() { return peopleMap()?.querySelectorAll(".people-item") || []; }
+    function volunteerCard(id) { return peopleMap()?.querySelector(`.people-item[data-volunteer-id="${id}"]`) || null; }
+    function learnerCardsOf(id) { return Array.from(peopleMap()?.querySelectorAll(`.people-item[data-pair-volunteer="${id}"]`) || []); }
+
+    // A status slot holds both pills (`data-status` on / off); a change shows the other one.
+    function setStatus(slot, on) {
+      slot?.querySelectorAll("[data-status]").forEach((pill) => {
+        pill.classList.toggle("hidden", (pill.dataset.status === "on") !== on);
+      });
+    }
+
+    function attachMatchFormHandlers(root = document) {
+      window.bindDynamicForms(root);
+
+      root.querySelectorAll(".match-form").forEach(form => {
+        if (form.dataset.matchBound === "1") return;
+        form.dataset.matchBound = "1";
+        form.addEventListener("ajaxform:success", (e) => {
+          const learnerId = e.detail.learner_id;
+          const volunteerId = e.detail.volunteer_id;
+
+          form.classList.add("hidden");
+          form.reset();
+          document.getElementById(`match-btn-${learnerId}`)?.classList.add("hidden");
+
+          setStatus(document.getElementById(`learner-status-${learnerId}`), true);
+
+          // The card now has a partner, so it gains a connector line.
+          const card = peopleMap()?.querySelector(`.people-item[data-learner-id="${learnerId}"]`);
+          if (card) card.dataset.pairVolunteer = volunteerId;
+
+          updateVolunteerSlots(volunteerId, e.detail.volunteer_learner_count, e.detail.volunteer_open_slots);
+          drawPairLines();
+        });
+      });
+
+      root.querySelectorAll(".capacity-form").forEach(form => {
+        if (form.dataset.capacityBound === "1") return;
+        form.dataset.capacityBound = "1";
+        form.addEventListener("ajaxform:success", (e) => {
+          form.classList.add("hidden");
+          updateVolunteerSlots(e.detail.volunteer_id, e.detail.volunteer_learner_count, e.detail.volunteer_open_slots, e.detail.capacity, e.detail.volunteer_name);
+          drawPairLines();
+        });
+      });
+    }
+
+    // Keeps a volunteer's badge, slot counter and dropdown presence in sync
+    // after a match or a limit change — a volunteer stays selectable until full.
+    function updateVolunteerSlots(volunteerId, learnerCount, openSlots, capacity, volunteerName) {
+      if (volunteerId === undefined) return;
+      const isFull = openSlots === 0;
+
+      setStatus(document.getElementById(`volunteer-status-${volunteerId}`), isFull);
+
+      const slots = document.getElementById(`volunteer-slots-${volunteerId}`);
+      if (slots && learnerCount !== undefined) {
+        const limit = capacity !== undefined ? capacity : learnerCount + openSlots;
+        slots.textContent = slotsUsedTemplate
+          .replace("__COUNT__", learnerCount)
+          .replace("__LIMIT__", limit);
+      }
+
+      if (isFull) {
+        document.querySelectorAll(`.match-form select[name="volunteer_id"] option[value="${volunteerId}"]`).forEach(opt => opt.remove());
+      } else if (volunteerName) {
+        // Raising the limit puts a previously full volunteer back in play.
+        document.querySelectorAll('.match-form select[name="volunteer_id"]').forEach(select => {
+          if (select.querySelector(`option[value="${volunteerId}"]`)) return;
+          const option = document.createElement("option");
+          option.value = volunteerId;
+          option.textContent = volunteerName;
+          select.appendChild(option);
+        });
+      }
+    }
+
+    // ---- Pair connectors -----------------------------------------------------
+    // A volunteer and everyone they teach is one group: the learner cards stack
+    // in their column, the volunteer card slides to sit level with the middle of
+    // that stack, and every learner reaches it through a shared trunk down the
+    // gutter. Elbows, not curves — three curves fanning into one card read as a
+    // knot. The SVG sits under the cards, so a run that would cross a card is
+    // hidden behind it and only the gutter shows. Stacked (one-column) layouts
+    // get no lines and no shifting: no gutter to draw in, no room to slide into.
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const CARD_GAP = 8;       // the gap .space-y-2 leaves between two cards
+    const ELBOW_RADIUS = 10;
+
+    function twoColumnLayout() {
+      return window.matchMedia("(min-width: 768px)").matches;
+    }
+
+    function visibleCards(selector) {
+      return Array.from(peopleMap()?.querySelectorAll(selector) || [])
+        .filter((card) => !card.hidden);
+    }
+
+    function learnersOf(card) {
+      return learnerCardsOf(card.dataset.volunteerId).filter((learner) => !learner.hidden);
+    }
+
+    // Slides each volunteer card to the vertical centre of its learners, then
+    // pushes any card that would land on the one above it back down — cards are
+    // walked in DOM order, so a clamp only ever cascades downwards. A transform
+    // takes up no space, so the column is padded by the overhang; without that
+    // the last shifted card hangs off the end of the page.
+    function alignVolunteersToLearners() {
+      const list = peopleMap()?.querySelector("[data-volunteer-list]");
+      if (!list) return;
+
+      const cards = Array.from(list.querySelectorAll(".people-item[data-volunteer-id]"));
+      cards.forEach((card) => { card.style.transform = ""; });
+      list.style.paddingBottom = "";
+      if (!twoColumnLayout()) return;
+
+      const naturalBottom = list.getBoundingClientRect().bottom;
+      let floor = -Infinity;
+      let lowest = naturalBottom;
+
+      cards.forEach((card) => {
+        if (card.hidden) return;
+        const box = card.getBoundingClientRect();
+        const learnerBoxes = learnersOf(card).map((learner) => learner.getBoundingClientRect());
+        let top = box.top;
+        if (learnerBoxes.length) {
+          const groupTop = Math.min(...learnerBoxes.map((b) => b.top));
+          const groupBottom = Math.max(...learnerBoxes.map((b) => b.bottom));
+          top = (groupTop + groupBottom) / 2 - box.height / 2;
+        }
+        top = Math.max(top, floor);
+        floor = top + box.height + CARD_GAP;
+        lowest = Math.max(lowest, top + box.height);
+
+        const shift = top - box.top;
+        if (Math.abs(shift) > 0.5) card.style.transform = `translateY(${shift}px)`;
+      });
+
+      // Only when it actually changes — writing the same padding back on every
+      // redraw would keep re-triggering the ResizeObserver that called us.
+      const overhang = Math.round(lowest - naturalBottom);
+      if (overhang > 0) list.style.paddingBottom = `${overhang}px`;
+    }
+
+    // Learner edge -> gutter trunk -> volunteer edge, both corners rounded. The
+    // radius shrinks to fit, so a near-level pair bends instead of overshooting
+    // into an S. Level pairs (the whole one-learner case) are a straight line.
+    function elbowPath(x1, y1, trunk, x2, y2) {
+      if (Math.abs(y2 - y1) < 1) return `M ${x1} ${y1} L ${x2} ${y2}`;
+      const dx = Math.sign(trunk - x1) || 1;
+      const dy = Math.sign(y2 - y1);
+      const r = Math.min(
+        ELBOW_RADIUS,
+        Math.abs(y2 - y1) / 2,
+        Math.abs(trunk - x1),
+        Math.abs(x2 - trunk),
+      );
+      return [
+        `M ${x1} ${y1}`,
+        `L ${trunk - dx * r} ${y1}`,
+        `Q ${trunk} ${y1} ${trunk} ${y1 + dy * r}`,
+        `L ${trunk} ${y2 - dy * r}`,
+        `Q ${trunk} ${y2} ${trunk + dx * r} ${y2}`,
+        `L ${x2} ${y2}`,
+      ].join(" ");
+    }
+
+    function drawPairLines() {
+      const map = peopleMap();
+      const svg = document.getElementById("peopleMapLines");
+      if (!map || !svg) return;
+
+      alignVolunteersToLearners();
+      svg.replaceChildren();
+      if (!twoColumnLayout()) return;
+
+      const box = map.getBoundingClientRect();
+      if (box.width === 0) return;
+      svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
+      svg.setAttribute("width", box.width);
+      svg.setAttribute("height", box.height);
+
+      visibleCards(".people-item[data-volunteer-id]").forEach((partner) => {
+        const learners = learnersOf(partner);
+        if (!learners.length) return;
+
+        const b = partner.getBoundingClientRect();
+        const learnerBoxes = learners.map((card) => card.getBoundingClientRect());
+        // Which side faces the gutter flips under RTL, so read it off the boxes
+        // instead of hard-coding right-to-left.
+        const learnerFirst = learnerBoxes[0].left < b.left;
+        // The trunk is one line for the whole group, so it hangs off the card
+        // that reaches furthest into the gutter — not off each card in turn.
+        const learnerEdge = learnerFirst
+          ? Math.max(...learnerBoxes.map((a) => a.right))
+          : Math.min(...learnerBoxes.map((a) => a.left));
+        const volunteerEdge = learnerFirst ? b.left : b.right;
+        const trunk = (learnerEdge + volunteerEdge) / 2 - box.left;
+        const x2 = volunteerEdge - box.left;
+        const y2 = b.top + b.height / 2 - box.top;
+
+        learners.forEach((card, index) => {
+          const a = learnerBoxes[index];
+          const x1 = (learnerFirst ? a.right : a.left) - box.left;
+          const y1 = a.top + a.height / 2 - box.top;
+
+          const group = document.createElementNS(SVG_NS, "g");
+          // Band colours the line. A pair matched in this session (no reload
+          // yet) has no band on its card and keeps the neutral stroke until
+          // the next load.
+          const band = card.dataset.pairBand;
+          group.setAttribute("class", band ? `people-line people-line-${band}` : "people-line");
+          group.dataset.learnerId = card.dataset.learnerId;
+          group.dataset.volunteerId = partner.dataset.volunteerId;
+
+          const path = document.createElementNS(SVG_NS, "path");
+          path.setAttribute("d", elbowPath(x1, y1, trunk, x2, y2));
+          group.appendChild(path);
+
+          [[x1, y1], [x2, y2]].forEach(([cx, cy]) => {
+            const dot = document.createElementNS(SVG_NS, "circle");
+            dot.setAttribute("cx", cx);
+            dot.setAttribute("cy", cy);
+            dot.setAttribute("r", 3);
+            group.appendChild(dot);
+          });
+
+          svg.appendChild(group);
+        });
+      });
+    }
+
+    function highlightPair(card, on) {
+      const learnerId = card.dataset.learnerId;
+      const volunteerId = card.dataset.volunteerId || card.dataset.pairVolunteer;
+      document.querySelectorAll(".people-line").forEach((line) => {
+        const hit = learnerId
+          ? line.dataset.learnerId === learnerId
+          : line.dataset.volunteerId === volunteerId;
+        if (!hit) return;
+        line.classList.toggle("people-line-active", on);
+        // Group routes share the trunk, so the highlighted one has to be re-added
+        // last or its own siblings paint the pale stroke back over it.
+        if (on) line.parentNode.appendChild(line);
+      });
+    }
+
+    // ---- Live search ---------------------------------------------------------
+    // Filters both columns as you type. A card also survives when its *partner*
+    // matches, so searching one half of a pair never leaves a line dangling.
+    const searchInput = document.getElementById("peopleSearch");
+    const searchList = document.getElementById("peopleSearchList");
+
+    // `data-name` is the name as written, for display; `data-search` is the
+    // lowercase haystack — name plus username or email — that terms match on.
+    function haystack(card) { return card.dataset.search || (card.dataset.name || "").toLowerCase(); }
+
+    // Whitespace-separated terms, all of which must hit: "haddad amira" finds
+    // Amira Haddad even though the words are the wrong way round.
+    function searchTerms() {
+      return (searchInput?.value || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+    }
+
+    function searchOptions() {
+      const seen = new Set();
+      const options = [];
+      Array.from(peopleCards()).forEach((card) => {
+        const name = card.dataset.name;
+        if (!name || seen.has(name.toLowerCase())) return;
+        seen.add(name.toLowerCase());
+        options.push({ name: name, hay: haystack(card) });
+      });
+      return options;
+    }
+
+    function hits(card, terms) {
+      const hay = haystack(card);
+      return terms.every((term) => hay.includes(term));
+    }
+
+    function cardMatches(card, terms) {
+      if (!terms.length) return true;
+      if (hits(card, terms)) return true;
+      const partnerId = card.dataset.pairVolunteer;
+      if (partnerId) {
+        const partner = volunteerCard(partnerId);
+        return !!partner && hits(partner, terms);
+      }
+      if (card.dataset.volunteerId) {
+        return learnerCardsOf(card.dataset.volunteerId).some((learner) => hits(learner, terms));
+      }
+      return false;
+    }
+
+    // "(24)" unfiltered, "(3/24)" while a term is narrowing the column — a
+    // slash rather than a word so no language needs a key for it.
+    function updateCount(selector, shown) {
+      const target = document.querySelector(selector);
+      if (!target) return;
+      const total = target.dataset.total;
+      target.textContent = String(shown) === total ? total : `${shown}/${total}`;
+    }
+
+    function applyPeopleSearch() {
+      const terms = searchTerms();
+      let learnersShown = 0;
+      let volunteersShown = 0;
+
+      peopleCards().forEach((card) => {
+        const shown = cardMatches(card, terms);
+        card.hidden = !shown;
+        if (!shown) return;
+        if (card.dataset.learnerId) learnersShown += 1; else volunteersShown += 1;
+      });
+
+      updateCount("[data-count-learners]", learnersShown);
+      updateCount("[data-count-volunteers]", volunteersShown);
+
+      const learnerEmpty = document.querySelector("[data-empty-learners]");
+      const volunteerEmpty = document.querySelector("[data-empty-volunteers]");
+      if (learnerEmpty) learnerEmpty.hidden = !(terms.length && learnersShown === 0);
+      if (volunteerEmpty) volunteerEmpty.hidden = !(terms.length && volunteersShown === 0);
+
+      drawPairLines();
+    }
+
+    function bindSearchCombo() {
+      if (!searchInput || !searchList) return;
+      let active = -1;
+
+      // A word start outranks a mid-word hit, so typing "ha" offers Hiba Bakri
+      // before Amira Haddad. Word boundaries include the punctuation in an
+      // email, which makes a domain or a dotted login rank like a name.
+      function rank(option, terms) {
+        if (!terms.length) return 0;
+        const words = option.hay.split(/[\s@._-]+/).filter(Boolean);
+        let worst = 0;
+        for (const term of terms) {
+          if (!option.hay.includes(term)) return -1;
+          if (option.hay.startsWith(term)) continue;
+          worst = Math.max(worst, words.some((word) => word.startsWith(term)) ? 1 : 2);
+        }
+        return worst;
+      }
+
+      function matches() {
+        const terms = searchTerms();
+        return searchOptions()
+          .map((option) => ({ name: option.name, rank: rank(option, terms) }))
+          .filter((entry) => entry.rank >= 0)
+          .sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name))
+          .slice(0, COMBO_MAX_RESULTS)
+          .map((entry) => entry.name);
+      }
+
+      function close() {
+        searchList.hidden = true;
+        searchInput.setAttribute("aria-expanded", "false");
+        active = -1;
+      }
+
+      function open() {
+        const found = matches();
+        searchList.replaceChildren();
+        if (found.length === 0) {
+          const empty = document.createElement("li");
+          empty.className = "att-combo-empty";
+          empty.textContent = comboNoMatchLabel;
+          searchList.appendChild(empty);
+        }
+        found.forEach((name, index) => {
+          const item = document.createElement("li");
+          item.className = "att-combo-option";
+          item.setAttribute("role", "option");
+          item.textContent = name;
+          item.addEventListener("mousedown", (event) => {
+            // mousedown, not click — blur would close the list first.
+            event.preventDefault();
+            select(index);
+          });
+          searchList.appendChild(item);
+        });
+        searchList.hidden = false;
+        searchInput.setAttribute("aria-expanded", "true");
+      }
+
+      function highlight() {
+        searchList.querySelectorAll(".att-combo-option").forEach((item, index) => {
+          item.classList.toggle("att-combo-option-active", index === active);
+        });
+      }
+
+      function select(index) {
+        const found = matches();
+        if (!found[index]) return;
+        searchInput.value = found[index];
+        close();
+        applyPeopleSearch();
+      }
+
+      searchInput.addEventListener("input", () => { open(); applyPeopleSearch(); });
+      searchInput.addEventListener("focus", open);
+      searchInput.addEventListener("blur", close);
+      searchInput.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          if (searchList.hidden) open();
+          const count = searchList.querySelectorAll(".att-combo-option").length;
+          if (!count) return;
+          active = (active + (event.key === "ArrowDown" ? 1 : -1) + count) % count;
+          highlight();
+        } else if (event.key === "Enter") {
+          event.preventDefault();
+          if (!searchList.hidden) select(active === -1 ? 0 : active);
+        } else if (event.key === "Escape") {
+          if (searchList.hidden) {
+            searchInput.value = "";
+            applyPeopleSearch();
+          }
+          close();
+        }
+      });
+    }
+
+    function bindPairHighlights(root = document) {
+      root.querySelectorAll(".people-item").forEach((card) => {
+        if (card.dataset.hoverBound === "1") return;
+        card.dataset.hoverBound = "1";
+        card.addEventListener("mouseenter", () => highlightPair(card, true));
+        card.addEventListener("mouseleave", () => highlightPair(card, false));
+      });
+    }
+
+    // Card heights change with wrapping, badge text and open sub-forms, and the
+    // lines are drawn from measured boxes — observe rather than guess. Auto-match
+    // replaces the whole map node, so the observer is re-pointed on every init.
+    const mapObserver = new ResizeObserver(() => drawPairLines());
+
+    function initPeoplePage() {
+      attachMatchFormHandlers();
+      bindPairHighlights();
+      mapObserver.disconnect();
+      const map = peopleMap();
+      if (map) mapObserver.observe(map);
+      applyPeopleSearch();
+    }
+
+    // The default-limit select is the whole form — no separate Set button.
+    document.getElementById("defaultCapacity")?.addEventListener("change", (event) => {
+      event.target.form.requestSubmit();
+    });
+
+    // The header (components/shell/header.jx) defines window.bindDynamicForms *inside* its own
+    // DOMContentLoaded handler, so calling it at parse time throws and takes the
+    // rest of init — connectors, hover highlights, the ResizeObserver — with it.
+    // Its handler is registered earlier in the document, so it runs first.
+
+    // The two matching modals are self-contained partials that bind
+    // themselves; the one thing they need back is a redraw of the roster once
+    // an approved run has replaced it.
+    window.refreshPeopleMap = initPeoplePage;
+
+    function startPeoplePage() {
+      bindSearchCombo();
+      initPeoplePage();
+      window.addEventListener("resize", drawPairLines);
+      // Webfont swap changes every card's height after DOMContentLoaded, and the
+      // lines are measured from those boxes.
+      window.addEventListener("load", drawPairLines);
+      document.fonts?.ready.then(drawPairLines);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", startPeoplePage);
+    } else {
+      startPeoplePage();
+    }
+
+  </script>
+</Page>

@@ -1,0 +1,351 @@
+{#- Auto-Match's review step for the teacher people page — what the run would
+   change, before anything is written. Approve posts these exact moves back to
+   `api.api_run_matching`, so the roster ends up as shown here even if a fresh
+   run would now pick differently.
+
+   Self-contained — markup plus its own script; the `.mp-*` styling lives in
+   `static/css/pages/matching.css`. It exports `window.runAutoMatch` for the page's
+   toolbar button and calls `window.refreshPeopleMap` once a run is applied. -#}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+<div id="match-preview-overlay" class="mp-overlay hidden" role="dialog" aria-modal="true"
+     aria-labelledby="match-preview-title">
+  <div class="mp-card mp-card-wide">
+    <button type="button" class="mp-close" data-mp-close
+            aria-label="{{ t('common.close') }}">
+      <Icon name="x-mark" aria-hidden="true" />
+    </button>
+
+    <div class="mp-head">
+      <SectionBadge>{{ t('teacher.people.preview_badge') }}</SectionBadge>
+      <h2 id="match-preview-title" class="mp-title display-font">{{ t('teacher.people.preview_heading') }}</h2>
+      <p class="mp-sub">{{ t('teacher.people.preview_hint') }}</p>
+      <div class="mp-preview-stats">
+        <span class="mp-preview-stat mp-preview-stat-new">
+          <Icon name="arrow-right" size="3.5" aria-hidden="true" />
+          <span id="match-preview-count"></span>
+        </span>
+        <span class="mp-preview-stat" id="match-preview-unchanged-wrap">
+          <Icon name="check" size="3.5" aria-hidden="true" />
+          <span id="match-preview-unchanged"></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="mp-body mp-preview-body clay-scroll">
+      {# Column labels double as the select-all row, sticky so the columns
+         stay named on a long roster. #}
+      <div class="mp-preview-grid mp-preview-colhead">
+        <input type="checkbox" class="mp-preview-check" id="match-preview-all" checked
+               aria-label="{{ t('teacher.people.preview_select_all') }}" />
+        <span>{{ t('teacher.people.preview_col_learner') }}</span>
+        <span aria-hidden="true"></span>
+        <span>{{ t('teacher.people.preview_col_volunteer') }}</span>
+        <span class="mp-preview-col-match">{{ t('teacher.people.preview_col_match') }}</span>
+      </div>
+      <ul class="mp-preview-list" id="match-preview-list"></ul>
+    </div>
+
+    {# Approve is Auto-Match itself, finished — the same primary action the
+       page's green button started, so it keeps the green. #}
+    <div class="mp-actions">
+      <p class="mp-preview-blocked" id="match-preview-blocked" hidden>{{ t('teacher.people.preview_blocked') }}</p>
+      <Button variant="gray" data-mp-close>{{ t('teacher.people.preview_cancel') }}</Button>
+      <Button id="match-preview-approve" icon="check"><span id="match-preview-approve-label"></span></Button>
+    </div>
+  </div>
+</div>
+
+{# One proposed move. A row is markup, so it lives in markup — the script
+   clones this and fills the hooks rather than assembling twenty elements by
+   hand. The volunteer `<select>` is filled per row (the option list is the
+   teacher's whole roster) and the chip's classes come from the pair's band,
+   so both are left empty here. #}
+<template id="match-preview-row-template">
+  <li class="mp-preview-row mp-preview-grid">
+    <input type="checkbox" class="mp-preview-check" checked />
+    <div class="mp-preview-person mp-preview-learner-cell">
+      <span class="avatar-circle-sm avatar-circle-sky" aria-hidden="true" data-learner-avatar></span>
+      <div class="min-w-0">
+        <p class="mp-preview-name" data-learner-name></p>
+        <p class="mp-preview-sub" data-learner-sub></p>
+      </div>
+    </div>
+    <svg class="mp-preview-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+    </svg>
+    <div class="mp-preview-person mp-preview-volunteer-cell">
+      <span class="mp-preview-vol-avatar" aria-hidden="true"></span>
+      <select class="mp-preview-select"><button><selectedcontent></selectedcontent></button></select>
+    </div>
+    <span class="mp-preview-chip"></span>
+    <p class="mp-preview-warn" hidden></p>
+  </li>
+</template>
+
+<script>
+  (() => {
+    // Auto-Match is two steps: preview what the run would change, then apply
+    // exactly those moves once the teacher approves them.
+    // Each move carries `include` (the teacher can skip it) and `choice` (the
+    // volunteer they settled on — the proposal until they change it).
+    const matchPreview = {
+      moves: [],
+      volunteers: [],
+      bands: {{ {
+        'strong': t('teacher.match_score.band_strong'),
+        'good': t('teacher.match_score.band_good'),
+        'fair': t('teacher.match_score.band_fair'),
+        'weak': t('teacher.match_score.band_weak'),
+      }|tojson }},
+    };
+
+    function setMatchPreviewOpen(open) {
+      const overlay = document.getElementById('match-preview-overlay');
+      overlay.classList.toggle('hidden', !open);
+      document.body.style.overflow = open ? 'hidden' : '';
+      if (open) overlay.querySelector('.mp-close')?.focus();
+      else document.getElementById('auto-match-btn')?.focus();
+    }
+
+    function bindMatchPreview() {
+      const overlay = document.getElementById('match-preview-overlay');
+      if (!overlay) return;
+      overlay.querySelectorAll('[data-mp-close]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          window.analytics.trackEvent('matching_preview_cancelled', { proposed_count: matchPreview.moves.length });
+          setMatchPreviewOpen(false);
+        });
+      });
+      overlay.addEventListener('mousedown', (e) => {
+        if (e.target === overlay) setMatchPreviewOpen(false);
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !overlay.classList.contains('hidden')) setMatchPreviewOpen(false);
+      });
+      document.getElementById('match-preview-approve').addEventListener('click', approveAutoMatch);
+      document.getElementById('match-preview-all').addEventListener('change', (e) => toggleAllMatchPreview(e.target.checked));
+    }
+
+    const PREVIEW_T = {
+      include: {{ t('teacher.people.preview_include')|tojson }},
+      choose: {{ t('teacher.people.preview_choose_label')|tojson }},
+      noVolunteer: {{ t('teacher.people.preview_no_volunteer')|tojson }},
+      was: {{ t('teacher.people.preview_was')|tojson }},
+      fresh: {{ t('teacher.people.preview_new')|tojson }},
+      full: {{ t('teacher.people.preview_full')|tojson }},
+      count: {{ t('teacher.people.preview_count')|tojson }},
+      unchanged: {{ t('teacher.people.preview_unchanged')|tojson }},
+      approve: {{ t('teacher.people.preview_approve')|tojson }},
+      scoreLabel: {{ t('teacher.match_score.label')|tojson }},
+    };
+
+    // `{name}`-style placeholders filled in JS — t() substitutes server-side
+    // only, and these values exist only once the preview has loaded.
+    function previewFormat(template, values) {
+      return template.replace(/\{(\w+)\}/g, (whole, key) => (key in values ? values[key] : whole));
+    }
+
+    function initials(name) {
+      return (name || '').trim().slice(0, 2).toUpperCase();
+    }
+
+    function paintMatchPreviewChoice(row, move) {
+      const option = move.choice != null ? move.options[String(move.choice)] : null;
+      const chip = row.querySelector('.mp-preview-chip');
+      chip.hidden = !option;
+      if (option) {
+        chip.className = `mp-preview-chip match-score-chip match-score-${option.band}`;
+        chip.textContent = matchPreview.bands[option.band] || option.band;
+        chip.title = `${PREVIEW_T.scoreLabel} ${option.score}`;
+      }
+      const volunteer = matchPreview.volunteers.find(v => v.id === move.choice);
+      const avatar = row.querySelector('.mp-preview-vol-avatar');
+      avatar.className = `mp-preview-vol-avatar avatar-circle-sm ${volunteer ? 'avatar-circle-green' : 'mp-preview-avatar-empty'}`;
+      avatar.textContent = volunteer ? initials(volunteer.name) : '';
+    }
+
+    // Skipping or re-pointing moves can overfill a volunteer — e.g. skip the
+    // move that frees a slot another move was counting on. The server would
+    // quietly skip the pair that no longer fits; catching it here lets the
+    // teacher fix it before anything is written. Also keeps every dropdown's
+    // slot counts, the select-all box and the Approve label in step.
+    function checkMatchPreview() {
+      const loads = Object.fromEntries(matchPreview.volunteers.map(v => [v.id, v.load]));
+      matchPreview.moves.forEach((m) => {
+        if (!m.include || m.choice === m.from_volunteer_id) return;
+        if (m.from_volunteer_id != null) loads[m.from_volunteer_id] -= 1;
+        if (m.choice != null) loads[m.choice] += 1;
+      });
+      const over = new Map(
+        matchPreview.volunteers.filter(v => loads[v.id] > v.capacity).map(v => [v.id, v])
+      );
+
+      document.querySelectorAll('#match-preview-list .mp-preview-row').forEach((row, i) => {
+        const move = matchPreview.moves[i];
+        const full = move.include && over.get(move.choice);
+        row.classList.toggle('mp-preview-row-over', Boolean(full));
+        const warn = row.querySelector('.mp-preview-warn');
+        warn.hidden = !full;
+        if (full) {
+          warn.textContent = previewFormat(PREVIEW_T.full, { name: full.name, count: loads[full.id], limit: full.capacity });
+        }
+        row.querySelectorAll('option[value]:not([value=""])').forEach((opt) => {
+          const v = matchPreview.volunteers.find(x => String(x.id) === opt.value);
+          opt.textContent = `${v.name} (${loads[v.id]}/${v.capacity})`;
+        });
+      });
+
+      const included = matchPreview.moves.filter(m => m.include).length;
+      const all = document.getElementById('match-preview-all');
+      all.checked = included === matchPreview.moves.length;
+      all.indeterminate = included > 0 && included < matchPreview.moves.length;
+      document.getElementById('match-preview-approve-label').textContent = previewFormat(PREVIEW_T.approve, { count: included });
+      document.getElementById('match-preview-blocked').hidden = over.size === 0;
+      document.getElementById('match-preview-approve').disabled = over.size > 0 || included === 0;
+    }
+
+    function setMatchPreviewInclude(row, move, include) {
+      move.include = include;
+      row.querySelector('.mp-preview-check').checked = include;
+      row.classList.toggle('mp-preview-row-off', !include);
+      row.querySelector('select').disabled = !include;
+    }
+
+    function renderMatchPreviewRow(move) {
+      const row = document.getElementById('match-preview-row-template')
+        .content.firstElementChild.cloneNode(true);
+
+      const include = row.querySelector('.mp-preview-check');
+      include.setAttribute('aria-label', previewFormat(PREVIEW_T.include, { name: move.learner_name }));
+      row.querySelector('[data-learner-avatar]').textContent = initials(move.learner_name);
+      row.querySelector('[data-learner-name]').textContent = move.learner_name;
+      row.querySelector('[data-learner-sub]').textContent = move.from_volunteer_name
+        ? previewFormat(PREVIEW_T.was, { name: move.from_volunteer_name })
+        : PREVIEW_T.fresh;
+
+      // Every own volunteer, not only ones with room: the capacity check judges
+      // the whole edited set, and a slot can open up elsewhere in the same list.
+      // Option text carries the live slot count.
+      const select = row.querySelector('.mp-preview-select');
+      select.setAttribute('aria-label', previewFormat(PREVIEW_T.choose, { name: move.learner_name }));
+      select.append(new Option(PREVIEW_T.noVolunteer, ''));
+      matchPreview.volunteers.forEach((v) => {
+        select.append(new Option(v.name, String(v.id), false, v.id === move.choice));
+      });
+      if (move.choice == null) select.value = '';
+
+      paintMatchPreviewChoice(row, move);
+
+      include.addEventListener('change', () => {
+        setMatchPreviewInclude(row, move, include.checked);
+        checkMatchPreview();
+      });
+      select.addEventListener('change', () => {
+        move.choice = select.value === '' ? null : Number(select.value);
+        paintMatchPreviewChoice(row, move);
+        checkMatchPreview();
+      });
+      return row;
+    }
+
+    function toggleAllMatchPreview(include) {
+      document.querySelectorAll('#match-preview-list .mp-preview-row').forEach((row, i) => {
+        setMatchPreviewInclude(row, matchPreview.moves[i], include);
+      });
+      checkMatchPreview();
+    }
+
+    function runAutoMatch() {
+      const btn = document.getElementById('auto-match-btn');
+      btn.disabled = true;
+      window.analytics.trackEvent('cta_clicked', { action: 'run_matching' });
+      window.analytics.trackedFetch('{{ url_for('api.api_preview_matching') }}', { method: 'POST' }, { flow: 'matching', action: 'preview' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'no_op') {
+            window.showToast(data.message || 'No matches to make right now.', 'info');
+            return;
+          }
+          // A settled roster is the normal answer, not a failure — no point
+          // asking the teacher to approve an empty list.
+          if (!data.moves.length) {
+            window.showToast({{ t('teacher.people.matches_balanced')|tojson }}, 'success');
+            return;
+          }
+          matchPreview.volunteers = data.volunteers;
+          matchPreview.moves = data.moves.map(m => ({ ...m, include: true, choice: m.to_volunteer_id }));
+          document.getElementById('match-preview-count').textContent =
+            previewFormat(PREVIEW_T.count, { count: data.moves.length });
+          document.getElementById('match-preview-unchanged').textContent =
+            previewFormat(PREVIEW_T.unchanged, { count: data.unchanged_count });
+          document.getElementById('match-preview-unchanged-wrap').hidden = !data.unchanged_count;
+          document.getElementById('match-preview-list').replaceChildren(...matchPreview.moves.map(renderMatchPreviewRow));
+          checkMatchPreview();
+          setMatchPreviewOpen(true);
+        })
+        .catch((error) => {
+          console.error(error);
+          window.analytics.trackError(error, { flow: 'matching', action: 'preview' });
+          window.showToast('Unable to run matching right now.', 'error');
+        })
+        .finally(() => { btn.disabled = false; });
+    }
+
+    function approveAutoMatch() {
+      const approve = document.getElementById('match-preview-approve');
+      approve.disabled = true;
+      const kept = matchPreview.moves.filter(m => m.include);
+      const moves = kept.map(m => ({ learner_id: m.learner_id, volunteer_id: m.choice }));
+      window.analytics.trackEvent('matching_preview_approved', {
+        proposed_count: matchPreview.moves.length,
+        declined_count: matchPreview.moves.length - kept.length,
+        edited_count: kept.filter(m => m.choice !== m.to_volunteer_id).length,
+      });
+      window.analytics.trackEvent('cta_clicked', { action: 'approve_matching', proposed_count: moves.length });
+      window.analytics.trackedFetch('{{ url_for('api.api_run_matching') }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moves }),
+      }, { flow: 'matching', action: 'run' })
+        .then(res => res.json())
+        .then(data => {
+          setMatchPreviewOpen(false);
+          return fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(res => res.text())
+            .then(html => {
+              const fresh = new DOMParser().parseFromString(html, 'text/html').getElementById('people-dynamic-content');
+              const current = document.getElementById('people-dynamic-content');
+              if (fresh && current) current.innerHTML = fresh.innerHTML;
+              // The roster markup was just replaced wholesale, so the page has to
+              // re-bind its cards and redraw its connectors.
+              window.refreshPeopleMap?.();
+              let message = data.matches_applied
+                ? `Matched ${data.matches_applied} pair${data.matches_applied === 1 ? '' : 's'}.`
+                : '{{ t('teacher.people.matches_balanced') }}';
+              if (data.matches_skipped) {
+                message += ' ' + '{{ t('teacher.people.matches_skipped', count='__COUNT__') }}'.replace('__COUNT__', data.matches_skipped);
+              }
+              window.showToast(message, data.matches_skipped ? 'info' : 'success');
+            });
+        })
+        .catch((error) => {
+          console.error(error);
+          window.analytics.trackError(error, { flow: 'matching', action: 'run' });
+          window.showToast('Unable to run matching right now.', 'error');
+        })
+        .finally(() => { approve.disabled = false; });
+    }
+
+    // The toolbar's Auto-Match button is the page's, so it needs a name to call.
+    // Nothing else in here is public.
+    window.runAutoMatch = runAutoMatch;
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bindMatchPreview);
+    } else {
+      bindMatchPreview();
+    }
+  })();
+</script>

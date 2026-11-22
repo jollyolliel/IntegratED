@@ -1,0 +1,67 @@
+{#- The raw DB editor's swap region on `pages/administrator/db_table.jx`: the
+    row count and page position, the editable table and its pager. `routes/administrator/db_console.py`
+    renders it alone for an `X-Fragment` request; the editing script lives on the page. -#}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/pagination.jx" as Pagination #}
+{#def table_name, col_names, rows, pk_cols, page, total_pages, total, fk_map={}, focus=None #}
+<div data-swap-region>
+<p class="container mx-auto max-w-7xl text-sm mb-2 text-ink-heading/55">
+  {{ total }} rows total · page {{ page }}/{{ total_pages }}
+</p>
+
+<div class="container mx-auto max-w-7xl">
+  <Table wrap_class="overflow-x-auto" class="db-table font-mono text-xs min-w-max">
+    <thead>
+      <tr>
+        {%- for col in col_names %}
+        <th class="{% if col in pk_cols %}pk-col{% endif %}">
+          {{ col }}{% if col in pk_cols %} <span class="text-[0.65rem] text-amber-700">PK</span>{% endif %}
+        </th>
+        {%- endfor %}
+        {%- if pk_cols %}
+        <th>Actions</th>
+        {%- endif %}
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      {%- for row in rows %}
+      {%- set is_focused = focus and (row[col_names.index(focus.col)] | string) == focus.val %}
+      <tr class="group{% if is_focused %} focused-row{% endif %}" data-row-idx="{{ loop.index0 }}" {% if is_focused %}data-focused{% endif %}>
+        {%- for col in col_names %}
+        {%- set cell_val = row[loop.index0] %}
+        {%- set shown = cell_val if cell_val is not none else 'NULL' %}
+        {%- set fk = fk_map.get(col) %}
+        {%- if col in pk_cols %}
+        <td data-col="{{ col }}"><span class="pk-val">{{ shown }}</span></td>
+        {%- elif pk_cols %}
+        <td data-col="{{ col }}" onclick="startEdit(this)" title="{{ shown }}" class="cursor-pointer">
+          <span class="cell-display {% if cell_val is none %}null-val{% endif %}">{{ shown }}</span>
+          {%- if fk and cell_val is not none %}<a href="{{ url_for('administrator.db_table', table_name=fk[0], focus_col=fk[1], focus_val=cell_val) }}" onclick="event.stopPropagation()" class="fk-link" title="Open {{ fk[0] }} where {{ fk[1] }} = {{ cell_val }}">{{ fk[0] }}:{{ cell_val }} <span aria-hidden="true">→</span></a>{% endif %}
+        </td>
+        {%- else %}
+        <td data-col="{{ col }}"><span class="cell-display {% if cell_val is none %}null-val{% endif %}">{% if fk and cell_val is not none %}<a href="{{ url_for('administrator.db_table', table_name=fk[0], focus_col=fk[1], focus_val=cell_val) }}" onclick="event.stopPropagation()" class="fk-link" title="{{ fk[0] }}.{{ fk[1] }}">{{ shown }}</a>{% else %}{{ shown }}{% endif %}</span></td>
+        {%- endif %}
+        {%- endfor %}
+        {%- if pk_cols %}
+        <td class="whitespace-nowrap">
+          <Button variant="accent" flat class="save-btn hidden me-2" onclick="saveRow(this.closest('tr'))">save</Button>
+          <Button variant="gray" flat class="cancel-btn hidden me-2" onclick="cancelEdit(this.closest('tr'))">cancel</Button>
+          <Button variant="danger" flat class="opacity-0 group-hover:opacity-100 transition-opacity" onclick="deleteRow(this.closest('tr'))">del</Button>
+        </td>
+        {%- endif %}
+      </tr>
+      {%- else %}
+      <tr>
+        <td colspan="{{ col_names|length + (1 if pk_cols else 0) }}" class="py-10 text-center text-ink-faint italic">No rows</td>
+      </tr>
+      {%- endfor %}
+    </tbody>
+  </Table>
+</div>
+
+<div class="container mx-auto max-w-7xl">
+  <Pagination endpoint="administrator.db_table" page={{ page }} total_pages={{ total_pages }}
+    args={{ {'table_name': table_name} }} label="Table pages" />
+</div>
+</div>

@@ -1,0 +1,205 @@
+/* potion-workshop game: page-specific styles, linked via <GamePage styles="game-potion-workshop">.
+   Layout: the working panel (question, bottles, scrolls) beside a 4:3 workshop scene; on phones
+   the scene sits on top. The scene stacks: backdrop room (z 0) → mantel shelf + cauldron (z 2)
+   → the backdrop's dark foreground framing (z 3). Flying bits live on <body>, z 29–35. */
+
+.pw-layout {
+  display: grid; gap: 16px; align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 900px) {
+  .pw-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 24px; }
+  .pw-scene-card { grid-column: 2; grid-row: 1; position: sticky; top: 80px; }
+  .pw-panel { grid-column: 1; grid-row: 1; align-self: center; }
+}
+
+/* ── Scene ─────────────────────────────────────────────────────────── */
+/* A static illustration, so a static clay frame: pale shadow one step under its border.
+   On phones the width is capped so the 4:3 scene never takes more than ~44% of the screen. */
+.pw-scene-card {
+  border-radius: 24px; padding: 6px; background: var(--color-surface);
+  border: 2.5px solid var(--color-card-purple-border);
+  box-shadow: 4px 4px 0 var(--color-card-purple-shadow);
+  width: min(100%, calc(44vh * 4 / 3)); margin-inline: auto;
+}
+@media (min-width: 900px) { .pw-scene-card { width: 100%; } }
+.pw-scene {
+  position: relative; isolation: isolate; overflow: hidden;
+  aspect-ratio: 4 / 3; border-radius: 18px;
+  background: var(--color-amber-900);
+}
+/* The backdrop is a positioned box without z-index, so its two layers join the scene's
+   stacking order: the room behind the shelf and cauldron, the front framing over them. */
+.pw-backdrop { position: absolute; inset: 0; }
+.pw-backdrop-room, .pw-backdrop-front {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  pointer-events: none; user-select: none;
+  /* Candlelit tone, set on each layer (not on .pw-backdrop: a filter there would make a
+     stacking context and trap the front layer behind the shelf and cauldron). */
+  filter: brightness(0.95) saturate(1.6);
+}
+.pw-backdrop-room { z-index: 0; }
+.pw-backdrop-front { z-index: 3; }
+
+/* Mantel shelf: 16%–84% across, potions standing in the 18%–36% band. */
+.pw-shelf {
+  position: absolute; z-index: 2;
+  inset-inline: 16%; top: 17%; height: 21%;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+.pw-shelf-row {
+  flex: 1; min-height: 0; display: flex; align-items: flex-end; justify-content: center;
+  gap: 3%; padding-inline: 6%;
+}
+.pw-shelf-plank { display: block; width: 100%; height: 14%; min-height: 9px; overflow: visible; }
+.pw-shelf-slot {
+  height: 92%; aspect-ratio: 48 / 66; max-width: 15%;
+  display: flex; align-items: flex-end; justify-content: center;
+  color: var(--color-amber-100);
+}
+.pw-shelf-slot svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.pw-shelf-slot.is-golden svg { filter: drop-shadow(0 0 6px var(--color-amber-300)); }
+
+/* Cauldron: centred on the floor, about a third of the scene wide. */
+.pw-cauldron {
+  position: absolute; z-index: 2; bottom: 2%; left: 50%;
+  width: 40%; height: auto; overflow: visible;
+  translate: -50% 0;
+}
+.pw-steam {
+  opacity: 0;
+  transform-box: fill-box; transform-origin: center;
+  animation: pw-steam 3.2s ease-in-out infinite;
+}
+.pw-steam.b { animation-delay: -1.1s; animation-duration: 3.8s; }
+.pw-steam.c { animation-delay: -2.2s; }
+.pw-steam.d { animation-delay: -0.5s; animation-duration: 4.2s; }
+@keyframes pw-steam {
+  0% { transform: translateY(18px) scale(0.5); opacity: 0; }
+  35% { opacity: 0.32; }
+  100% { transform: translateY(-46px) scale(1.7); opacity: 0; }
+}
+.pw-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: pw-flame 0.9s ease-in-out infinite; }
+.pw-flame.b { animation-delay: -0.3s; animation-duration: 1.1s; }
+.pw-flame.c { animation-delay: -0.6s; animation-duration: 0.8s; }
+@keyframes pw-flame {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(0.9, 1.12); }
+}
+
+/* ── Recipe scrolls ────────────────────────────────────────────────── */
+.pw-scroll-grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+}
+/* Clay card (quick-action-card / clay-card-green) sized for a scroll illustration. */
+.pw-scroll {
+  width: 100%; padding: 10px 8px 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+}
+.pw-scroll-art { width: 100%; max-width: 132px; height: auto; display: block; }
+.pw-scroll-name {
+  font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1rem; line-height: 1.15;
+  color: var(--color-ink-heading);
+}
+.pw-scroll:disabled { cursor: default; }
+
+/* ── Brewing ───────────────────────────────────────────────────────── */
+.pw-brewing-strip { display: flex; align-items: center; gap: 10px; padding-inline: 4px; }
+.pw-brewing-flask { width: 34px; height: 46px; flex-shrink: 0; }
+.pw-brewing-flask svg { width: 100%; height: 100%; display: block; }
+.pw-ing-slot {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2.5px solid var(--color-violet-200); background: var(--color-violet-50); color: var(--color-violet-200);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background-color 0.3s ease-out, border-color 0.3s ease-out;
+}
+.pw-ing-slot svg { width: 16px; height: 16px; }
+.pw-ing-slot.is-current { border-color: var(--color-primary); color: var(--color-sky-300); background: var(--color-surface); }
+.pw-ing-slot.is-filled { border-color: var(--ing); background: var(--ing); color: var(--color-surface); }
+
+.pw-bottle-row {
+  display: grid; gap: 12px; justify-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 132px));
+}
+.pw-bottle-slot { position: relative; }
+/* Clay answer card sized for a bottle: letter, bottle, word. */
+.pw-bottle {
+  width: 100%; min-height: 148px; padding: 10px 8px 12px; position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px;
+}
+.pw-bottle-art { width: 62px; height: 76px; display: block; overflow: visible; }
+.pw-bottle.is-tried { opacity: 0.4; }
+.pw-word {
+  display: block; font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800;
+  font-size: 1.15rem; line-height: 1.1; color: var(--color-ink-heading); overflow-wrap: anywhere;
+}
+.pw-letter {
+  position: absolute; top: 8px; inset-inline-start: 8px;
+  width: 26px; height: 26px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.8rem; color: var(--color-ink-heading);
+  border: 2px solid var(--color-ink-heading);
+}
+.pw-letter-0 { background: var(--color-rose-300); }
+.pw-letter-1 { background: var(--color-sky-300); }
+.pw-letter-2 { background: var(--color-amber-300); }
+.pw-letter-3 { background: var(--color-violet-300); }
+.pw-letter-4 { background: var(--color-emerald-300); }
+.pw-letter-5 { background: var(--color-orange-300); }
+/* Hear-the-word button, pinned to the card's top-end corner (a sibling, not nested). */
+.pw-hear {
+  position: absolute; top: 6px; inset-inline-end: 6px; z-index: 1;
+  width: 34px; height: 34px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--color-primary-tint); color: var(--color-primary);
+  border: 2px solid var(--color-primary-light); box-shadow: 2px 2px 0 var(--color-primary-light);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out; cursor: pointer;
+}
+.pw-hear svg { width: 18px; height: 18px; }
+.pw-hear:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--color-sky-300); border-color: var(--color-sky-300); }
+.pw-hear:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--color-sky-300); border-color: var(--color-sky-300); }
+.pw-hear:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 2px; }
+[dir="rtl"] .pw-hear svg { transform: scaleX(-1); }
+
+.pw-stir-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 60px; padding: 12px 28px; font-weight: 800; font-size: 1.15rem;
+  background: var(--color-violet-500); color: var(--color-surface); font-family: 'Baloo 2', system-ui, sans-serif;
+  border: 2.5px solid var(--color-violet-700); border-radius: 18px;
+  box-shadow: 4px 4px 0 var(--color-violet-700);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+  cursor: pointer;
+}
+.pw-stir-btn:hover  { transform: translate(-1.5px, -1.5px); box-shadow: 5.5px 5.5px 0 var(--color-violet-700); }
+.pw-stir-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--color-violet-700); }
+.pw-stir-spoon { width: 26px; height: 26px; }
+.pw-stir-pips { display: inline-flex; gap: 5px; margin-inline-start: 4px; }
+.pw-stir-pips i {
+  width: 12px; height: 12px; border-radius: 999px;
+  border: 2px solid var(--color-surface); background: transparent;
+  transition: background-color 200ms ease-out;
+}
+.pw-stir-pips i.is-done { background: var(--color-surface); }
+
+/* "3 in a row!" — a calm note beside the progress bar. */
+.pw-streak {
+  font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 0.85rem;
+  color: var(--color-accent); white-space: nowrap;
+}
+.pw-streak[hidden] { display: none; }
+
+/* Sparkles thrown from the cauldron/shelf (on <body>, page coordinates). */
+.pw-sparkle { position: absolute; width: 16px; height: 16px; z-index: 36; pointer-events: none; }
+.pw-sparkle svg { width: 100%; height: 100%; display: block; }
+.pw-twinkle { transform-box: fill-box; transform-origin: center; animation: pw-twinkle 1.8s ease-in-out infinite; }
+@keyframes pw-twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pw-steam, .pw-flame, .pw-twinkle { animation: none; }
+  .pw-hear, .pw-stir-btn { transition: none; }
+  .pw-hear:hover, .pw-hear:active, .pw-stir-btn:hover, .pw-stir-btn:active { transform: none; }
+}

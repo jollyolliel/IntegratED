@@ -1,0 +1,5 @@
+{#- The square sky read-aloud button, 44px (`size="md"`) or a 96px hero (`size="lg"`, the listening question's one control). Icon-only, so `label` becomes its aria-label. -#}
+{#import "@components/base/icon.jx" as Icon #}
+{#def label, size=None #}
+{%- do attrs.setdefault(type="button") -%}
+<button {{ attrs.render(class="audio-play-btn " ~ look("AudioButton", "size", size, "btn"), aria_label=label) }}><Icon name="speaker-wave" size={{ "10" if size == "lg" else "5" }} /></button>

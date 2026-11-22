@@ -1,0 +1,30 @@
+{#- A worksheet in a card: a PDF in an iframe with an "open in new tab" link, or markdown
+    already rendered to `worksheet_html` as prose. -#}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/worksheet_prose.jx" as WorksheetProse #}
+{#def file_type=None, file_url=None, worksheet_html="" #}
+{%- set file_type = prop("WorksheetViewer", "file_type", file_type) -%}
+<Card class="p-0 overflow-hidden" attrs={{ attrs }}>
+  {%- if file_type == "pdf" %}
+  <div class="preview-topbar">
+    <span class="preview-topbar-label">{{ t("components.worksheet_viewer.pdf_preview") }}</span>
+    <Button variant="gray" flat href={{ file_url }} target="_blank" icon="arrow-top-right-on-square">{{ t("components.worksheet_viewer.open_new_tab") }}</Button>
+  </div>
+  <iframe src="{{ file_url }}" class="w-full bg-white h-[75vh] min-h-[500px]" title="{{ t('components.worksheet_viewer.frame_title') }}">
+    <p class="p-6 text-ink-muted">
+      {{ t("components.worksheet_viewer.no_inline_pdf") }}
+      <a href="{{ file_url }}" class="text-primary underline">{{ t("components.worksheet_viewer.download_pdf") }}</a>.
+    </p>
+  </iframe>
+  {%- else %}
+  <div class="preview-topbar">
+    <span class="preview-topbar-label">{{ t("components.worksheet_viewer.content") }}</span>
+  </div>
+  <WorksheetProse>
+    <article class="prose prose-slate max-w-none prose-headings:text-sky-950 prose-headings:font-extrabold prose-strong:text-sky-900 prose-p:text-ink-body prose-li:text-ink-body">
+      {{ worksheet_html | safe }}
+    </article>
+  </WorksheetProse>
+  {%- endif %}
+</Card>

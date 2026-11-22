@@ -1,0 +1,257 @@
+{#- The learner's onboarding survey (step 2 of 3), and the same form refilled for a redo, with the
+    name locked to the saved one. The script ties each language's level radios to its checkbox and
+    checks every multi-choice group before submit. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/step_indicator.jx" as StepIndicator #}
+{#import "@components/form_heading.jx" as FormHeading #}
+{#import "@components/language_row.jx" as LanguageRow #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/choice.jx" as Choice #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def has_completed, languages, survey #}
+{#- Four values below carry a line break and an indent ("Kind &\n…Supportive"): the old template
+    wrapped its list literals mid-string, saved surveys hold the values that way, and the redo form
+    only re-checks an answer whose value is the same string. -#}
+{%- set personalities = {"Outgoing & Social": t('learner.survey.personality_outgoing'), "Quiet & Thoughtful": t('learner.survey.personality_quiet'), "Creative & Expressive": t('learner.survey.personality_creative'), "Logical & Analytical": t('learner.survey.personality_logical'), "Kind &
+                  Supportive": t('learner.survey.personality_kind'), "Adventurous & Curious": t('learner.survey.personality_adventurous')} %}
+{%- set traits = {"Patient": t('learner.survey.trait_patient'), "Problem-solver": t('learner.survey.trait_problem_solver'), "Goal-oriented": t('learner.survey.trait_goal_oriented'), "Collaborative": t('learner.survey.trait_collaborative')} %}
+{%- set hobbies = {"Sports": t('learner.survey.hobby_sports'), "Music": t('learner.survey.hobby_music'), "Arts & Crafts": t('learner.survey.hobby_arts_crafts'), "Reading &
+              Writing": t('learner.survey.hobby_reading_writing'), "Cooking & Baking": t('learner.survey.hobby_cooking'), "Video Games": t('learner.survey.hobby_video_games'), "Outdoor Activities": t('learner.survey.hobby_outdoor'), "Science & Tech": t('learner.survey.hobby_science_tech'), "Nature & Gardening": t('learner.survey.hobby_nature'), "Movies & TV": t('learner.survey.hobby_movies_tv'), "Traveling": t('learner.survey.hobby_traveling'), "Photography": t('learner.survey.hobby_photography')} %}
+{%- set language_names = {"English": t('learner.survey.language_english'), "Arabic": t('learner.survey.language_arabic'), "Greek": t('learner.survey.language_greek'), "Spanish": t('learner.survey.language_spanish'), "French": t('learner.survey.language_french'), "German": t('learner.survey.language_german'), "Chinese": t('learner.survey.language_chinese'), "Italian": t('learner.survey.language_italian')} %}
+{%- set techs = {"Coding": t('learner.survey.tech_coding'), "Web Design": t('learner.survey.tech_web_design'), "Game Development": t('learner.survey.tech_game_dev'), "Video Editing": t('learner.survey.tech_video_editing'), "Graphic Design": t('learner.survey.tech_graphic_design'), "Digital Marketing": t('learner.survey.tech_digital_marketing'), "Basic
+                  Computer Skills": t('learner.survey.tech_basic_computer'), "AI & Robotics": t('learner.survey.tech_ai_robotics')} %}
+{%- set activities = {"Language Practice": t('learner.survey.activity_language_practice'), "Tech Projects": t('learner.survey.activity_tech_projects'), "Playing
+                  Games": t('learner.survey.activity_playing_games'), "Creative Projects": t('learner.survey.activity_creative_projects'), "Mathematics": t('learner.survey.activity_mathematics'), "Storytelling": t('learner.survey.activity_storytelling')} %}
+{%- set level_labels = {"Beginner": t('learner.survey.lang_beginner'), "Intermediate": t('learner.survey.lang_intermediate'), "Advanced": t('learner.survey.lang_advanced')} %}
+{#- The choice grids sit 1rem under their prompt, as before Field's tighter label margin. -#}
+{%- set grid = "grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2.5" %}
+<Page title={{ t('learner.survey.title') }} styles="survey">
+  <Main width="2xl">
+
+    {%- if not has_completed %}
+    <StepIndicator current={{ 2 }} />
+
+    <header class="mb-10">
+      <h1 class="display-font text-3xl font-extrabold text-sky-950 mb-2">{{ t('learner.survey.heading') }}</h1>
+      <p class="text-sky-400 leading-relaxed">
+        {{ t('learner.survey.subheading') }}
+      </p>
+    </header>
+    {%- else %}
+    <header class="mb-10">
+      <h1 class="display-font text-3xl font-extrabold text-sky-950 mb-2">{{ t('learner.survey.heading_completed') }}</h1>
+      <p class="text-sky-400 leading-relaxed">
+        {{ t('learner.survey.subheading_completed') }}
+      </p>
+    </header>
+    {%- endif %}
+
+    <form
+      id="surveyForm"
+      action="{{ url_for('learner.learner_survey') }}"
+      method="POST"
+      class="space-y-8"
+    >
+
+      <div class="survey-card">
+        <FormHeading>{{ t('learner.survey.section_personal') }}</FormHeading>
+        <div class="space-y-5">
+          <Field label={{ t('learner.survey.full_name') }} for_id="name">
+            {#- `!`: survey.css loads after the utilities and sets the input's own colour. -#}
+            <input type="text" name="name" id="name" autocomplete="name"
+              {%- if has_completed %} class="survey-input cursor-not-allowed !text-ink-muted" value="{{ current_user.name }}" readonly
+              {%- else %} class="survey-input" placeholder="{{ t('learner.survey.name_placeholder') }}" required{% endif %} />
+          </Field>
+          <Field label={{ t('learner.survey.age') }} for_id="age">
+            <input
+              type="number"
+              name="age"
+              id="age"
+              min="1"
+              max="120"
+              required
+              class="survey-input sm:max-w-[160px]"
+              inputmode="numeric"
+              value="{{ survey['age'] if has_completed else '' }}"
+            />
+          </Field>
+        </div>
+      </div>
+
+      <div class="survey-card">
+        <FormHeading>{{ t('learner.survey.section_personality') }}</FormHeading>
+        <div class="space-y-8">
+          <Field label={{ t('learner.survey.personality_prompt') }}>
+            <div class="{{ grid }}">
+              {%- for p, p_label in personalities.items() %}
+              <Choice type="radio" name="personality" value={{ p }} label={{ p_label }} required
+                checked={{ has_completed and p == survey['personality'] }} />
+              {%- endfor %}
+            </div>
+          </Field>
+
+          <Field label={{ t('learner.survey.traits_prompt') }}
+            error={{ t('learner.survey.error_traits') }} error_id="error-traits">
+            <div class="{{ grid }}">
+              {%- for trait, trait_label in traits.items() %}
+              <Choice name="traits" value={{ trait }} label={{ trait_label }} checked={{ has_completed and trait in survey['traits'] }} />
+              {%- endfor %}
+            </div>
+          </Field>
+        </div>
+      </div>
+
+      <div class="survey-card">
+        <FormHeading>{{ t('learner.survey.section_interests') }}</FormHeading>
+        <Field error={{ t('learner.survey.error_hobbies') }} error_id="error-hobbies">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {%- for h, h_label in hobbies.items() %}
+            <Choice name="hobbies" value={{ h }} label={{ h_label }} checked={{ has_completed and h in survey['hobbies'] }} />
+            {%- endfor %}
+            <Choice name="hobbies" value="Other" class="sm:col-span-2"><span class="text-ink-muted">{{ t('learner.survey.other_none') }}</span></Choice>
+          </div>
+        </Field>
+      </div>
+
+      <div class="survey-card">
+        <FormHeading>{{ t('learner.survey.section_languages') }}</FormHeading>
+        <Field error={{ t('learner.survey.error_languages') }} error_id="error-languages">
+          <div class="space-y-3">
+            {%- for lang, lang_label in language_names.items() %}
+            <LanguageRow value={{ lang }} label={{ lang_label }} levels={{ level_labels }}
+              checked={{ has_completed and lang in languages }}
+              level={{ languages[lang] if has_completed and lang in languages else none }} />
+            {%- endfor %}
+            <LanguageRow value="None" label={{ t('learner.survey.other_none_languages') }} muted id="lang-none-learner" />
+          </div>
+        </Field>
+      </div>
+
+      <div class="survey-card">
+        <FormHeading>{{ t('learner.survey.section_technical') }}</FormHeading>
+        <div class="space-y-8">
+          <Field label={{ t('learner.survey.digital_skills_prompt') }}
+            error={{ t('learner.survey.error_tech_interest') }} error_id="error-tech_interest">
+            <div class="{{ grid }}">
+              {%- for tech, tech_label in techs.items() %}
+              <Choice name="tech_interest" value={{ tech }} label={{ tech_label }} checked={{ has_completed and tech in survey['tech_interest'] }} />
+              {%- endfor %}
+              <Choice name="tech_interest" value="None" class="sm:col-span-2"><span class="text-ink-muted">{{ t('learner.survey.none_not_interested') }}</span></Choice>
+            </div>
+          </Field>
+
+          <Field label={{ t('learner.survey.match_activities_prompt') }} class="pt-4 border-t-2 border-sky-50"
+            error={{ t('learner.survey.error_match_activities') }} error_id="error-match_activities">
+            <div class="{{ grid }}">
+              {%- for act, act_label in activities.items() %}
+              <Choice name="match_activities" value={{ act }} label={{ act_label }} checked={{ has_completed and act in survey['match_activities'] }} />
+              {%- endfor %}
+              <Choice name="match_activities" value="Other" class="sm:col-span-2"><span class="text-ink-muted">{{ t('learner.survey.other_none') }}</span></Choice>
+            </div>
+          </Field>
+        </div>
+      </div>
+
+      <div class="pt-4 pb-8">
+        <Button type="submit" size="lg" icon_end="check" class="w-full">{{ t('learner.survey.submit') }}</Button>
+      </div>
+    </form>
+  </Main>
+
+  <script>
+    (function () {
+      const form = document.getElementById("surveyForm");
+      const groups = [
+        "traits",
+        "hobbies",
+        "languages",
+        "tech_interest",
+        "match_activities",
+      ];
+
+      // Toggle language levels
+      const langChecks = document.querySelectorAll(".lang-check");
+      langChecks.forEach((check) => {
+        const lang = check.value;
+        const levelRadios = document.querySelectorAll(
+          `input[name="language_level_${lang}"]`,
+        );
+
+        const updateLevels = () => {
+          levelRadios.forEach((radio) => {
+            radio.disabled = !check.checked;
+            radio.required = check.checked;
+            if (!check.checked) {
+              radio.checked = false;
+            } else if (
+              radio.value === "Beginner" &&
+              ![...levelRadios].some((r) => r.checked)
+            ) {
+              radio.checked = true;
+            }
+          });
+        };
+
+        check.addEventListener("change", updateLevels);
+        updateLevels(); // Initial sync
+      });
+
+      form.addEventListener("submit", function (e) {
+        let firstInvalid = null;
+        groups.forEach((name) => {
+          const checked = document.querySelectorAll(
+            `input[name="${name}"]:checked`,
+          );
+          const errorEl = document.getElementById("error-" + name);
+          if (checked.length === 0) {
+            if (errorEl) errorEl.classList.remove("hidden");
+            if (!firstInvalid)
+              firstInvalid = document.querySelector(`input[name="${name}"]`);
+          } else {
+            if (errorEl) errorEl.classList.add("hidden");
+          }
+        });
+
+        if (firstInvalid) {
+          e.preventDefault();
+          firstInvalid.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      });
+    })();
+  </script>
+  <script>
+    function skipSurvey() {
+      window.analytics?.trackEvent?.("cta_clicked", {
+        action: "skip_survey",
+        page: "learner_survey",
+      });
+      window.analytics
+        .trackedFetch(
+          "{{ url_for('api.learner.skip_map_test') }}",
+          {
+            method: "POST",
+          },
+          {
+            flow: "learner_survey",
+            action: "skip",
+          },
+        )
+        .then((response) => response.json())
+        .then((data) => {
+          console.log(data);
+          window.location.href = "{{ url_for('learner.learner_dashboard') }}";
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          window.analytics?.trackError?.(error, {
+            flow: "learner_survey",
+            action: "skip",
+          });
+        });
+    }
+  </script>
+</Page>

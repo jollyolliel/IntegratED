@@ -1,0 +1,7 @@
+{#- A rounded progress track filled to `value` percent (clamped to 0–100). The fill width is the
+    one inline style: a value Jinja injects (docs/ui-design/styling-system.md). -#}
+{#def value, tone=None, size=None #}
+{%- set pct = [[value | round | int, 0] | max, 100] | min -%}
+<div {{ attrs.render(class="w-full rounded-full overflow-hidden " ~ look("ProgressBar", "tone", tone, "track") ~ " " ~ look("ProgressBar", "size", size, "height"), role="progressbar", aria_valuemin="0", aria_valuemax="100", aria_valuenow=pct) }}>
+  <div class="h-full rounded-full transition-[width] duration-500 {{ look("ProgressBar", "tone", tone, "fill") }}" style="width: {{ pct }}%"></div>
+</div>

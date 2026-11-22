@@ -1,0 +1,87 @@
+[
+  {
+    "file": "first-steps-01-look-and-listen.md",
+    "title": "Look and listen",
+    "subject": "English: First Steps",
+    "topic": "Look and listen",
+    "level": 1,
+    "tags": [
+      "listening",
+      "speaking",
+      "vocabulary"
+    ]
+  },
+  {
+    "file": "first-steps-02-colours.md",
+    "title": "Colours",
+    "subject": "English: First Steps",
+    "topic": "Colours",
+    "level": 1,
+    "tags": [
+      "vocabulary",
+      "listening",
+      "speaking"
+    ]
+  },
+  {
+    "file": "grammar-book-alphabet.pdf",
+    "title": "The alphabet: read and write the letters",
+    "subject": "English: First Steps",
+    "topic": "The alphabet",
+    "level": 2,
+    "tags": [
+      "alphabet",
+      "writing",
+      "tracing"
+    ]
+  },
+  {
+    "file": "everyday-01-hello-and-goodbye.md",
+    "title": "Hello and goodbye",
+    "subject": "English: Everyday",
+    "topic": "Hello and goodbye",
+    "level": 3,
+    "tags": [
+      "speaking",
+      "listening",
+      "writing"
+    ]
+  },
+  {
+    "file": "everyday-02-in-the-classroom.md",
+    "title": "In the classroom",
+    "subject": "English: Everyday",
+    "topic": "In the classroom",
+    "level": 4,
+    "tags": [
+      "vocabulary",
+      "speaking",
+      "listening"
+    ]
+  },
+  {
+    "file": "01_the.pdf",
+    "title": "Sight word: the",
+    "subject": "English: Everyday",
+    "topic": "Sight words 1",
+    "level": 3,
+    "tags": [
+      "sight-words",
+      "reading",
+      "writing",
+      "tracing"
+    ]
+  },
+  {
+    "file": "test-present-simple-and-progressive.pdf",
+    "title": "Test: present simple and present progressive",
+    "subject": "English: Everyday",
+    "topic": "Present progressive",
+    "level": 4,
+    "tags": [
+      "grammar",
+      "test",
+      "writing"
+    ]
+  }
+]

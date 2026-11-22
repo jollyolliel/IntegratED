@@ -1,0 +1,12 @@
+/* Entry point for `uv run scripts/tailwind.py` (`--watch` to rebuild on
+   change): the one stylesheet components/shell/theme.jx links. Import order is the cascade:
+   Tailwind base, the clay components, then utilities last, so an
+   equal-specificity utility on a clay element (`class="clay-card px-7"`)
+   wins without `!`.
+   The component files are imported outside `@layer` on purpose: Tailwind only
+   purges layered CSS, so every clay class ships whether or not a template
+   string mentions it (toast variants are built in JS). */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "./components.css";
+@import "tailwindcss/utilities";

@@ -1,0 +1,7 @@
+id: no-scale-press
+valid:
+  - ".a:active { transform: translate(2px, 2px); }"
+  - ".a:hover { transform: scale(1.02); }"
+invalid:
+  - ".a:active { transform: scale(0.97); }"
+  - ".a:hover, .a:active { transform: translate(1px, 1px) scale(0.98); }"

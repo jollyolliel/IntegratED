@@ -1,0 +1,62 @@
+/* Toast notifications (window.showToast — defined in header.html) */
+/* .toast-animate-in: Toast enter animation */
+.toast-animate-in { animation: toast-slide-in 0.4s cubic-bezier(0.16,1,0.3,1); }
+/* .toast-animate-out: Toast exit animation */
+.toast-animate-out { animation: toast-slide-out 0.4s cubic-bezier(0.16,1,0.3,1) forwards; }
+@keyframes toast-slide-in { from { transform: translateX(110%) scale(0.95); opacity: 0; } to { transform: translateX(0) scale(1); opacity: 1; } }
+@keyframes toast-slide-out { from { transform: translateX(0) scale(1); opacity: 1; } to { transform: translateX(110%) scale(0.95); opacity: 0; } }
+/* RTL: the container sits at the inline end (the left), so toasts slide from there. */
+[dir="rtl"] .toast-animate-in { animation-name: toast-slide-in-rtl; }
+[dir="rtl"] .toast-animate-out { animation-name: toast-slide-out-rtl; }
+@keyframes toast-slide-in-rtl { from { transform: translateX(-110%) scale(0.95); opacity: 0; } to { transform: translateX(0) scale(1); opacity: 1; } }
+@keyframes toast-slide-out-rtl { from { transform: translateX(0) scale(1); opacity: 1; } to { transform: translateX(-110%) scale(0.95); opacity: 0; } }
+/* Reduced motion: a fade, not a slide. Still an animation — showToast removes a toast on animationend. */
+@media (prefers-reduced-motion: reduce) {
+  .toast-animate-in, [dir="rtl"] .toast-animate-in { animation: toast-fade-in 0.2s ease-out; }
+  .toast-animate-out, [dir="rtl"] .toast-animate-out { animation: toast-fade-out 0.2s ease-out forwards; }
+}
+@keyframes toast-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes toast-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* Static info container — clay card pattern: colored border, flat soft shadow, no hover/press */
+/* .glass-notification: Toast surface (built by `window.showToast`) */
+.glass-notification {
+  background: var(--color-surface-card);
+  border: 2.5px solid;
+  border-radius: 18px;
+  box-shadow: 0 4px 16px rgb(var(--color-ink-heading-rgb) / 0.1);
+}
+/* .glass-notification-success: Toast — green border */
+.glass-notification-success { border-color: var(--color-emerald-200); }
+/* .glass-notification-error: Toast — red border */
+.glass-notification-error   { border-color: var(--color-rose-200); }
+/* .glass-notification-warning: Toast — amber border */
+.glass-notification-warning { border-color: var(--color-amber-200); }
+/* .glass-notification-info: Toast — sky border */
+.glass-notification-info    { border-color: var(--color-sky-200); }
+
+/* .toast-icon-circle: Toast leading icon disc */
+.toast-icon-circle {
+  width: 36px; height: 36px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid;
+}
+/* .toast-icon-circle-success: Icon disc — success */
+.toast-icon-circle-success { background: var(--color-emerald-50); border-color: var(--color-emerald-200); color: var(--color-accent); }
+/* .toast-icon-circle-error: Icon disc — error */
+.toast-icon-circle-error   { background: var(--color-rose-50); border-color: var(--color-rose-200); color: var(--color-danger); }
+/* .toast-icon-circle-warning: Icon disc — warning */
+.toast-icon-circle-warning { background: var(--color-amber-50); border-color: var(--color-amber-200); color: var(--color-amber-700); }
+/* .toast-icon-circle-info: Icon disc — info */
+.toast-icon-circle-info    { background: var(--color-sky-50); border-color: var(--color-sky-200); color: var(--color-primary); }
+
+/* .toast-close-btn: Toast dismiss button */
+.toast-close-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 9px;
+  color: var(--color-ink-faint); background: transparent; flex-shrink: 0;
+  transition: background 150ms ease-out, color 150ms ease-out, transform 150ms ease-out;
+  cursor: pointer;
+}
+.toast-close-btn:hover { background: rgb(var(--color-ink-muted-rgb) / 0.1); color: var(--color-gray-600); }
+.toast-close-btn:active { background: rgb(var(--color-ink-muted-rgb) / 0.2); }

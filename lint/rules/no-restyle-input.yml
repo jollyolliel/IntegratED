@@ -1,0 +1,14 @@
+id: no-restyle-input
+language: html
+severity: error
+message: |
+  clay-input / clay-textarea own their padding, text size, radius, border, shadow and background.
+note: |
+  Width and margin utilities are fine. A new field style belongs in static/css/components/forms.css.
+rule:
+  matches: class-value
+  # [the clay element's class, the banned utilities] — scripts/lint_jx.py reads the second for
+  # component tags, so keep exactly these two, in this order.
+  all:
+    - regex: '(?:^|[\s}])clay-(?:input|textarea)'
+    - regex: '(?:^|[\s}])(?:[\w-]+:)*!?-?(?:p[xytblrse]?-\S+|text-(?:xs|sm|base|lg|xl|[2-9]xl|\[[^\]]+\]|(?:sky|green|emerald|amber|yellow|orange|rose|red|pink|purple|violet|indigo|blue|gray|slate|white|black)(?:-\d+)?)|rounded(?:-\S+)?|shadow(?:-\S+)?|border(?:-\S+)?|bg-\S+)(?:$|[\s{])'

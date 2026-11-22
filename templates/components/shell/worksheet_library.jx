@@ -1,0 +1,181 @@
+{#- The worksheet library page (teacher worksheets, volunteer resources): search, subject pills, a
+    level filter (shown once any worksheet has a level), a card grid filtered server-side that loads more on demand (docs/ui-design/page-behaviour.md "Card grids"), and the
+    empty / no-results states. The route renders just the cards for an `X-Fragment` request.
+    Slots: `preamble`, `header`, `pre_grid`, `cards` (the grid's cards), `empty` (the unfiltered
+    empty state), `modals`. `head` adds page styles or scripts. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#import "@components/base/button.jx" as Button #}
+{#def title, endpoint, subjects, worksheets, has_more, selected_subject=None, q="", levels=(), selected_level=None,
+      search_placeholder="", all_label="", no_results_text="", no_results_sub_text="", head="" #}
+{%- set library_head %}
+  <style>
+    .subject-pill { display: inline-flex; align-items: center; padding: 6px 14px; font-size: 0.78rem; font-weight: 700; border-radius: 999px; border: 2px solid; transition: background 150ms, color 150ms, border-color 150ms; cursor: pointer; text-decoration: none; }
+    .subject-pill-inactive { background: white; color: var(--color-ink-muted); border-color: var(--color-line); }
+    .subject-pill-inactive:hover { background: var(--color-sky-50); color: var(--color-primary); border-color: var(--color-sky-200); }
+    .subject-pill-active { background: var(--color-primary); color: white; border-color: var(--color-sky-700); }
+  </style>
+  {{ head }}
+{%- endset -%}
+{%- set is_filtered = selected_subject or q or selected_level -%}
+<Page title={{ title }} styles="admin" head={{ library_head }}>
+  <main class="flex-1 container mx-auto px-4 py-6 md:py-8">
+    {% slot preamble %}{% endslot %}
+    {% slot header %}{% endslot %}
+    {% slot pre_grid %}{% endslot %}
+
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+      <Input id="ws-search" icon="magnifying-glass" placeholder={{ search_placeholder }} value={{ q or "" }} class="flex-1" />
+      <div id="ws-subject-pills" class="flex flex-wrap gap-2 items-center">
+        <a href="{{ url_for(endpoint, q=q or none, level=selected_level) }}" data-subject="" data-ws-subject-link
+           class="subject-pill {{ 'subject-pill-inactive' if selected_subject else 'subject-pill-active' }}">{{ all_label }}</a>
+        {%- for subject in subjects %}
+        <a href="{{ url_for(endpoint, subject=subject, q=q or none, level=selected_level) }}" data-subject="{{ subject }}" data-ws-subject-link
+           class="subject-pill {{ 'subject-pill-active' if selected_subject == subject else 'subject-pill-inactive' }}">{{ subject }}</a>
+        {%- endfor %}
+      </div>
+      {%- if levels %}
+      <select id="ws-level-filter" aria-label="{{ t('components.worksheet_library.level_filter_label') }}" class="md:w-40 shrink-0">
+        <button><selectedcontent></selectedcontent></button>
+        <option value=""{% if selected_level is none %} selected{% endif %}>{{ t("components.worksheet_library.all_levels") }}</option>
+        {%- for level in levels %}
+        <option value="{{ level }}"{% if selected_level == level %} selected{% endif %}>{{ t("components.worksheet_card.level", level=level) }}</option>
+        {%- endfor %}
+      </select>
+      {%- endif %}
+    </div>
+
+    {#- Load more, not numbered pages: a full replace loses the reader's scan position. #}
+    <div id="ws-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" aria-busy="false">
+      {%- if worksheets %}{% slot cards %}{% endslot %}{% endif %}
+    </div>
+
+    <EmptyState id="no-results" class={{ "mt-4" if (not worksheets and is_filtered) else "hidden mt-4" }}>
+      <p class="font-semibold text-ink-muted">{{ no_results_text }}</p>
+      <p class="text-sm text-ink-faint mt-1">{{ no_results_sub_text }}</p>
+    </EmptyState>
+    <div id="ws-empty-state" class="col-span-full" {% if not (not worksheets and not is_filtered) %}hidden{% endif %}>
+      {% slot empty %}<EmptyState message={{ t("teacher.worksheets.no_worksheets") }} />{% endslot %}
+    </div>
+
+    <div class="text-center mt-6">
+      <Button variant="sky" id="ws-load-more" data-next-page="2" hidden={{ not has_more }}>{{ t("common.load_more") }}</Button>
+    </div>
+  </main>
+
+  {% slot modals %}{% endslot %}
+
+  <script>
+    (function () {
+      const searchInput = document.getElementById('ws-search');
+      const subjectPills = document.getElementById('ws-subject-pills');
+      const grid = document.getElementById('ws-grid');
+      const noResults = document.getElementById('no-results');
+      const emptyState = document.getElementById('ws-empty-state');
+      const loadMoreBtn = document.getElementById('ws-load-more');
+      const levelSelect = document.getElementById('ws-level-filter');
+      const baseUrl = {{ url_for(endpoint) | tojson }};
+      let activeSubject = {{ (selected_subject or '') | tojson }};
+      let activeLevel = {{ (selected_level or '') | string | tojson }};
+      let debounceTimer = null;
+
+      function isFiltered() {
+        return Boolean(activeSubject || activeLevel || (searchInput && searchInput.value.trim()));
+      }
+
+      function buildUrl(page) {
+        const params = new URLSearchParams();
+        if (activeSubject) params.set('subject', activeSubject);
+        if (activeLevel) params.set('level', activeLevel);
+        const q = searchInput ? searchInput.value.trim() : '';
+        if (q) params.set('q', q);
+        if (page && page > 1) params.set('page', page);
+        const query = params.toString();
+        return query ? baseUrl + '?' + query : baseUrl;
+      }
+
+      // Replaces the grid for a filter change (search text or subject pill);
+      // appends for "Load more". Either way the previous cards stay on
+      // screen under aria-busy until the new markup is ready — no flash to
+      // an empty grid while the request is in flight.
+      async function fetchBatch(page, mode) {
+        const url = buildUrl(page);
+        grid.setAttribute('aria-busy', 'true');
+        try {
+          const res = await fetch(url, { headers: { 'X-Fragment': '1' } });
+          if (!res.ok || res.redirected) { window.location.href = url; return; }
+          const html = await res.text();
+          const hasMore = res.headers.get('X-Has-More') === '1';
+          const total = res.headers.get('X-Total-Count');
+
+          if (mode === 'replace') {
+            grid.innerHTML = html;
+          } else {
+            grid.insertAdjacentHTML('beforeend', html);
+          }
+
+          const isEmpty = grid.children.length === 0;
+          if (emptyState) emptyState.hidden = !(isEmpty && !isFiltered());
+          if (noResults) noResults.classList.toggle('hidden', !(isEmpty && isFiltered()));
+
+          loadMoreBtn.dataset.nextPage = String(page + 1);
+          loadMoreBtn.hidden = !hasMore;
+
+          const statTotal = document.getElementById('ws-stat-total');
+          if (statTotal && total !== null) statTotal.textContent = total;
+
+          // Never write `page` into the address bar: a reload only ever
+          // fetches a single batch, and "page 3" of a load-more list means
+          // something different from the 3 accumulated batches on screen.
+          // q/subject/level are safe (and worth) reflecting — a reload of those
+          // reproduces the same first batch the URL implies.
+          window.history.replaceState({}, '', buildUrl());
+        } catch (err) {
+          window.analytics?.trackError?.(err, { flow: 'worksheet_library', action: mode });
+        } finally {
+          grid.removeAttribute('aria-busy');
+        }
+      }
+
+      function applyFilters() {
+        fetchBatch(1, 'replace');
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('input', function () {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(applyFilters, 250);
+        });
+      }
+
+      if (subjectPills) {
+        subjectPills.addEventListener('click', function (event) {
+          const link = event.target.closest('[data-ws-subject-link]');
+          if (!link) return;
+          event.preventDefault();
+          activeSubject = link.dataset.subject || '';
+          subjectPills.querySelectorAll('[data-ws-subject-link]').forEach(function (pill) {
+            const active = pill === link;
+            pill.classList.toggle('subject-pill-active', active);
+            pill.classList.toggle('subject-pill-inactive', !active);
+          });
+          applyFilters();
+        });
+      }
+
+      if (levelSelect) {
+        levelSelect.addEventListener('change', function () {
+          activeLevel = levelSelect.value;
+          applyFilters();
+        });
+      }
+
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function () {
+          fetchBatch(parseInt(loadMoreBtn.dataset.nextPage, 10) || 2, 'append');
+        });
+      }
+    })();
+  </script>
+</Page>

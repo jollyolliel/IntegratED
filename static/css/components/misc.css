@@ -1,0 +1,49 @@
+/* ---- Back Navigation Link ---- */
+/* .back-link: "Back to X" link above a detail page */
+.back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.85rem; font-weight: 600;
+  color: var(--color-primary); text-decoration: none;
+  margin-bottom: 16px; transition: transform 150ms;
+}
+.back-link:hover { transform: translateX(-2px); }
+[dir="rtl"] .back-link:hover { transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) { .back-link:hover, [dir="rtl"] .back-link:hover { transform: none; } }
+
+/* ---- Section Title Row (icon badge + heading + count pill) ---- */
+/* .section-title: Sub-section heading within a page */
+.section-title { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.section-title h2 { font-family: 'Baloo 2', system-ui, sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--color-ink-heading); }
+
+/* ---- Direction-aware icons ---- */
+/* `scale`, not `transform`, so a translate/rotate utility on the icon still composes with it. */
+/* .icon-flip-rtl: Mirrors a horizontal arrow/chevron icon under dir="rtl" (set by the Icon helper) */
+[dir="rtl"] .icon-flip-rtl { scale: -1 1; }
+
+/* ---- Step Indicator (<StepIndicator>, the sign-up journey) ---- */
+/* .step-indicator: Centred 1 - 2 - 3 row of sign-up steps, each dot with its name under it */
+.step-indicator { display: flex; justify-content: center; align-items: flex-start; margin-bottom: 1.5rem; }
+/* .step-item: One step — dot, name, and (from the second on) the short line back to the step before */
+.step-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  width: 6.5rem; /* centre to centre: dot + 8px gap + line + 8px gap */ }
+.step-item + .step-item::before {
+  content: ""; position: absolute; top: 15px; inset-inline-end: calc(50% + 24px);
+  width: calc(100% - 48px); height: 2px; background: var(--color-sky-200);
+}
+/* .step-dot: The numbered circle of a step (upcoming look by default) */
+.step-dot {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700;
+  background: white; color: var(--color-ink-faint);
+  border: 2px solid var(--color-sky-200); box-shadow: 2px 2px 0 var(--color-sky-200);
+}
+/* .step-done: A step already finished — filled dot, like the current one */
+/* .step-current: The step this page is — filled dot, bold name */
+.step-done .step-dot, .step-current .step-dot {
+  background: var(--color-primary); color: white;
+  border-color: var(--color-primary-dark); box-shadow: 2px 2px 0 var(--color-primary-dark);
+}
+/* .step-name: The short word under a step's dot */
+.step-name { font-size: 0.75rem; font-weight: 600; line-height: 1.2; color: var(--color-ink-faint); }
+.step-current .step-name { font-weight: 800; color: var(--color-ink-heading); }

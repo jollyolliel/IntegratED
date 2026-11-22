@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 800" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+  <defs>
+    <clipPath id="ring-planet"><circle r="44"/></clipPath>
+    <clipPath id="orange-moon"><circle r="21"/></clipPath>
+    <clipPath id="pink-planet"><circle r="13"/></clipPath>
+  </defs>
+
+  <!-- Ringed teal planet, upper right of the opening view. -->
+  <g transform="translate(300 486) rotate(-16)">
+    <path d="M-84 0 A84 19 0 0 1 84 0" fill="none" stroke="#C99A4A" stroke-width="8"/>
+    <g clip-path="url(#ring-planet)">
+      <circle r="44" fill="#1E7F86"/>
+      <circle cx="-7" cy="-8" r="44" fill="#36BFB0"/>
+      <path d="M-50 -22 C-20 -16 20 -28 50 -20 V-12 C20 -20 -20 -8 -50 -14Z" fill="#5FD8C6"/>
+      <path d="M-50 6 C-20 12 20 0 50 8 V18 C20 10 -20 22 -50 16Z" fill="#2AA59A"/>
+      <path d="M-50 28 C-20 32 20 24 50 30 V36 C20 30 -20 38 -50 34Z" fill="#2AA59A" opacity=".8"/>
+      <circle cx="-18" cy="-24" r="7" fill="#8BE8D8" opacity=".5"/>
+    </g>
+    <path d="M84 0 A84 19 0 0 1 -84 0" fill="none" stroke="#F6D07A" stroke-width="8"/>
+    <path d="M70 6.5 A84 19 0 0 1 -30 17" fill="none" stroke="#FFE7A8" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Small orange moon, left, higher up. -->
+  <g transform="translate(78 300)">
+    <g clip-path="url(#orange-moon)">
+      <circle r="21" fill="#C4612E"/>
+      <circle cx="-4" cy="-4" r="21" fill="#F39A54"/>
+      <ellipse cx="-6" cy="-6" rx="5" ry="4" fill="#DE7D3E"/>
+      <ellipse cx="7" cy="5" rx="3.5" ry="2.8" fill="#DE7D3E"/>
+      <ellipse cx="-3" cy="10" rx="2.4" ry="2" fill="#DE7D3E"/>
+    </g>
+  </g>
+
+  <!-- Distant pink planet near the top of the trip. -->
+  <g transform="translate(250 110)">
+    <g clip-path="url(#pink-planet)">
+      <circle r="13" fill="#A85487"/>
+      <circle cx="-3" cy="-3" r="13" fill="#E58FB8"/>
+      <path d="M-14 -2 C-4 0 4 -4 14 -2 V2 C4 0 -4 4 -14 2Z" fill="#C86E9E"/>
+    </g>
+  </g>
+
+  <!-- Tiny far moonlet. -->
+  <circle cx="150" cy="560" r="5" fill="#B9A6E8" opacity=".7"/>
+  <circle cx="148.6" cy="558.6" r="4" fill="#D7C9FF" opacity=".7"/>
+</svg>

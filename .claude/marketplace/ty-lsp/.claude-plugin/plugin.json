@@ -1,0 +1,6 @@
+{
+  "name": "ty-lsp",
+  "version": "1.0.0",
+  "description": "Python code intelligence via ty's language server (same checker and config as CI)",
+  "author": { "name": "IntegratED" }
+}

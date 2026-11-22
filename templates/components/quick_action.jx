@@ -1,0 +1,28 @@
+{#- A clickable "go here next" card. `stack` (dashboards): icon box, title, description.
+    `row` (a recommendation): icon box, eyebrow + title + description, a trailing arrow that
+    mirrors in RTL. -#}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/base/icon.jx" as Icon #}
+{#def href, icon, title, description=None, eyebrow=None, tone=None, layout=None #}
+{%- set tone = prop("QuickAction", "tone", tone) -%}
+{%- set layout = prop("QuickAction", "layout", layout) -%}
+{%- set accent = look("QuickAction", "tone", tone, "accent") -%}
+{%- if layout == "row" %}
+{%- do attrs.add_class("!p-5 flex items-center gap-4") %}
+<Card tone={{ tone }} href={{ href }} attrs={{ attrs }}>
+  <IconBox icon={{ icon }} tone={{ tone }} size="lg" />
+  <div class="flex-1 min-w-0">
+    {%- if eyebrow %}<p class="text-xs font-bold uppercase tracking-wider {{ accent }} mb-0.5">{{ eyebrow }}</p>{% endif %}
+    <h3 class="text-lg font-bold text-sky-900 truncate">{{ title }}</h3>
+    {%- if description %}<p class="text-sm text-ink-muted">{{ description }}</p>{% endif %}
+  </div>
+  <Icon name="arrow-long-right" size="5" class={{ accent ~ " flex-shrink-0" }} />
+</Card>
+{%- else %}
+<Card tone={{ tone }} href={{ href }} attrs={{ attrs }}>
+  <IconBox icon={{ icon }} tone={{ tone }} class="mb-3" />
+  <h3 class="text-lg font-bold mb-1 {{ look("QuickAction", "tone", tone, "title") }}">{{ title }}</h3>
+  {%- if description %}<p class="text-sm text-ink-muted leading-relaxed">{{ description }}</p>{% endif %}
+</Card>
+{%- endif %}

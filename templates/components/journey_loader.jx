@@ -1,0 +1,141 @@
+{#- A full-screen interstitial that gives a sign-up step's result a moment to land: the step's
+    `<JourneyScene>`, a status line, and the journey's stops (Account, About you, Quiz; `total=2`
+    drops the quiz). Used where the placement test finishes. Hidden until the page calls
+    `JourneyLoader.run(work, {done})`:
+    - `work` is the step's real request (a promise, already sent) or its finished result.
+    - The scene plays its "working" loop with the `working` line until the request settles and at
+      least 1.8s have passed, then its payoff with the `done` line (`opts.done` overrides it, as a
+      string or a function of the result), the finished stop ticks and the next one lights up.
+    - 1.2s later `run` resolves with the result, so the whole hand-over takes at least 3s and
+      never adds time *before* the request. The page then navigates, or reveals its result and
+      calls `JourneyLoader.hide()`.
+    - A failed request hides the loader and rejects, so the page shows its usual error.
+    `step` is the stop being finished. Styles: `static/css/components/journey.css`. -#}
+{#import "@components/journey_scene.jx" as JourneyScene #}
+{#import "@components/base/icon.jx" as Icon #}
+{#def scene, step, working, done="", total=3 #}
+{%- set keys = ["account", "about", "quiz"][:total] -%}
+{%- set next = t('journey.next', step=t('auth.steps.' ~ keys[step])) if step < total else t('journey.finished') -%}
+<div {{ attrs.render(class="journey-loader") }} hidden data-journey-loader data-scene="{{ scene }}" data-done="{{ done }}" data-next="{{ next }}">
+  <div class="journey-panel">
+    <div class="journey-stage">
+      <JourneyScene name={{ scene }} class="journey-art" />
+    </div>
+    <div class="journey-status" role="status" aria-live="polite">
+      <p class="journey-title display-font" dir="auto">{{ working }}</p>
+      <p class="journey-sub" dir="auto"></p>
+    </div>
+    <ol class="journey-track" aria-hidden="true">
+      {%- for key in keys %}
+      {%- set i = loop.index %}
+      {%- set state = "done" if i < step else "current" if i == step else "upcoming" %}
+      <li class="journey-stop journey-{{ state }}">
+        {%- if not loop.first %}
+        <span class="journey-link"><span class="journey-link-fill"></span></span>
+        {%- endif %}
+        <span class="journey-dot">
+          <span class="journey-num">{{ i }}</span>
+          <Icon name="check" size="4" class="journey-tick" />
+        </span>
+        <span class="journey-name">{{ t('auth.steps.' ~ key) }}</span>
+      </li>
+      {%- endfor %}
+    </ol>
+  </div>
+</div>
+<script>
+  (function () {
+    // Check for the API, not the name: an element with id="JourneyLoader" is window.JourneyLoader too.
+    if (typeof window.JourneyLoader?.run === "function") return;
+    var WORK_MS = 1800;
+    var DONE_MS = 1200;
+    var LEAVE_MS = 250;
+    var inerted = [];
+    var pristine = null;
+
+    function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+    function find() { return document.querySelector("[data-journey-loader]"); }
+
+    // Lift the overlay to the end of <body> and make everything else inert, so a stray Enter or
+    // tap can't resubmit the form underneath while the hand-over plays.
+    function open(loader) {
+      pristine = loader.innerHTML;
+      document.body.appendChild(loader);
+      inerted = Array.prototype.filter.call(document.body.children, function (el) {
+        return el !== loader && !el.inert;
+      });
+      inerted.forEach(function (el) { el.inert = true; });
+      loader.classList.remove("is-done", "is-leaving");
+      loader.classList.add("is-working");
+      loader.hidden = false;
+    }
+
+    function reset(loader) {
+      inerted.forEach(function (el) { el.inert = false; });
+      inerted = [];
+      if (!loader) return;
+      if (pristine !== null) loader.innerHTML = pristine;
+      loader.hidden = true;
+      loader.classList.remove("is-working", "is-done", "is-leaving");
+    }
+
+    function finish(loader, doneText) {
+      // Fade the scene's working props out from wherever their loop has them, rather than
+      // letting them snap back to their start when the loop's class goes.
+      loader.querySelectorAll("[data-jsc-leave]").forEach(function (el) {
+        if (!el.animate) return;
+        var at = getComputedStyle(el).transform;
+        el.animate([{ transform: at, opacity: 1 }, { transform: at, opacity: 0 }], { duration: 250, easing: "ease-in" });
+      });
+      var current = loader.querySelector(".journey-current");
+      if (current) {
+        current.classList.replace("journey-current", "journey-done");
+        current.classList.add("journey-just");
+        var next = current.nextElementSibling;
+        if (next) next.classList.replace("journey-upcoming", "journey-current");
+      }
+      loader.querySelector(".journey-title").textContent = doneText || loader.dataset.done;
+      loader.querySelector(".journey-sub").textContent = loader.dataset.next;
+      loader.classList.replace("is-working", "is-done");
+    }
+
+    async function run(work, opts) {
+      opts = opts || {};
+      var loader = find();
+      if (!loader) return work;
+      var started = performance.now();
+      open(loader);
+      var result;
+      try {
+        result = await work;
+      } catch (err) {
+        reset(loader);
+        throw err;
+      }
+      var waited = performance.now() - started;
+      if (waited < WORK_MS) await wait(WORK_MS - waited);
+      finish(loader, typeof opts.done === "function" ? opts.done(result) : opts.done);
+      window.analytics?.trackEvent?.("journey_step_handover", {
+        scene: loader.dataset.scene,
+        request_ms: Math.round(waited),
+      });
+      await wait(DONE_MS);
+      return result;
+    }
+
+    async function hide() {
+      var loader = find();
+      if (!loader || loader.hidden) return;
+      loader.classList.add("is-leaving");
+      await wait(LEAVE_MS);
+      reset(loader);
+    }
+
+    // Back from the next page restores this one from the bfcache with the overlay still up.
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) reset(find());
+    });
+
+    window.JourneyLoader = { run: run, hide: hide };
+  })();
+</script>

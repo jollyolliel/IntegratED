@@ -1,0 +1,210 @@
+/* Header nav (header.html) — logo, nav links, nav buttons, mobile menu, overflow "More" menu */
+@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap");
+/* .nav-logo-font: Baloo 2 for the header wordmark */
+.nav-logo-font {
+  font-family: "Baloo 2", system-ui, sans-serif;
+}
+
+/* btn-nav-register/login share shape+motion; colors via --nav-* vars (same override
+   pattern as .btn-clay in buttons.css). The settings icon button reuses .btn-nav-login
+   with its vars overridden back to gray + Tailwind sizing on the element (see header.html)
+   instead of a dedicated class. btn-nav-logout is shadowless/ghost-style so it keeps its
+   own background-darken active state. */
+/* .btn-nav-login: header.html — Login (base for icon-only nav buttons) */
+/* .btn-nav-logout: header.html — Logout (ghost, no shadow) */
+/* .btn-nav-register: header.html — Register */
+.btn-nav-register, .btn-nav-login, .btn-nav-logout {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  font-size: 0.875rem;
+  background: var(--nav-bg, white);
+  color: var(--nav-fg, var(--color-ink-muted));
+  border: 2px solid var(--nav-border, var(--color-line));
+  border-radius: 12px;
+  text-decoration: none;
+}
+.btn-nav-register, .btn-nav-login {
+  box-shadow: 2px 2px 0 var(--nav-shadow, var(--color-line));
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, border-color 150ms, color 150ms;
+}
+.btn-nav-register:hover, .btn-nav-login:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--nav-shadow, var(--color-line));
+}
+.btn-nav-register:active, .btn-nav-login:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--nav-shadow, var(--color-line));
+}
+
+.btn-nav-register { gap: 6px; font-weight: 700; --nav-bg: var(--color-accent); --nav-fg: white; --nav-border: var(--color-accent-dark); --nav-shadow: var(--color-accent-dark); }
+
+.btn-nav-login { font-weight: 600; --nav-fg: var(--color-primary); --nav-border: var(--color-sky-200); --nav-shadow: var(--color-sky-200); }
+.btn-nav-login:hover { border-color: var(--color-primary); --nav-shadow: var(--color-primary); }
+/* .btn-nav-icon: Icon-only header button colours (assistant, settings) — gray at rest, primary on hover and on its own page (aria-current); add to btn-nav-login */
+.btn-nav-icon { --nav-fg: var(--color-ink-muted); --nav-border: var(--color-line); --nav-shadow: var(--color-line); }
+.btn-nav-icon:hover { --nav-fg: var(--color-primary); --nav-shadow: var(--color-primary); border-color: var(--color-primary); }
+.btn-nav-icon[aria-current="page"] { --nav-bg: var(--color-primary-tint); --nav-fg: var(--color-primary); --nav-border: var(--color-primary); --nav-shadow: var(--color-primary); }
+
+.btn-nav-logout {
+  font-weight: 600;
+  transition: border-color 150ms, color 150ms, background 150ms, transform 100ms ease-out;
+}
+.btn-nav-logout:hover {
+  border-color: var(--color-ink-faint);
+  color: var(--color-ink-body);
+}
+.btn-nav-logout:active {
+  background: var(--color-line);
+  border-color: var(--color-ink-muted);
+}
+
+/* .nav-link-active: Desktop nav link — current page */
+/* .nav-link-inactive: Desktop nav link — other pages */
+.nav-link-active,
+.nav-link-inactive {
+  position: relative;
+}
+.nav-link-active::after,
+.nav-link-inactive::after {
+  content: attr(data-label);
+  display: block;
+  height: 0;
+  visibility: hidden;
+  overflow: hidden;
+  font-weight: 600;
+}
+.nav-link-active {
+  background: var(--color-sky-50);
+  color: var(--color-sky-700);
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--color-sky-200);
+}
+.nav-link-inactive {
+  color: var(--color-ink-muted);
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  transition:
+    background 150ms,
+    color 150ms,
+    border-color 150ms;
+}
+.nav-link-inactive:hover {
+  background: var(--color-sky-50);
+  color: var(--color-sky-700);
+  border-color: var(--color-sky-100);
+}
+
+/* .logo-icon: Header logo mark */
+.logo-icon {
+  width: 34px;
+  height: 34px;
+  background: var(--color-primary);
+  border-radius: 10px;
+  border: 2px solid var(--color-primary-dark);
+  box-shadow: 2px 2px 0 var(--color-primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out;
+  flex-shrink: 0;
+}
+/* .logo-group: Header logo wrapper */
+.logo-group:hover .logo-icon {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--color-primary-dark);
+}
+.logo-group:active .logo-icon {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--color-primary-dark);
+}
+
+/* .learn-pulse-dot: Pulsing dot on the active learning nav link */
+.learn-pulse-dot {
+  animation: learn-dot-pulse 1.8s ease-in-out infinite;
+}
+@keyframes learn-dot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgb(var(--color-live-rgb) / 0.7);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.2);
+    box-shadow: 0 0 0 5px rgb(var(--color-live-rgb) / 0);
+  }
+}
+
+/* Mobile dropdown menu — clay panel, slide+fade open */
+/* .mobile-menu: Mobile dropdown panel — animate by toggling `.open` */
+.mobile-menu {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-6px);
+  transition:
+    max-height 280ms ease,
+    opacity 200ms ease,
+    transform 200ms ease,
+    border-color 200ms ease;
+  background: white;
+  border-top: 2px solid transparent;
+  box-shadow: 0 12px 24px -8px rgb(var(--color-primary-rgb) / 0.18);
+  border-radius: 0 0 20px 20px;
+}
+.mobile-menu.open {
+  max-height: 85vh;
+  opacity: 1;
+  transform: translateY(0);
+  overflow-y: auto;
+  border-top-color: var(--color-sky-100);
+}
+
+/* "More" overflow menu (desktop nav) */
+/* .nav-more-btn: Desktop overflow "More" trigger */
+.nav-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+/* .nav-more-menu: Desktop overflow "More" dropdown */
+.nav-more-menu {
+  min-width: 11rem;
+  background: white;
+  border: 2px solid var(--color-sky-200);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--color-sky-200);
+  overflow: hidden;
+  padding: 6px;
+}
+.nav-more-menu a {
+  border-radius: 10px;
+}
+
+/* Ghost-style nav buttons (no shadow) — press = bg darken, same pattern as btn-clay btn-gray */
+#lang-btn,
+#lang-btn-mobile,
+#mobile-menu-btn,
+.nav-more-btn {
+  transition:
+    transform 100ms ease-out,
+    background-color 150ms,
+    border-color 150ms;
+}
+#lang-btn:active,
+#lang-btn-mobile:active,
+#mobile-menu-btn:active {
+  background-color: var(--color-sky-100);
+}
+#lang-menu button:active,
+#lang-menu-mobile button:active {
+  background-color: var(--color-sky-100);
+}

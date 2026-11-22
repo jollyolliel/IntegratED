@@ -1,0 +1,10 @@
+{#- A radio / checkbox row with a large tap target. `class` goes on the row; every other
+    attribute (id, required, data-*) goes on the input. -#}
+{#def name, value, label="", type=None, checked=False #}
+{%- set type = prop("Choice", "type", type) -%}
+{%- set row = attrs.classes -%}
+{%- do attrs.remove_class(*row.split()) -%}
+<label class="choice-label {{ row }}">
+  <input {{ attrs.render(type=type, name=name, value=value, checked=(true if checked else false)) }} />
+  <span class="choice-text">{% if content %}{{ content }}{% else %}{{ label }}{% endif %}</span>
+</label>

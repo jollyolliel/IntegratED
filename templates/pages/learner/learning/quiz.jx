@@ -1,0 +1,974 @@
+{#- The plain lesson quiz (a lesson with no game): one question at a time under a sticky progress
+    strip of one tick per question, with a context panel beside it when the question has a
+    passage or picture. Handles every question type the content schema has. -#}
+{#import "@components/shell/game_page.jx" as GamePage #}
+{#import "@components/mc_options.jx" as McOptions #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+{#def lesson #}
+{%- set head %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+  <McOptions />
+{%- endset %}
+<GamePage title={{ lesson.title ~ ' — IntegratED' }} lesson={{ lesson }} head={{ head }}>
+      <main class="flex-1 flex flex-col relative w-full">
+        <!-- Progress — one tick per question, mirroring the "Your progress"
+             block on the lesson overview page. -->
+        <span
+          id="progressCondenseSentinel"
+          class="quiz-progress-sentinel"
+          aria-hidden="true"
+        ></span>
+        <div class="sticky z-20 progress-bar-container quiz-progress-bar w-full">
+          <div class="quiz-progress-inner container mx-auto px-4 max-w-4xl">
+            <div class="quiz-progress-head">
+              <p class="quiz-progress-label" id="progressText">
+                {{ t('learner.quiz.progress_loading') }}
+              </p>
+              <p class="quiz-progress-readout" aria-hidden="true">
+                <span class="quiz-progress-percent" id="percentageText">0%</span>
+                <span id="progressCountText"></span>
+              </p>
+            </div>
+            <div
+              class="quiz-progress-ticks"
+              id="progressTicks"
+              role="img"
+              aria-label="{{ t('learner.quiz.progress_loading') }}"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Main Content Layout -->
+        <div
+          id="mainLayout"
+          class="container mx-auto px-4 py-8 flex-1 flex flex-col lg:flex-row gap-8 items-start justify-center transition-[max-height] duration-500 max-w-7xl"
+        >
+          <!-- Context Panel (Left) -->
+          <div
+            id="contextPanel"
+            class="hidden w-full lg:w-1/2 flex-col space-y-4 context-panel transition-[max-height] duration-500 max-h-[70vh] hidden-scrollbar"
+          >
+            <img
+              id="contextImage"
+              class="hidden w-full rounded-xl object-cover max-h-64 border border-primary-soft shadow-md"
+            />
+            <div
+              id="contextTextBody"
+              class="text-lg leading-relaxed space-y-4 font-serif text-sky-900 tracking-wide"
+            ></div>
+          </div>
+
+          <!-- Action Panel (Right or Full Center) -->
+          <div
+            id="actionPanel"
+            class="w-full lg:w-1/2 flex-col space-y-8 flex transition-[max-height] duration-500 items-center justify-center h-full"
+          >
+            <!-- Loading State -->
+            <div
+              id="loadingState"
+              class="w-full text-center py-20 flex-col items-center flex"
+            >
+              <div
+                class="inline-block animate-spin rounded-full h-12 w-12 mb-4 border-[3px] border-primary-soft border-t-primary"
+              ></div>
+              <p class="text-sky-400 font-medium">
+                {{ t('learner.quiz.preparing') }}
+              </p>
+            </div>
+
+            <!-- Error State -->
+            <div
+              id="errorState"
+              class="hidden w-full text-center py-20 rounded-2xl p-8 bg-red-50 border-2 border-red-200 shadow-[3px_3px_0_var(--color-red-200)]"
+            >
+              <p class="text-danger mb-6 text-lg font-bold">
+                {{ t('learner.quiz.load_failed') }}
+              </p>
+              <Button variant="danger" onclick="location.reload()">
+                RELOAD SESSION
+              </Button>
+            </div>
+
+            <!-- Questions Container -->
+            <div id="questionsContainer" class="hidden w-full space-y-8">
+              <div class="space-y-4">
+                <!-- Question label pill -->
+                <div
+                  class="inline-flex items-center gap-2 bg-sky-50 rounded-full px-3 py-1 border-[1.5px] border-primary-light"
+                >
+                  <span
+                    class="text-xs font-bold text-primary uppercase tracking-wider"
+                    id="questionPrompt"
+                  ></span>
+                </div>
+                <p
+                  class="hidden text-base font-semibold text-sky-700"
+                  id="questionSubtext"
+                ></p>
+                <h1
+                  class="display-font text-2xl md:text-3xl font-extrabold leading-tight text-sky-950 mb-2"
+                  id="questionText"
+                ></h1>
+
+                <!-- Word Bank -->
+                <div
+                  id="wordBankContainer"
+                  class="hidden mt-6 mb-4 p-4 rounded-xl flex flex-wrap gap-3 bg-sky-50 border-2 border-primary-light shadow-[4px_4px_0_var(--color-sky-100)]"
+                ></div>
+
+                <!-- Audio Play Button -->
+                <button
+                  type="button"
+                  id="playQuestionAudio"
+                  class="hidden mt-4 p-2 rounded-full transition-[color,background-color,border-color,box-shadow] bg-sky-50 border-2 border-primary-light"
+                  onclick="playQuestionAudio()"
+                  aria-label="{{ t('learner.quiz.play_audio') }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="w-6 h-6 text-sky-500"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M14 5v14l-7-5H3V9h4l7-5zm4 7c0-2.5-1.5-4.5-3.5-5.5v11c2-1 3.5-3 3.5-5.5zm4 0c0-4.5-3-8.5-7-9.5v2c2.5 1 4.5 4 4.5 7.5s-2 6.5-4.5 7.5v2c4-1 7-5 7-9.5z"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div class="space-y-4">
+                <!-- Multiple Choice Options -->
+                <div id="optionsContainer" class="grid gap-3"></div>
+
+                <!-- Open Response -->
+                <div id="openResponseContainer" class="hidden space-y-2">
+                  <input
+                    id="openResponseInput"
+                    type="text"
+                    placeholder="{{ t('learner.quiz.answer_placeholder') }}"
+                    class="w-full rounded-xl px-6 py-4 text-xl outline-none transition-[color,background-color,border-color,box-shadow] font-medium bg-surface-page border-2 border-primary-light text-ink-heading"
+                    onfocus="this.style.borderColor = '#0284C7'"
+                    onblur="this.style.borderColor = '#BAE6FD'"
+                    onkeydown="
+                      if (
+                        event.key === 'Enter' &&
+                        !document.getElementById('submitButton').disabled &&
+                        !document
+                          .getElementById('submitButton')
+                          .classList.contains('hidden')
+                      )
+                        submitAnswer();
+                    "
+                  />
+                </div>
+
+                <!-- Feedback Message -->
+                <div
+                  id="feedbackContainer"
+                  class="hidden mt-4 p-5 rounded-2xl flex flex-wrap items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300"
+                >
+                  <div>
+                    <p id="feedbackText" class="font-bold text-lg"></p>
+                    <p id="feedbackHint" class="text-sm mt-1 opacity-90"></p>
+                  </div>
+                  <button
+                    id="hintButton"
+                    type="button"
+                    onclick="showHint()"
+                    class="quiz-hint-btn hidden"
+                  >
+                    <Icon name="light-bulb" size="5" /> {{ t('learner.quiz.hint_button') }}
+                  </button>
+                  <p id="hintAnswer" class="quiz-hint-answer hidden"></p>
+                </div>
+              </div>
+
+              <!-- Submit and Navigation Buttons -->
+              <div
+                class="flex items-center justify-end gap-4 pt-6 border-t-2 border-primary-soft"
+              >
+                <button
+                  id="submitButton"
+                  onclick="submitAnswer()"
+                  class="quiz-btn-accent"
+                >
+                  <span id="submitButtonText">Check Answer</span>
+                  <span
+                    id="submitButtonSpinner"
+                    class="hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                  >
+                    <div
+                      class="w-5 h-5 border-2 border-white border-e-transparent rounded-full animate-spin"
+                    ></div>
+                  </span>
+                </button>
+
+                <button
+                  id="nextButton"
+                  onclick="nextQuestion()"
+                  class="quiz-btn-outline hidden"
+                >
+                  Next Question →
+                </button>
+              </div>
+            </div>
+
+            <!-- Completion State placeholder -->
+            <div id="completionState" class="hidden"></div>
+          </div>
+        </div>
+      </main>
+
+      <script>
+        var QUIZ_T = {
+          progressQuestion: {{ t('learner.quiz.progress_question') | tojson }},
+          progressDone: {{ t('learner.quiz.progress_done') | tojson }},
+          progressSummary: {{ t('learner.quiz.progress_summary') | tojson }},
+          hintAnswer: {{ t('learner.quiz.hint_answer') | tojson }},
+          finish: {{ t('learner.quiz.finish') | tojson }},
+          nextQuestion: {{ t('learner.quiz.next_question') | tojson }},
+          continuePractice: {{ t('learner.quiz.continue_practice') | tojson }},
+          needWord: {{ t('learner.quiz.need_word') | tojson }},
+          needBlank: {{ t('learner.quiz.need_blank') | tojson }},
+          needAllBlanks: {{ t('learner.quiz.need_all_blanks') | tojson }},
+          needAnswer: {{ t('learner.quiz.need_answer') | tojson }},
+          error: {{ t('learner.quiz.error') | tojson }},
+          feedbackCorrect: {{ t('learner.quiz.feedback_correct') | tojson }},
+          feedbackIncorrect: {{ t('learner.quiz.feedback_incorrect') | tojson }},
+          feedbackWordsWrong: {{ t('learner.quiz.feedback_words_wrong') | tojson }},
+          feedbackKeepGoing: {{ t('learner.quiz.feedback_keep_going') | tojson }},
+          feedbackPlacements: {{ t('learner.quiz.feedback_placements') | tojson }},
+          vocabularyPrompt: {{ t('learner.quiz.vocabulary_prompt') | tojson }},
+          wordSelectionPrompt: {{ t('learner.quiz.word_selection_prompt') | tojson }},
+        };
+
+        /* Typed-answer questions are easy to miss by a letter, so after the third
+           wrong try validate-answer sends the answer as `hint` (the page never has it
+           otherwise) and a "Show hint" button appears that reveals it. */
+        let currentHint = '';
+
+        function quizFormat(template, values) {
+          return Object.keys(values).reduce(
+            (out, key) => out.split('{' + key + '}').join(values[key]),
+            template
+          );
+        }
+
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let currentAnswers = {};
+
+        let lessonId = {{ lesson.id | default (0) }};
+        GameKit.init({ lessonId, game: 'quiz' });
+        let completedQuestionIds = new Set();
+
+        let draggedWord = null;
+
+        const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+        let currentQuestionAudioURL = null;
+        let audioPlayer = new Audio();
+
+        function playAudio(url, fallbackText) {
+          if (!url) { if (fallbackText) speakWord(fallbackText); return; }
+          audioPlayer.src = url;
+          // The stored clip may not exist yet (TTS off, or still generating) — speak instead.
+          audioPlayer.play().catch(() => { if (fallbackText) speakWord(fallbackText); });
+        }
+
+        function playQuestionAudio() {
+          const question = questions[currentQuestionIndex];
+          if (!question) return;
+          const plain = document.createElement('div');
+          plain.innerHTML = DOMPurify.sanitize(question.question_text || question.question_prompt || '');
+          playAudio(currentQuestionAudioURL, plain.textContent.trim());
+        }
+
+        function speakWord(fullText) {
+          if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(fullText);
+            utterance.lang = 'en-US';
+            window.speechSynthesis.speak(utterance);
+          }
+        }
+
+        function renderMath() {
+          if (window.renderMathInElement) {
+            renderMathInElement(document.body, {
+              delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$', right: '$', display: false }
+              ]
+            });
+          }
+        }
+
+        function quizTrackedFetch(url, options = {}, analyticsMeta = {}) {
+          if (window.analytics && typeof window.analytics.trackedFetch === 'function') {
+            return window.analytics.trackedFetch(url, options, analyticsMeta);
+          }
+          return fetch(url, options);
+        }
+
+        function quizTrackEvent(name, properties = {}) {
+          if (window.analytics && typeof window.analytics.trackEvent === 'function') {
+            window.analytics.trackEvent(name, properties);
+          }
+        }
+
+        function quizTrackError(error, properties = {}) {
+          if (window.analytics && typeof window.analytics.trackError === 'function') {
+            window.analytics.trackError(error, properties);
+            return;
+          }
+          console.error('Quiz analytics unavailable', error, properties);
+        }
+
+        async function loadQuestions() {
+          try {
+            const response = await quizTrackedFetch(`/api/quiz/${lessonId}/questions`, {}, {
+              flow: "quiz",
+              action: "load_questions",
+              lesson_id: lessonId,
+            });
+
+            const data = await response.json();
+            questions = data.questions;
+            quizTrackEvent("quiz_loaded", {
+              lesson_id: lessonId,
+              question_count: questions.length,
+            });
+
+            if (questions.length === 0) {
+              showError('No questions found for this topic.');
+              return;
+            }
+
+            data.progress.correct_ids.forEach(id => completedQuestionIds.add(id));
+
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('questionsContainer').classList.remove('hidden');
+
+            currentQuestionIndex = data.progress.resume_index;
+            if (currentQuestionIndex < questions.length) {
+              displayQuestion();
+            } else {
+              showCompletion();
+            }
+
+          } catch (error) {
+            console.error(error);
+            quizTrackError(error, {
+              flow: "quiz",
+              action: "load_questions",
+              lesson_id: lessonId,
+            });
+            showError('Failed to load connection.');
+          }
+        }
+
+        /* One tick per question, in question order: green = answered correctly,
+           sky ring = the question on screen. Ticks are created once and then only
+           re-classed, so a newly correct answer animates its tick to green rather
+           than rebuilding the strip. */
+        function renderProgress() {
+          const total = questions.length;
+          if (!total) return;
+          const done = completedQuestionIds.size;
+          const percent = Math.round((done / total) * 100);
+          const ticks = document.getElementById('progressTicks');
+
+          if (ticks.children.length !== total) {
+            ticks.innerHTML = '';
+            for (let i = 0; i < total; i++) {
+              const tick = document.createElement('span');
+              tick.className = 'quiz-progress-tick';
+              ticks.appendChild(tick);
+            }
+          }
+          questions.forEach((q, i) => {
+            const tick = ticks.children[i];
+            tick.classList.toggle('is-done', completedQuestionIds.has(q.id));
+            tick.classList.toggle('is-current', i === currentQuestionIndex);
+          });
+
+          ticks.setAttribute('aria-label', quizFormat(QUIZ_T.progressSummary, { done, total, percent }));
+          document.getElementById('progressText').textContent =
+            quizFormat(QUIZ_T.progressQuestion, { current: currentQuestionIndex + 1, total });
+          document.getElementById('percentageText').textContent = percent + '%';
+          document.getElementById('progressCountText').textContent =
+            quizFormat(QUIZ_T.progressDone, { done, total });
+        }
+
+        function displayQuestion() {
+          if (currentQuestionIndex >= questions.length) {
+            showCompletion();
+            return;
+          }
+
+          const question = questions[currentQuestionIndex];
+          const isPreviouslyCompleted = completedQuestionIds.has(question.id);
+
+          renderProgress();
+
+          currentQuestionAudioURL = question.question_sound ? question.question_sound_url : null;
+          document.getElementById('playQuestionAudio').classList.toggle('hidden', !question.question_sound);
+
+          const mainLayout = document.getElementById('mainLayout');
+          const contextPanel = document.getElementById('contextPanel');
+          const actionPanel = document.getElementById('actionPanel');
+
+          if (question.content_type === 'text_comprehension_word_selection') {
+            mainLayout.className = "container mx-auto px-4 py-8 flex-1 flex flex-col lg:flex-row gap-12 items-start justify-center transition-[max-height] duration-500 max-w-7xl";
+            contextPanel.className = "w-full lg:w-1/2 flex flex-col space-y-6 context-panel transition-[max-height] duration-500 max-h-[75vh] hidden-scrollbar block";
+            actionPanel.className = "w-full lg:w-1/2 flex-col space-y-8 flex transition-[max-height] duration-500 justify-start self-start";
+            renderInteractiveContextText(question);
+          } else if (question.context_text || question.context_image) {
+            mainLayout.className = "container mx-auto px-4 py-8 flex-1 flex flex-col lg:flex-row gap-12 items-start justify-center transition-[max-height] duration-500 max-w-7xl";
+            contextPanel.className = "w-full lg:w-1/2 flex flex-col space-y-6 context-panel transition-[max-height] duration-500 max-h-[75vh] hidden-scrollbar block";
+            actionPanel.className = "w-full lg:w-1/2 flex-col space-y-8 flex transition-[max-height] duration-500 justify-start self-start";
+            renderPlainContextText(question);
+          } else {
+            mainLayout.className = "container mx-auto px-4 py-8 flex-1 flex flex-col items-center justify-center transition-[max-height] duration-500 max-w-3xl";
+            contextPanel.className = "hidden";
+            actionPanel.className = "w-full flex-col space-y-8 flex transition-[max-height] duration-500 items-center justify-center";
+          }
+
+          document.getElementById('questionPrompt').textContent =
+            question.question_prompt || (question.content_type === 'text_comprehension_fill_blank' ? 'Fill in the blank' : '');
+          const questionSubtextEl = document.getElementById('questionSubtext');
+          if (question.question_subtext) {
+            questionSubtextEl.textContent = question.question_subtext;
+            questionSubtextEl.classList.remove('hidden');
+          } else {
+            questionSubtextEl.textContent = '';
+            questionSubtextEl.classList.add('hidden');
+          }
+          document.getElementById('questionText').innerHTML = DOMPurify.sanitize(question.question_text || '');
+
+          let qTextEl = document.getElementById('questionText');
+          document.getElementById('wordBankContainer').classList.add('hidden');
+          document.getElementById('wordBankContainer').innerHTML = '';
+
+          document.getElementById('openResponseContainer').classList.add('hidden');
+          const optionsContainer = document.getElementById('optionsContainer');
+          optionsContainer.innerHTML = '';
+          optionsContainer.classList.remove('hidden');
+
+          if (question.content_type === 'text_comprehension_fill_blank') {
+            const sanitized = DOMPurify.sanitize(question.question_text || '');
+            qTextEl.innerHTML = sanitized.replace(/\{input\}/g, `<input type="text" class="inline-input-blank" oninput="saveCurrentArrayAnswer('${question.id}', 0, this.value)" onkeydown="if(event.key==='Enter'&&!document.getElementById('submitButton').disabled&&!document.getElementById('submitButton').classList.contains('hidden'))submitAnswer();" value="${currentAnswers[question.id]?.[0] || ''}" />`);
+          } else if (question.content_type === 'text_comprehension_drag_drop') {
+            let html = DOMPurify.sanitize(question.question_text || '');
+            let blankCount = (html.match(/\{input\}/g) || []).length;
+            if (!currentAnswers[question.id]) currentAnswers[question.id] = {};
+
+            let i = 0;
+            html = html.replace(/\{input\}/g, function () {
+              let currentVal = currentAnswers[question.id][`blank-${i}`] || '';
+              let extraClass = currentVal ? 'filled' : '';
+              let sanitizedVal = DOMPurify.sanitize(currentVal);
+              let output = `<span class="droppable-blank ${extraClass}" data-blank-id="blank-${i}" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="drop(event, '${question.id}')" onclick="removeDrop(this, '${question.id}')">${sanitizedVal}</span>`;
+              i++;
+              return output;
+            });
+            qTextEl.innerHTML = html;
+
+            if (question.word_bank && question.word_bank.length > 0) {
+              renderWordBankDraggable(question.word_bank);
+            }
+          } else if (question.content_type === 'vocabulary_audio') {
+            qTextEl.innerHTML = DOMPurify.sanitize(question.question_text || QUIZ_T.vocabularyPrompt);
+            if (question.word_bank && question.word_bank.length > 0) {
+              renderWordBankAudio(question.word_bank, question.option_sound_url);
+            }
+          } else if (question.content_type === 'text_comprehension_word_selection') {
+            qTextEl.innerHTML = DOMPurify.sanitize(question.question_text || QUIZ_T.wordSelectionPrompt);
+          } else if (question.content_type === 'open_answer') {
+            displayOpenResponse(question);
+          } else {
+            displayMultipleChoice(question);
+          }
+
+          document.getElementById('feedbackContainer').classList.add('hidden');
+          resetHint();
+
+          document.getElementById('submitButton').disabled = false;
+          document.getElementById('submitButton').classList.remove('hidden');
+          document.getElementById('nextButton').disabled = true;
+          document.getElementById('nextButton').classList.add('hidden');
+
+          if (question.content_type === 'vocabulary_audio') {
+            document.getElementById('submitButton').classList.add('hidden');
+            document.getElementById('nextButton').disabled = false;
+            document.getElementById('nextButton').classList.remove('hidden');
+            document.getElementById('nextButton').textContent = (currentQuestionIndex === questions.length - 1) ? QUIZ_T.finish : QUIZ_T.continuePractice;
+          }
+
+          if (isPreviouslyCompleted) {
+            document.getElementById('submitButton').classList.add('hidden');
+            document.getElementById('nextButton').disabled = false;
+            document.getElementById('nextButton').classList.remove('hidden');
+            document.getElementById('nextButton').textContent = (currentQuestionIndex === questions.length - 1) ? QUIZ_T.finish : QUIZ_T.nextQuestion;
+            showFeedback('You have already completed this question correctly!', true);
+          }
+
+          setTimeout(renderMath, 0);
+        }
+
+        function renderPlainContextText(question) {
+          const img = document.getElementById('contextImage');
+          const txt = document.getElementById('contextTextBody');
+          if (question.context_image) {
+            img.src = question.context_image;
+            img.classList.remove('hidden');
+          } else {
+            img.classList.add('hidden');
+          }
+          if (question.context_text) {
+            const sanitized = DOMPurify.sanitize(question.context_text.replace(/\n\n/g, '</p><p>').replace(/^/, '<p>').replace(/$/, '</p>'));
+            txt.innerHTML = sanitized;
+            txt.classList.remove('hidden');
+          } else {
+            txt.classList.add('hidden');
+          }
+        }
+
+        function renderInteractiveContextText(question) {
+          const txt = document.getElementById('contextTextBody');
+          txt.innerHTML = '';
+
+          if (!currentAnswers[question.id] || !Array.isArray(currentAnswers[question.id])) {
+            currentAnswers[question.id] = [];
+          }
+
+          const paragraphs = (question.context_text || '').split(/\n\n+/);
+          paragraphs.forEach((paraText, pIdx) => {
+            const p = document.createElement('p');
+            p.className = 'mb-4';
+            const words = paraText.trim().split(/\s+/);
+            words.forEach((word) => {
+              if (!word) return;
+              const span = document.createElement('span');
+              span.className = 'interactive-word inline-block';
+              const cleanWord = word.replace(/[.,!?"']/g, '');
+              if (currentAnswers[question.id].includes(cleanWord)) {
+                span.classList.add('selected');
+              }
+              span.textContent = word + ' ';
+              span.onclick = () => {
+                if (span.classList.contains('selected')) {
+                  span.classList.remove('selected');
+                  currentAnswers[question.id] = currentAnswers[question.id].filter(w => w !== cleanWord);
+                } else {
+                  span.classList.add('selected');
+                  currentAnswers[question.id].push(cleanWord);
+                }
+              };
+              p.appendChild(span);
+            });
+            txt.appendChild(p);
+          });
+
+          const img = document.getElementById('contextImage');
+          if (question.context_image) {
+            img.src = question.context_image;
+            img.classList.remove('hidden');
+          } else {
+            img.classList.add('hidden');
+          }
+        }
+
+        function renderWordBankDraggable(words) {
+          const container = document.getElementById('wordBankContainer');
+          container.classList.remove('hidden');
+          words.forEach(word => {
+            const chip = document.createElement('div');
+            chip.className = "px-4 py-2 rounded-xl font-semibold text-sky-700 draggable-word cursor-grab transition-[color,background-color,border-color,box-shadow,transform]";
+            chip.style.cssText = "background:white; border:2px solid #BAE6FD; box-shadow:2px 2px 0 #BAE6FD;";
+            chip.draggable = true;
+            chip.textContent = word;
+            chip.ondragstart = (e) => {
+              draggedWord = word;
+              e.dataTransfer.setData("text/plain", word);
+              e.dataTransfer.effectAllowed = "copy";
+              chip.style.opacity = '0.5';
+            };
+            chip.ondragend = () => {
+              draggedWord = null;
+              chip.style.opacity = '1';
+            };
+            container.appendChild(chip);
+          });
+        }
+
+        function renderWordBankAudio(words, audioUrls) {
+          const container = document.getElementById('wordBankContainer');
+          container.classList.remove('hidden');
+          words.forEach((word, idx) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = "word-audio-chip";
+            chip.innerHTML = `
+              <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5v14l-7-5H3V9h4l7-5zm4 7c0-2.5-1.5-4.5-3.5-5.5v11c2-1 3.5-3 3.5-5.5zm4 0c0-4.5-3-8.5-7-9.5v2c2.5 1 4.5 4 4.5 7.5s-2 6.5-4.5 7.5v2c4-1 7-5 7-9.5z"/></svg>
+              <span class="word-audio-chip-label"></span>
+            `;
+            chip.querySelector('.word-audio-chip-label').textContent = word;
+            chip.onclick = () => {
+              if (audioUrls && audioUrls.length > idx && audioUrls[idx]) {
+                playAudio(audioUrls[idx]);
+              } else {
+                speakWord(word);
+              }
+            };
+            container.appendChild(chip);
+          });
+        }
+
+        function dragOver(e) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          if (!e.target.classList.contains('filled')) {
+            e.target.classList.add('drag-over');
+          }
+        }
+        function dragLeave(e) { e.target.classList.remove('drag-over'); }
+        function drop(e, qid) {
+          e.preventDefault();
+          e.target.classList.remove('drag-over');
+          const data = e.dataTransfer.getData("text/plain");
+          if (data && e.target.classList.contains('droppable-blank')) {
+            e.target.textContent = data;
+            e.target.classList.add('filled');
+            const blankId = e.target.getAttribute('data-blank-id');
+            if (!currentAnswers[qid]) currentAnswers[qid] = {};
+            currentAnswers[qid][blankId] = data;
+          }
+        }
+        function removeDrop(el, qid) {
+          if (el.classList.contains('filled')) {
+            el.textContent = "";
+            el.classList.remove('filled');
+            const blankId = el.getAttribute('data-blank-id');
+            delete currentAnswers[qid][blankId];
+          }
+        }
+
+        function saveCurrentArrayAnswer(qid, index, val) {
+          if (!currentAnswers[qid]) currentAnswers[qid] = [];
+          currentAnswers[qid][0] = val;
+        }
+
+        function displayMultipleChoice(question) {
+          const container = document.getElementById('optionsContainer');
+          if (!question.options || question.options.length === 0) return;
+          MCOptions.render(container, question.options, (val) => selectOption(question.id, val), currentAnswers[question.id] || null);
+        }
+
+        function displayOpenResponse(question) {
+          document.getElementById('optionsContainer').classList.add('hidden');
+          document.getElementById('openResponseContainer').classList.remove('hidden');
+          const input = document.getElementById('openResponseInput');
+          input.value = currentAnswers[question.id] || '';
+          input.oninput = () => selectOption(question.id, input.value);
+        }
+
+        function selectOption(questionId, answer) {
+          currentAnswers[questionId] = answer;
+        }
+
+        async function submitAnswer() {
+          const question = questions[currentQuestionIndex];
+
+          let payload = {
+            lesson_id: lessonId,
+            question_id: question.id,
+            user_answer: "",
+            selected_words: [],
+            answers: {}
+          };
+
+          if (question.content_type === 'text_comprehension_word_selection') {
+            payload.selected_words = currentAnswers[question.id] || [];
+            if (payload.selected_words.length === 0) {
+              showFeedback(QUIZ_T.needWord, false); return;
+            }
+          } else if (question.content_type === 'text_comprehension_fill_blank') {
+            payload.user_answer = (currentAnswers[question.id] && currentAnswers[question.id][0]) ? currentAnswers[question.id][0] : "";
+            if (!payload.user_answer) { showFeedback(QUIZ_T.needBlank, false); return; }
+          } else if (question.content_type === 'text_comprehension_drag_drop') {
+            payload.answers = currentAnswers[question.id] || {};
+            const html = question.question_text || '';
+            const blankCount = (html.match(/\{input\}/g) || []).length;
+            if (Object.keys(payload.answers).length < blankCount) {
+              showFeedback(quizFormat(QUIZ_T.needAllBlanks, { count: blankCount }), false); return;
+            }
+          } else {
+            payload.user_answer = currentAnswers[question.id];
+            if (!payload.user_answer) { showFeedback(QUIZ_T.needAnswer, false); return; }
+          }
+
+          const submitBtn = document.getElementById('submitButton');
+          const btnText = document.getElementById('submitButtonText');
+          const btnSpinner = document.getElementById('submitButtonSpinner');
+
+          submitBtn.disabled = true;
+          btnText.classList.add('invisible');
+          btnSpinner.classList.remove('hidden');
+
+          try {
+            quizTrackEvent("cta_clicked", {
+              action: "quiz_check_answer",
+              lesson_id: lessonId,
+              question_id: question.id,
+            });
+            const response = await quizTrackedFetch('/api/quiz/validate-answer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            }, {
+              flow: "quiz",
+              action: "validate_answer",
+              lesson_id: lessonId,
+              question_id: question.id,
+            });
+
+            // A failed request is not a wrong answer: the catch below says "try again".
+            if (!response.ok) throw new Error('validate-answer ' + response.status);
+            const data = await response.json();
+
+            const optsCont = document.getElementById('optionsContainer');
+            MCOptions.markResult(optsCont, data.is_correct);
+
+            if (data.is_correct) {
+              completedQuestionIds.add(question.id);
+              renderProgress();
+            } else if (
+              question.content_type !== 'open_answer' &&
+              question.content_type !== 'text_comprehension_word_selection' &&
+              question.content_type !== 'text_comprehension_fill_blank' &&
+              question.content_type !== 'text_comprehension_drag_drop'
+            ) {
+              delete currentAnswers[question.id];
+            }
+
+            showFeedback(feedbackFor(question, data), data.is_correct, data.partial_credit);
+
+            if (!data.is_correct && data.hint && document.getElementById('hintAnswer').classList.contains('hidden')) {
+              currentHint = data.hint;
+              document.getElementById('hintButton').classList.remove('hidden');
+            }
+
+            if (data.is_correct) {
+              enableNextQuestion();
+            }
+
+          } catch (error) {
+            console.error(error);
+            quizTrackError(error, {
+              flow: "quiz",
+              action: "validate_answer",
+              lesson_id: lessonId,
+              question_id: question.id,
+            });
+            showFeedback(QUIZ_T.error, false);
+          } finally {
+            submitBtn.disabled = false;
+            btnText.classList.remove('invisible');
+            btnSpinner.classList.add('hidden');
+          }
+        }
+
+        /* What the learner is told is the page's own translated copy for the question
+           type and result; the server only says right or wrong (and word selection's
+           partial credit). */
+        function feedbackFor(question, data) {
+          if (data.is_correct) return QUIZ_T.feedbackCorrect;
+          if (question.content_type === 'text_comprehension_word_selection') {
+            return data.partial_credit > 0 ? QUIZ_T.feedbackKeepGoing : QUIZ_T.feedbackWordsWrong;
+          }
+          if (question.content_type === 'text_comprehension_drag_drop') return QUIZ_T.feedbackPlacements;
+          return QUIZ_T.feedbackIncorrect;
+        }
+
+        function showFeedback(message, isCorrect, partialCredit = null) {
+          const container = document.getElementById('feedbackContainer');
+          const text = document.getElementById('feedbackText');
+          container.classList.remove('hidden');
+
+          if (isCorrect) {
+            container.style.cssText = "background:#F0FDF4; border:2px solid #86EFAC; box-shadow:4px 4px 0 #A7F3D0;";
+            text.style.color = "#15803d";
+          } else if (!isCorrect && partialCredit && partialCredit > 0) {
+            container.style.cssText = "background:#FFFBEB; border:2px solid #FDE68A; box-shadow:4px 4px 0 #FEF3C7;";
+            text.style.color = "#B45309";
+          } else {
+            container.style.cssText = "background:#FEF2F2; border:2px solid #FECACA; box-shadow:4px 4px 0 #FEE2E2;";
+            text.style.color = "#DC2626";
+          }
+          text.textContent = message;
+        }
+
+        function resetHint() {
+          currentHint = '';
+          document.getElementById('hintButton').classList.add('hidden');
+          const hintAnswer = document.getElementById('hintAnswer');
+          hintAnswer.classList.add('hidden');
+          hintAnswer.textContent = '';
+        }
+
+        function showHint() {
+          const question = questions[currentQuestionIndex];
+          const hintAnswer = document.getElementById('hintAnswer');
+          hintAnswer.textContent = quizFormat(QUIZ_T.hintAnswer, { answer: currentHint });
+          hintAnswer.classList.remove('hidden');
+          document.getElementById('hintButton').classList.add('hidden');
+          quizTrackEvent("cta_clicked", {
+            action: "quiz_show_hint",
+            lesson_id: lessonId,
+            question_id: question.id,
+          });
+        }
+
+        /* Enter after a correct answer moves on. The input's own Enter handler
+           submits; once the answer is right the Next button is showing, and the
+           next Enter lands here. Skipped on buttons/links (Enter already clicks
+           them) and on key-repeat so a held key can't skip past a question. */
+        document.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' || event.repeat) return;
+          if (event.target.closest && event.target.closest('button, a')) return;
+          const nextBtn = document.getElementById('nextButton');
+          if (nextBtn.disabled || nextBtn.classList.contains('hidden')) return;
+          event.preventDefault();
+          nextQuestion();
+        });
+
+        function enableNextQuestion() {
+          const nextBtn = document.getElementById('nextButton');
+          document.getElementById('submitButton').classList.add('hidden');
+          nextBtn.disabled = false;
+          nextBtn.classList.remove('hidden');
+          nextBtn.textContent = (currentQuestionIndex === questions.length - 1) ? QUIZ_T.finish : QUIZ_T.nextQuestion;
+        }
+
+        async function nextQuestion() {
+          quizTrackEvent("cta_clicked", {
+            action: "quiz_next_question",
+            lesson_id: lessonId,
+          });
+
+          const question = questions[currentQuestionIndex];
+          if (question.content_type === 'vocabulary_audio' && !completedQuestionIds.has(question.id)) {
+            try {
+              await quizTrackedFetch('/api/quiz/validate-answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  lesson_id: lessonId,
+                  question_id: question.id,
+                  user_answer: "listened",
+                })
+              }, {
+                flow: "quiz",
+                action: "validate_answer",
+                lesson_id: lessonId,
+                question_id: question.id,
+              });
+              completedQuestionIds.add(question.id);
+            } catch (error) {
+              console.error(error);
+              quizTrackError(error, {
+                flow: "quiz",
+                action: "validate_answer",
+                lesson_id: lessonId,
+                question_id: question.id,
+              });
+            }
+          }
+
+          if (currentQuestionIndex >= questions.length - 1) {
+            showCompletion();
+            return;
+          }
+          currentQuestionIndex++;
+          displayQuestion();
+        }
+
+        async function showCompletion() {
+          document.getElementById('questionsContainer').classList.add('hidden');
+          document.getElementById('contextPanel').classList.add('hidden');
+          document.getElementsByClassName('progress-bar-container')[0].classList.add('hidden');
+
+          // Celebrated only once saved (GameKit shows the server's score); a failure offers a retry.
+          await GameKit.finish({});
+        }
+
+        function showError(msg) {
+          document.getElementById('loadingState').classList.add('hidden');
+          const err = document.getElementById('errorState');
+          err.querySelector('p').textContent = msg;
+          err.classList.remove('hidden');
+        }
+
+        /* Condense the sticky progress strip once the learner scrolls past the
+           top of the page: the label row collapses and the ticks slim down (all
+           the motion lives in games.css).
+
+           Driven by an IntersectionObserver on #progressCondenseSentinel, which is
+           absolutely positioned above the bar. rootMargin pulls the viewport's top
+           edge down by the header's 65px, so the bar condenses exactly when the
+           sentinel disappears behind the navbar.
+
+           Condensing must not change the page's height. On a page that only just
+           scrolls (a zoomed-in window, four options plus feedback), a shorter
+           page makes the browser clamp the scroll back above the sentinel, which
+           un-condenses the bar, which lengthens the page — the bar flickers open
+           and shut while the learner sits at the bottom. So the bar's bottom
+           margin makes up the height condensing takes away. It is set to the
+           full amount the instant the bar starts shrinking (the page may only
+           grow mid-animation, never shrink — a margin that trails the shrink a
+           frame behind still lets the browser clamp), and games.css eases it
+           back to 0 while the bar grows on the way out. */
+        function initProgressCondense() {
+          const bar = document.querySelector('.quiz-progress-bar');
+          const sentinel = document.getElementById('progressCondenseSentinel');
+          if (!bar || !sentinel || !('IntersectionObserver' in window)) return;
+
+          // Height of the bar once fully condensed, read off an invisible copy
+          // so the real bar's transitions aren't disturbed. A freshly inserted
+          // element has no previous style, so the copy never animates.
+          const condensedHeight = () => {
+            const probe = bar.cloneNode(true);
+            probe.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+            probe.classList.add('is-condensed');
+            probe.setAttribute('aria-hidden', 'true');
+            probe.style.cssText = `position:absolute; visibility:hidden; width:${bar.offsetWidth}px`;
+            bar.parentNode.appendChild(probe);
+            const height = probe.offsetHeight;
+            probe.remove();
+            return height;
+          };
+
+          new IntersectionObserver(
+            (entries) => {
+              const condense = !entries[0].isIntersecting;
+              if (condense === bar.classList.contains('is-condensed')) return;
+              bar.style.marginBottom = condense
+                ? `${bar.offsetHeight - condensedHeight()}px`
+                : '';
+              bar.classList.toggle('is-condensed', condense);
+            },
+            { rootMargin: '-65px 0px 0px 0px', threshold: 0 }
+          ).observe(sentinel);
+        }
+
+        window.addEventListener('load', () => {
+          initProgressCondense();
+          loadQuestions();
+        });
+      </script>
+</GamePage>

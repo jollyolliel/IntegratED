@@ -1,0 +1,149 @@
+{#- One school: headline stats, its domain and admin config, then previews of its people and
+    donations, each linking out to the paged list when there are more. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def school, learners, volunteers, teachers, donations, learner_count, volunteer_count, teacher_count,
+    donation_count, total_donations, total_hours #}
+<Page title={{ school.name ~ " — Admin" }} styles="admin">
+  <Main>
+    <div class="flex justify-between items-start mb-8">
+      <div>
+        <BackLink href={{ url_for('administrator.schools') }} label="Schools" />
+        <h1 class="display-font text-4xl font-extrabold text-sky-950 mt-1">{{ school.name }}</h1>
+        {%- if school.mission_statement %}
+        <p class="italic text-sm mt-1 max-w-xl text-ink-heading/60">{{ school.mission_statement }}</p>
+        {%- endif %}
+      </div>
+      <form action="{{ url_for('administrator.delete_school', school_id=school.id) }}" method="POST"
+            data-confirm="{{ t('confirm.delete_school_detail', name=school.name) }}">
+        <Button type="submit" variant="danger" icon="trash">{{ t('admin.school_detail.delete_school') }}</Button>
+      </form>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <StatTile label={{ t('admin.school_detail.stat_learners') }} value={{ learner_count }} />
+      <StatTile tone="green" label={{ t('admin.school_detail.stat_volunteers') }} value={{ volunteer_count }} />
+      <StatTile tone="amber" label={{ t('admin.school_detail.stat_teachers') }} value={{ teacher_count }} />
+      <StatTile label={{ t('admin.school_detail.stat_hours') }} value={{ total_hours }} />
+      <StatTile tone="green" label={{ t('admin.school_detail.stat_donations') }} value={{ "$%.2f" | format(total_donations) }} />
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6 mb-10">
+      <Card>
+        <h3 class="display-font font-bold text-sky-900 mb-4">{{ t('admin.school_detail.domain_config') }}</h3>
+        <div>
+          <div class="dl-row">
+            <dt class="dl-dt">{{ t('admin.school_detail.volunteer_domain') }}</dt>
+            <dd class="dl-dd">{{ school.volunteer_domain or '—' }}</dd>
+          </div>
+          <div class="dl-row">
+            <dt class="dl-dt">{{ t('admin.school_detail.teacher_domain') }}</dt>
+            <dd class="dl-dd">{{ school.teacher_domain or '—' }}</dd>
+          </div>
+        </div>
+      </Card>
+      <Card>
+        <h3 class="display-font font-bold text-sky-900 mb-4">{{ t('admin.school_detail.school_admin') }}</h3>
+        {%- if school.school_admin %}
+        <div>
+          <div class="dl-row">
+            <dt class="dl-dt">{{ t('admin.school_detail.username') }}</dt>
+            <dd class="dl-dd">{{ school.school_admin.username }}</dd>
+          </div>
+          <div class="dl-row">
+            <dt class="dl-dt">{{ t('admin.school_detail.name') }}</dt>
+            <dd class="dl-dd" style="font-family: inherit;">{{ school.school_admin.name or '—' }}</dd>
+          </div>
+        </div>
+        <form action="{{ url_for('administrator.impersonate', user_id=school.school_admin.id) }}" method="POST" class="mt-4">
+          <Button type="submit" variant="sky" flat>{{ t('admin.school_detail.impersonate') }}</Button>
+        </form>
+        {%- else %}
+        <p class="text-sm text-ink-faint italic">{{ t('admin.school_detail.no_admin') }}</p>
+        {%- endif %}
+      </Card>
+    </div>
+
+    {%- for label, user_type, count, people_list in [
+      ('Teachers', 'teacher', teacher_count, teachers),
+      ('Volunteers', 'volunteer', volunteer_count, volunteers),
+      ('Learners', 'learner', learner_count, learners),
+    ] %}
+    {%- if people_list %}
+    <section class="mb-8">
+      <div class="flex items-center gap-3 mb-4">
+        <SectionBadge>{{ label }}</SectionBadge>
+        <h2 class="display-font text-lg font-bold text-sky-900">{{ label }} ({{ count }})</h2>
+      </div>
+      <Table>
+        <thead>
+          <tr>
+            <th>{{ t('admin.school_detail.col_name_username') }}</th>
+            <th>{{ t('admin.school_detail.col_email_id') }}</th>
+            <th class="text-right">{{ t('admin.school_detail.col_impersonate') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {%- for u in people_list %}
+          <tr>
+            <td class="font-medium text-sky-900">{{ u.name or (u.username if u.username is defined else '—') }}</td>
+            <td class="text-ink-faint text-xs font-mono">{{ u.email if u.email is defined else u.username if u.username is defined else u.id }}</td>
+            <td class="text-end">
+              <form action="{{ url_for('administrator.impersonate', user_id=u.id) }}" method="POST" class="inline">
+                <Button type="submit" variant="sky" flat>{{ t('admin.users.impersonate') }}</Button>
+              </form>
+            </td>
+          </tr>
+          {%- endfor %}
+        </tbody>
+      </Table>
+      {%- if count > people_list|length %}
+      <div class="text-end mt-2">
+        <Button variant="sky" flat href={{ url_for('administrator.users', type=user_type, school_id=school.id) }}>
+          {{- t('admin.school_detail.view_all', count=count) -}}
+        </Button>
+      </div>
+      {%- endif %}
+    </section>
+    {%- endif %}
+    {%- endfor %}
+
+    {%- if donations %}
+    <div class="flex items-center gap-3 mb-4">
+      <SectionBadge>Donations</SectionBadge>
+      <h2 class="display-font text-lg font-bold text-sky-900">Donations ({{ donation_count }})</h2>
+    </div>
+    <Table>
+      <thead>
+        <tr>
+          <th>{{ t('admin.school_detail.col_date') }}</th>
+          <th>{{ t('admin.school_detail.col_donor') }}</th>
+          <th class="text-right">{{ t('admin.school_detail.col_amount') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for d in donations %}
+        <tr>
+          <td class="text-ink-faint">{{ d.created_at.strftime('%b %d, %Y') }}</td>
+          <td class="font-medium text-sky-900">{{ d.donor_name or t('admin.school_detail.anonymous') }}</td>
+          <td class="text-end text-accent font-bold">${{ "%.2f"|format(d.amount / 100) }}</td>
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </Table>
+    {%- if donation_count > donations|length %}
+    <div class="text-end mt-2">
+      <Button variant="sky" flat href={{ url_for('administrator.donations', school_id=school.id) }}>
+        {{- t('admin.school_detail.view_all', count=donation_count) -}}
+      </Button>
+    </div>
+    {%- endif %}
+    {%- endif %}
+  </Main>
+</Page>

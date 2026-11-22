@@ -1,0 +1,181 @@
+/* =========================================
+   The sign-up journey's hand-over (<JourneyLoader>) and its illustrations (<JourneyScene>).
+   A scene rests on its finished pose; inside a loader, `.is-working` holds it on the working
+   pose with its loops running, and `.is-done` plays the payoff back to the finished pose.
+   Timing lives in the loader's script: >= 1.8s working, then 1.2s done.
+   ========================================= */
+
+/* ---- The overlay ---- */
+/* .journey-loader: Full-screen hand-over between two sign-up steps, hidden until JourneyLoader.run() */
+.journey-loader {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+  background: radial-gradient(circle at 50% 36%, var(--color-sky-100), transparent 60%), var(--color-surface-page);
+  animation: journey-fade-in 200ms ease-out;
+  transition: opacity 250ms ease-in;
+}
+.journey-loader.is-leaving { opacity: 0; }
+@keyframes journey-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* .journey-panel: The loader's centred column — stage, status line, track */
+.journey-panel {
+  display: flex; flex-direction: column; align-items: center; gap: 1.25rem;
+  width: 100%; max-width: 22rem; text-align: center;
+}
+
+/* .journey-stage: The white disc the scene stands on — a static object, so its shadow is a step paler */
+.journey-stage {
+  display: flex; align-items: center; justify-content: center;
+  width: 12.5rem; height: 12.5rem; border-radius: 50%;
+  background: white;
+  border: var(--clay-border-width) solid var(--color-card-sky-border);
+  box-shadow: var(--clay-static-offset) var(--clay-static-offset) 0 var(--color-card-sky-shadow);
+}
+
+/* .journey-art: The scene at its loader size; sparkles may sit on the disc's edge */
+.journey-art { width: 11rem; height: 11rem; overflow: visible; }
+
+/* .journey-status: The live region — the working line, then the done line and what comes next */
+.journey-status { display: flex; flex-direction: column; gap: 0.25rem; min-height: 3.5rem; }
+
+/* .journey-title: The status line itself, in the display face */
+.journey-title { font-size: 1.5rem; font-weight: 800; line-height: 1.2; color: var(--color-ink-heading); }
+.journey-loader.is-done .journey-title { animation: journey-title-in 300ms cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes journey-title-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* .journey-sub: "Next: About you" / "All steps done", filled in when the step is done */
+.journey-sub { min-height: 1.25rem; font-size: 0.875rem; font-weight: 700; color: var(--color-accent); }
+
+/* ---- The track: one stop per sign-up step ---- */
+/* .journey-track: The row of stops under the status line */
+.journey-track { display: flex; justify-content: center; align-items: flex-start; }
+
+/* .journey-stop: One step — its dot, its name, and (from the second on) the link back to the step before */
+.journey-stop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 5.5rem; }
+
+/* .journey-link: The pale bar from the step before to this one */
+.journey-link {
+  position: absolute; top: 12px; inset-inline-end: calc(50% + 20px);
+  width: calc(100% - 40px); height: 4px; border-radius: 999px;
+  background: var(--color-sky-100); overflow: hidden;
+}
+
+/* .journey-link-fill: The green that runs along a link once the journey reaches its stop */
+.journey-link-fill {
+  position: absolute; inset-block: 0; inset-inline-start: 0; inline-size: 0;
+  border-radius: inherit; background: var(--color-green-500);
+  transition: inline-size 450ms ease-out 150ms;
+}
+
+/* .journey-dot: A stop's circle — its number, or a tick once done */
+.journey-dot {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  font-size: 0.75rem; font-weight: 800;
+  background: white; color: var(--color-ink-faint);
+  border: 2px solid var(--color-sky-200);
+  transition: background-color 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out;
+}
+
+/* .journey-tick: The check a done stop shows instead of its number */
+.journey-tick { display: none; }
+
+/* .journey-num: The number an unfinished stop shows */
+.journey-num { line-height: 1; }
+
+/* .journey-name: The step's name under its dot */
+.journey-name { font-size: 0.75rem; font-weight: 600; line-height: 1.2; color: var(--color-ink-faint); }
+
+/* .journey-done: A finished stop — green dot with a tick, filled link */
+.journey-done .journey-dot { background: var(--color-green-500); border-color: var(--color-accent-dark); color: white; }
+.journey-done .journey-num { display: none; }
+.journey-done .journey-tick { display: block; }
+.journey-done .journey-name { color: var(--color-ink-body); }
+.journey-done .journey-link-fill { inline-size: 100%; }
+
+/* .journey-current: The stop being worked on — sky ring, bold name */
+.journey-current .journey-dot { border-color: var(--color-primary); color: var(--color-primary); box-shadow: 0 0 0 4px var(--color-sky-100); }
+.journey-current .journey-name { font-weight: 800; color: var(--color-ink-heading); }
+.journey-current .journey-link-fill { inline-size: 100%; }
+.journey-loader.is-working .journey-current .journey-dot { animation: journey-pulse 1.2s ease-in-out infinite; }
+.journey-loader.is-done .journey-current .journey-dot { transition-delay: 550ms; }
+@keyframes journey-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px var(--color-sky-100); }
+  50% { box-shadow: 0 0 0 8px var(--color-sky-100); }
+}
+
+/* .journey-just: The stop the hand-over has just finished — its tick pops */
+.journey-just .journey-dot { animation: journey-tick-pop 420ms cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes journey-tick-pop { 0% { transform: scale(.6); } 100% { transform: none; } }
+
+/* .journey-upcoming: A stop still ahead — pale dot, faint name (the base look) */
+.journey-upcoming .journey-dot { border-style: dashed; }
+
+/* ---- Scenes: the finished pose ---- */
+/* .journey-scene: One sign-up illustration (<JourneyScene>); every moving part turns about its own box */
+.journey-scene { display: block; }
+.journey-scene :where([class^="jsc-"]) { transform-box: fill-box; transform-origin: center; }
+
+/* .jsc-magnifier: The quiz scene's magnifier — only there while answers are being looked at */
+.jsc-magnifier { opacity: 0; transform-box: view-box; transform-origin: 0 0; }
+
+/* .jsc-ripple: The ring the pin sends out as it lands — only seen as it lands */
+.jsc-ripple { opacity: 0; }
+
+/* .jsc-pin: The dropped map pin, squashing from its point at the route's end */
+.jsc-pin { transform-origin: 50% 100%; }
+
+/* ---- Inside a loader: working ---- */
+/* .jsc-twinkle: A sparkle that twinkles while a loader plays */
+.journey-loader .jsc-twinkle { animation: jsc-twinkle 1.6s ease-in-out infinite; }
+.journey-loader .jsc-twinkle:nth-child(even) { animation-delay: -800ms; }
+/* .jsc-route: One dot of the dotted route to the pin; `--i` (set inline per dot, 0 by default) is its place along the route */
+.jsc-route { --i: 0; }
+/* .jsc-pop: A sparkle that pops in with the payoff */
+.journey-loader.is-working .jsc-pop,
+.journey-loader.is-working .jsc-route,
+.journey-loader.is-working .jsc-pin { opacity: 0; }
+.journey-loader.is-working .jsc-magnifier {
+  opacity: 1; transform: translate(84px, 112px);
+  animation: jsc-search 2.4s ease-in-out infinite;
+}
+
+/* ---- Inside a loader: done (the payoff, ~1.1s) ---- */
+.journey-loader.is-done .jsc-pop { animation: jsc-pop-in 380ms cubic-bezier(.3, 1.6, .5, 1) 700ms both; }
+.journey-loader.is-done .jsc-pop:nth-child(even) { animation-delay: 850ms; }
+.journey-loader.is-done .jsc-route { animation: jsc-pop-in 300ms cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: calc(var(--i) * 50ms + 150ms); }
+.journey-loader.is-done .jsc-pin { animation: jsc-pin-drop 460ms cubic-bezier(.3, 1.3, .5, 1) 560ms both; }
+.journey-loader.is-done .jsc-ripple { animation: jsc-burst 480ms ease-out 880ms both; }
+
+@keyframes jsc-twinkle {
+  0%, 100% { transform: scale(1) rotate(0); }
+  50% { transform: scale(.7) rotate(20deg); }
+}
+@keyframes jsc-pop-in {
+  0% { opacity: 0; transform: scale(0); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes jsc-search {
+  0%, 100% { transform: translate(84px, 112px); }
+  25% { transform: translate(116px, 88px); }
+  50% { transform: translate(140px, 130px); }
+  75% { transform: translate(98px, 140px); }
+}
+@keyframes jsc-burst {
+  0% { opacity: 0; transform: scale(.4); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+@keyframes jsc-pin-drop {
+  0% { opacity: 0; transform: translateY(-56px); }
+  20% { opacity: 1; }
+  70% { transform: translateY(0) scale(1.06, .88); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* Reduced motion: the same sequence and timing, without the movement — parts swap pose and fade. */
+@media (prefers-reduced-motion: reduce) {
+  .journey-loader, .journey-loader * { animation: none !important; }
+  .journey-loader [class^="jsc-"] { transition: opacity 300ms ease-out; }
+  .journey-loader .journey-link-fill { transition: none; }
+}

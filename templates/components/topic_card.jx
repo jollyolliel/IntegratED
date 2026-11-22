@@ -1,0 +1,55 @@
+{#- One topic in a subject's topic list. `state`: `empty` (not started), `in_progress` (some
+    lessons finished, amber), `completed` (every lesson finished — green, still a link so it can be redone)
+    or `recommended` (the placement test's starting topic, green, click tracked). Styled by
+    static/css/pages/learning-nav.css, so the page must include that partial; `topic.icon` is a
+    Font Awesome name the page loads. -#}
+{#def topic, href, state=None #}
+{%- set state = prop("TopicCard", "state", state) -%}
+{%- set is_completed = state == "completed" -%}
+<a
+  class="topic-card {{ look("TopicCard", "state", state, "card") }}"
+  href="{{ href }}"
+  {% if state == "recommended" %} onclick="window.analytics?.trackEvent?.('map_recommendation_clicked', {topic_id: {{ topic.id }}, topic_level: {{ topic.level }}, course_id: {{ topic.subject_id }}, source: 'topics_list'});" {% endif %}
+>
+  <!-- Icon -->
+  <div class="topic-icon {{ look("TopicCard", "state", state, "icon") }}">
+    {% if is_completed %}
+      <i class="fas fa-lock-open"></i>
+    {% else %}
+      <i class="fas fa-{{ topic.icon or 'book' }}"></i>
+    {% endif %}
+  </div>
+
+  <!-- Text -->
+  <div class="flex-1 min-w-0">
+    <div class="flex items-center gap-2 flex-wrap mb-1">
+      <h3 class="display-font text-lg font-bold {{ 'text-accent-dark' if is_completed else 'text-sky-950' }}">
+        {{ topic.title }}
+      </h3>
+      {% if is_completed %}
+      <span class="finished-pill">
+        <i class="fas fa-check"></i>
+        {{ t('learner.topics.finished') }}
+      </span>
+      {% elif state == "in_progress" %}
+      <span class="in-progress-pill">
+        <i class="fas fa-circle-half-stroke"></i>
+        {{ t('learner.topics.in_progress') }}
+      </span>
+      {% elif state == "recommended" %}
+      <span class="start-here-pill">
+        <i class="fas fa-star"></i>
+        {{ t('learner.topics.start_here') }}
+      </span>
+      {% endif %}
+    </div>
+    <p class="text-sm {{ 'text-accent' if is_completed else 'text-sky-400' }} leading-relaxed">{{ topic.description }}</p>
+  </div>
+
+  <!-- Right indicator -->
+  <div class="arrow-circle flex-shrink-0">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+    </svg>
+  </div>
+</a>

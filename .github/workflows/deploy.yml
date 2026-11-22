@@ -1,0 +1,148 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [master]
+
+# Environment-specific ids are repository variables (Settings > Secrets and variables >
+# Actions > Variables), not literals in this file: GCP_PROJECT_ID, GCP_REGION,
+# CLOUD_RUN_SERVICE, ARTIFACT_REPO, WIF_PROVIDER, DEPLOY_SERVICE_ACCOUNT.
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION }}
+  SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+  IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.ARTIFACT_REPO }}/${{ vars.CLOUD_RUN_SERVICE }}
+
+jobs:
+  # Decide whether this push should skip the Cloud Run deploy. Mirrors the
+  # release pipeline: a label for PRs, a token for one-off pushes.
+  #
+  #   - PR merge: skip if the PR was opened by dependabot[bot], OR the PR
+  #     carries a 'deploy:skip' label. We resolve the PR from the pushed SHA
+  #     via the API, so it works for merge / squash / rebase merges alike.
+  #   - Direct push (no PR): skip if #donttriggerdeploy is in any pushed
+  #     commit's message (subject OR body).
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      skip: ${{ steps.skipcheck.outputs.skip }}
+    steps:
+      - name: Decide whether to skip deploy
+        id: skipcheck
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          # Passed via env (not inline ${{ }}) so commit text can't break the
+          # shell or inject commands.
+          PUSHED_COMMIT_MESSAGES: ${{ toJSON(github.event.commits.*.message) }}
+        run: |
+          set -euo pipefail
+          TAG='#donttriggerdeploy'
+          SKIP_LABEL='deploy:skip'
+          skip=false
+          reason=""
+
+          # PRs whose head/merge is this pushed commit (any merge method).
+          pr_numbers=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+            -H "Accept: application/vnd.github+json" --jq '.[].number' || true)
+
+          if [ -n "${pr_numbers:-}" ]; then
+            for pr in $pr_numbers; do
+              pr_json=$(gh api "repos/$REPO/pulls/$pr")
+              author=$(printf '%s' "$pr_json" | jq -r '.user.login')
+
+              # (a) Dependabot opened it -> dependency bumps never auto-deploy.
+              if [ "$author" = "dependabot[bot]" ]; then
+                skip=true; reason="PR #$pr opened by $author"; break
+              fi
+              # (b) A 'deploy:skip' label on the PR -- attach it in the UI, the
+              #     clean equivalent of #donttriggerdeploy for a PR. A stray
+              #     token in one of the PR's commits can't hijack this.
+              if printf '%s' "$pr_json" | jq -r '.labels[]?.name' \
+                | grep -qxF -- "$SKIP_LABEL"; then
+                skip=true; reason="'$SKIP_LABEL' label on PR #$pr"; break
+              fi
+            done
+          else
+            # Direct push (no associated PR): check the pushed commit messages.
+            if printf '%s' "$PUSHED_COMMIT_MESSAGES" | grep -qF -- "$TAG"; then
+              skip=true; reason="'$TAG' in a directly-pushed commit"
+            fi
+          fi
+
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+          if [ "$skip" = "true" ]; then
+            echo "Skipping Cloud Run deploy: $reason"
+          else
+            echo "Deploy will proceed (no skip condition matched)."
+          fi
+
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    if: needs.check.outputs.skip != 'true'
+    permissions:
+      contents: read
+      id-token: write
+    # Registers this job as a GitHub Deployment, so every Cloud Run rollout shows
+    # up under the repo's Deployments tab / environment activity log with its
+    # commit, its run, and a link to the live service. The Actions runner opens
+    # the deployment when the job starts and closes it as success or failure when
+    # the job ends -- no API call and no token permission of our own is involved.
+    # `url` is resolved after the job finishes, which is why it can reference a
+    # step output. A skipped deploy (see `check`) never creates a record, so the
+    # activity log stays a list of real rollouts.
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker $REGION-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        run: |
+          docker build -f DOCKERFILE --build-arg GIT_SHA=${{ github.sha }} -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+
+      # Migrate before the new revision serves (ADR 0015). A failed
+      # `flask release` fails the execution, which fails this step, so the
+      # old revision keeps serving on the schema it knows.
+      - name: Migrate (integrated-release job)
+        run: |
+          gcloud run jobs update integrated-release --image $IMAGE:${{ github.sha }} --region $REGION --quiet
+          gcloud run jobs execute integrated-release --region $REGION --wait
+
+      # `--format` makes gcloud print the service URL instead of its usual
+      # human-readable summary; it is handed to the job's `environment.url`
+      # above so the Deployments entry links straight at the live service.
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          set -euo pipefail
+          url=$(gcloud run deploy $SERVICE \
+            --image $IMAGE:${{ github.sha }} \
+            --region $REGION \
+            --platform managed \
+            --quiet \
+            --format='value(status.url)')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed $SERVICE to $url"
+
+      # The daily backup runs the deployed code, not the image it was created with.
+      - name: Point the backup job at the new image
+        run: gcloud run jobs update integrated-backup --image $IMAGE:${{ github.sha }} --region $REGION --quiet

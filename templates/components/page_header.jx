@@ -1,0 +1,18 @@
+{#- The page's own header: section badge, h1, optional subtitle. The `lead` slot sits before the
+    text (a profile avatar); the default slot holds actions at the inline end. `boxed` puts it in
+    the gradient header box of the school / org dashboards. -#}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#def title, badge=None, badge_tone=None, subtitle=None, boxed=False #}
+{%- set badge_tone = prop("PageHeader", "badge_tone", badge_tone) -%}
+{%- set layout = "flex flex-col md:flex-row justify-between items-start md:items-center gap-4" -%}
+<div {{ attrs.render(class=("page-header-box " if boxed else "mb-8 ") ~ layout) }}>
+  <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+    {%- slot lead %}{% endslot %}
+    <div>
+      {%- if badge %}<SectionBadge tone={{ badge_tone }}>{{ badge }}</SectionBadge>{% endif %}
+      <h1 class="text-2xl md:text-3xl font-extrabold text-sky-950 mt-1">{{ title }}</h1>
+      {%- if subtitle %}<p class="text-sm md:text-base mt-1 text-ink-heading/60">{{ subtitle }}</p>{% endif %}
+    </div>
+  </div>
+  {{- content -}}
+</div>

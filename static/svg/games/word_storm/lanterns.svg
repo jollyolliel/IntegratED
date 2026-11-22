@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 150" aria-hidden="true">
+  <!-- Lantern Sky: the four answer lanterns, A–D. Each is a different silhouette (shape is the
+       second cue beside the letter and colour). Colours come from the <use> element through
+       the lan-body, lan-shade, lan-line and lan-hi custom properties (set per tone in game-word-storm.css),
+       so the same art serves every tone. Flat tonal facets only: no gradients, filters or
+       clip paths, which external <use> renders unreliably. -->
+
+  <!-- A · round paper globe -->
+  <symbol id="lantern-a" viewBox="0 0 120 150">
+    <path d="M60 128 V146" style="stroke:var(--lan-line);stroke-width:3;stroke-linecap:round"/>
+    <rect x="42" y="7" width="36" height="13" rx="5" style="fill:var(--lan-line)"/>
+    <ellipse cx="60" cy="72" rx="52" ry="54" style="fill:var(--lan-body)"/>
+    <path d="M60 18 A52 54 0 0 1 60 126 A30 54 0 0 0 60 18 Z" style="fill:var(--lan-shade)"/>
+    <ellipse cx="54" cy="72" rx="30" ry="40" style="fill:var(--lan-hi);opacity:.5"/>
+    <g style="fill:none;stroke:var(--lan-line);stroke-width:2.5;opacity:.4">
+      <ellipse cx="60" cy="72" rx="27" ry="54"/>
+      <path d="M60 18 V126"/>
+    </g>
+    <ellipse cx="60" cy="72" rx="52" ry="54" style="fill:none;stroke:var(--lan-line);stroke-width:3.5"/>
+    <path d="M24 46 Q30 30 46 23" style="fill:none;stroke:#fff;stroke-width:4.5;stroke-linecap:round;opacity:.7"/>
+    <rect x="44" y="121" width="32" height="11" rx="4.5" style="fill:var(--lan-line)"/>
+  </symbol>
+
+  <!-- B · tall ribbed paper lantern -->
+  <symbol id="lantern-b" viewBox="0 0 120 150">
+    <path d="M60 130 V146" style="stroke:var(--lan-line);stroke-width:3;stroke-linecap:round"/>
+    <path d="M32 18 C9 40 9 108 32 128 H88 C111 108 111 40 88 18 Z" style="fill:var(--lan-body)"/>
+    <path d="M88 18 C111 40 111 108 88 128 C99 104 99 44 88 18 Z" style="fill:var(--lan-shade)"/>
+    <path d="M40 22 C24 44 24 104 40 124 H74 C88 104 88 44 74 22 Z" style="fill:var(--lan-hi);opacity:.45"/>
+    <g style="fill:none;stroke:var(--lan-line);stroke-width:2.4;stroke-linecap:round;opacity:.42">
+      <path d="M21 34 Q60 39 99 34"/>
+      <path d="M17 50 Q60 55 103 50"/>
+      <path d="M15.5 66 Q60 71 104.5 66"/>
+      <path d="M15.5 82 Q60 87 104.5 82"/>
+      <path d="M17 98 Q60 103 103 98"/>
+      <path d="M21 114 Q60 119 99 114"/>
+    </g>
+    <path d="M32 18 C9 40 9 108 32 128 H88 C111 108 111 40 88 18 Z" style="fill:none;stroke:var(--lan-line);stroke-width:3.5;stroke-linejoin:round"/>
+    <path d="M25 42 C20 62 20 86 25 104" style="fill:none;stroke:#fff;stroke-width:4.5;stroke-linecap:round;opacity:.6"/>
+    <rect x="28" y="9" width="64" height="12" rx="5" style="fill:var(--lan-line)"/>
+    <rect x="28" y="124" width="64" height="11" rx="5" style="fill:var(--lan-line)"/>
+  </symbol>
+
+  <!-- C · faceted lantern with a little dome -->
+  <symbol id="lantern-c" viewBox="0 0 120 150">
+    <path d="M60 138 V147" style="stroke:var(--lan-line);stroke-width:3;stroke-linecap:round"/>
+    <circle cx="60" cy="5" r="3.5" style="fill:var(--lan-line)"/>
+    <path d="M44 22 Q46 8 60 6 Q74 8 76 22 Z" style="fill:var(--lan-line)"/>
+    <path d="M60 18 L103 40 V106 L60 132 L17 106 V40 Z" style="fill:var(--lan-body)"/>
+    <path d="M80 30 L103 40 V106 L80 119 Z" style="fill:var(--lan-shade)"/>
+    <path d="M60 18 L80 30 V119 L60 132 L40 119 V30 Z" style="fill:var(--lan-hi);opacity:.5"/>
+    <g style="fill:none;stroke:var(--lan-line);stroke-width:2.4;opacity:.42">
+      <path d="M40 30 V119 M80 30 V119"/>
+      <path d="M17 40 L60 58 L103 40 M17 106 L60 90 L103 106"/>
+    </g>
+    <g style="fill:var(--lan-line);opacity:.5">
+      <path d="M28.5 66 l3 5 -3 5 -3 -5 Z"/>
+      <path d="M28.5 82 l3 5 -3 5 -3 -5 Z"/>
+      <path d="M91.5 66 l3 5 -3 5 -3 -5 Z"/>
+      <path d="M91.5 82 l3 5 -3 5 -3 -5 Z"/>
+    </g>
+    <path d="M60 18 L103 40 V106 L60 132 L17 106 V40 Z" style="fill:none;stroke:var(--lan-line);stroke-width:3.5;stroke-linejoin:round"/>
+    <path d="M24 50 V94" style="fill:none;stroke:#fff;stroke-width:4.5;stroke-linecap:round;opacity:.6"/>
+    <path d="M50 128 L60 140 L70 128 Z" style="fill:var(--lan-line)"/>
+  </symbol>
+
+  <!-- D · sky lantern, open at the bottom with its little flame -->
+  <symbol id="lantern-d" viewBox="0 0 120 150">
+    <path d="M60 128 C53 135 54 143 60 147 C66 143 67 135 60 128 Z" style="fill:#FDE68A"/>
+    <path d="M60 134 C57 138 57 142 60 144 C63 142 63 138 60 134 Z" style="fill:#F59E0B"/>
+    <path d="M15 22 Q60 5 105 22 L89 120 Q60 129 31 120 Z" style="fill:var(--lan-body)"/>
+    <path d="M82 13 Q96 16 105 22 L89 120 Q81 123 73 124 Z" style="fill:var(--lan-shade)"/>
+    <path d="M38 13 Q60 9 82 13 L73 124 Q60 126 47 124 Z" style="fill:var(--lan-hi);opacity:.45"/>
+    <g style="fill:none;stroke:var(--lan-line);stroke-width:2.4;stroke-linecap:round;opacity:.42">
+      <path d="M38 13 L47 124"/>
+      <path d="M82 13 L73 124"/>
+      <path d="M19 46 Q60 54 101 46"/>
+    </g>
+    <path d="M15 22 Q60 5 105 22 L89 120 Q60 129 31 120 Z" style="fill:none;stroke:var(--lan-line);stroke-width:3.5;stroke-linejoin:round"/>
+    <path d="M24 34 Q24 70 34 104" style="fill:none;stroke:#fff;stroke-width:4.5;stroke-linecap:round;opacity:.6"/>
+    <ellipse cx="60" cy="122" rx="30" ry="6.5" style="fill:var(--lan-line)"/>
+  </symbol>
+</svg>

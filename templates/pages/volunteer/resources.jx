@@ -1,0 +1,32 @@
+{#- The volunteer's worksheet library: the shared library grid, read-only (preview, no assign). -#}
+{#import "@components/shell/worksheet_library.jx" as WorksheetLibrary #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@page_components/volunteer/worksheet_cards.jx" as WorksheetCards #}
+{#def worksheets, subjects, selected_subject, q, endpoint, has_more, total_worksheets, levels=(), selected_level=None #}
+<WorksheetLibrary title={{ t('volunteer.resources.title') }} endpoint={{ endpoint }} subjects={{ subjects }}
+  worksheets={{ worksheets }} has_more={{ has_more }} selected_subject={{ selected_subject }} q={{ q }}
+  levels={{ levels }} selected_level={{ selected_level }}
+  search_placeholder={{ t('volunteer.resources.search_placeholder') }} all_label={{ t('volunteer.resources.all_subjects') }}
+  no_results_text={{ t('volunteer.resources.no_search_results') }} no_results_sub_text={{ t('volunteer.resources.no_search_results_sub') }}>
+  {% fill preamble %}<BackLink href={{ url_for('volunteer.volunteer_dashboard') }} label="Dashboard" />{% endfill %}
+
+  {% fill header %}
+  <div class="mb-8">
+    <SectionBadge tag="div">{{ t('volunteer.resources.eyebrow') }}</SectionBadge>
+    <h1 class="display-font text-3xl md:text-4xl font-extrabold text-sky-950 leading-tight">{{ t('volunteer.resources.heading') }}</h1>
+    <p class="text-ink-faint text-sm mt-1">{{ t('volunteer.resources.subheading') }}</p>
+  </div>
+  {% endfill %}
+
+  {% fill cards %}<WorksheetCards worksheets={{ worksheets }} />{% endfill %}
+
+  {% fill empty %}
+  <Card class="text-center py-12">
+    <IconBox icon="book-open" size="xl" class="mx-auto mb-4" />
+    <p class="text-ink-faint text-sm">{{ t('volunteer.resources.no_worksheets') }}</p>
+  </Card>
+  {% endfill %}
+</WorksheetLibrary>

@@ -1,0 +1,44 @@
+{#- Prev, a 9-slot window of numbered pages / ellipses, next. Past 9 pages the window is always
+    exactly 9 slots, so the control never changes width and Next never slides under the cursor,
+    and an ellipsis never hides exactly one page. Prev/Next always render (aria-disabled at the
+    ends) for the same reason. Renders nothing for a single page. `args` are the query params that must survive a page hop; `key`
+    names a pager when a page has several (`key="learner"` writes `?learner_page=`), and each
+    pager's current page belongs in the others' `args`. Plain links: inside a `data-swap-region`
+    the header's delegated handler fetches the page as a fragment and swaps that region. -#}
+{#def endpoint, page, total_pages, args={}, label=None, prev_label=None, next_label=None, key="page" #}
+{%- if total_pages > 1 -%}
+{%- set field = key if key == "page" else key ~ "_page" -%}
+{%- set n = total_pages -%}
+{%- set p = page -%}
+{%- if n <= 9 -%}
+{%- set slots = range(1, n + 1) | list -%}
+{%- elif p <= 5 -%}
+{%- set slots = [1, 2, 3, 4, 5, 6, 7, "ellipsis", n] -%}
+{%- elif p >= n - 4 -%}
+{%- set slots = [1, "ellipsis"] + (range(n - 6, n + 1) | list) -%}
+{%- else -%}
+{%- set slots = [1, "ellipsis", p - 2, p - 1, p, p + 1, p + 2, "ellipsis", n] -%}
+{%- endif -%}
+{%- set prev_label = prev_label or t("pagination.prev") -%}
+{%- set next_label = next_label or t("pagination.next") -%}
+<nav {{ attrs.render(class="clay-pagination", aria_label=(label or t("pagination.label"))) }}>
+  {%- if page > 1 %}
+  <a href="{{ url_for(endpoint, **dict(args, **{field: page - 1})) }}" class="pagination-link" rel="prev">{{ prev_label }}</a>
+  {%- else %}
+  <span class="pagination-link" aria-disabled="true" tabindex="-1">{{ prev_label }}</span>
+  {%- endif %}
+  {%- for slot in slots %}
+  {%- if slot == "ellipsis" %}
+  <span class="pagination-ellipsis" aria-hidden="true">&hellip;</span>
+  {%- else %}
+  <a href="{{ url_for(endpoint, **dict(args, **{field: slot})) }}" class="pagination-link{% if slot == page %} active{% endif %}"
+     {%- if slot == page %} aria-current="page"{% endif %}>{{ slot }}</a>
+  {%- endif %}
+  {%- endfor %}
+  {%- if page < total_pages %}
+  <a href="{{ url_for(endpoint, **dict(args, **{field: page + 1})) }}" class="pagination-link" rel="next">{{ next_label }}</a>
+  {%- else %}
+  <span class="pagination-link" aria-disabled="true" tabindex="-1">{{ next_label }}</span>
+  {%- endif %}
+</nav>
+{%- endif %}

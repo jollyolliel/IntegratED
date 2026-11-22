@@ -1,0 +1,18 @@
+id: no-restyle-button
+valid:
+  - '<button class="btn-clay btn-accent w-full"></button>'
+  - '<a class="btn-clay btn-sky btn-large mt-4"></a>'
+  - '<button class="btn-clay btn-rose {% if big %}btn-large{% endif %}"></button>'
+  - '<div class="flex gap-2 p-4"><button class="btn-clay btn-gray"></button></div>'
+  - '<button class="btn-clay btn-flat btn-sky ms-2"></button>'
+  - '<button class="btn-clay-like p-4"></button>'
+invalid:
+  - '<a class="btn-clay btn-sky px-8 py-4"></a>'
+  - '<button class="btn-clay btn-sky text-sm"></button>'
+  - '<button class="btn-clay btn-accent bg-rose-600 border-rose-700"></button>'
+  - '<button class="btn-clay btn-accent hover:shadow-[5px_5px_0_#be123c]"></button>'
+  - '<button class="btn-clay btn-sky rounded-2xl"></button>'
+  - '<button class="btn-clay btn-sky text-rose-600"></button>'
+  - '<button class="btn-clay btn-accent [--btn-bg:white]"></button>'
+  - '<button class="btn-clay btn-flat btn-gray hover:bg-gray-100"></button>'
+  - '<button class="btn-clay btn-flat btn-danger px-4 text-sm"></button>'

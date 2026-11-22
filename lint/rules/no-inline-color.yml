@@ -1,0 +1,15 @@
+id: no-inline-color
+language: html
+severity: error
+message: |
+  Colour in style="…" — inline style is only for values Jinja injects at render time.
+note: |
+  Use a component class or its colour variant (docs/ui-design/styling-system.md). A static card with a
+  hand-set border + shadow is the classic way to make a dead card look tappable.
+ignores:
+  # Deliberately outside the design system (docs/ui-design/styling-system.md -> Traps):
+  # the dependency-free boot page.
+  - templates/starting_up.html
+rule:
+  matches: style-value
+  regex: '(?i)(?:^|;)\s*(?:color|background(?:-color)?|border(?:-[a-z]+)*|box-shadow|outline(?:-color)?|fill|stroke|text-shadow)\s*:[^;]*(?:#[0-9a-f]{3,8}\b|rgba?\(|hsla?\()'

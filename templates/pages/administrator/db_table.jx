@@ -1,0 +1,206 @@
+{#- The raw DB editor for one table: its header and table switcher, the add-row panel, the
+    results region the pager swaps, and the in-place editing script, which reads
+    the table name and columns once per page load. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@page_components/administrator/db_table_results.jx" as DbTableResults #}
+{#def table_name, col_names, rows, pk_cols, page, total_pages, total, all_tables, fk_map={}, focus=None #}
+{%- set head %}
+  <style>
+    .warn-banner { background: var(--color-amber-50); border: 2px solid var(--color-amber-200); border-radius: 12px; padding: 12px 16px; color: var(--color-amber-800); font-size: 0.85rem; }
+  </style>
+{%- endset %}
+<Page title={{ table_name ~ " — DB Editor" }} styles="admin" head={{ head }}>
+  <main class="flex-1 px-4 py-8 max-w-full overflow-x-auto clay-scroll">
+    <div class="container mx-auto max-w-7xl mb-6 flex items-end gap-4 flex-wrap justify-between">
+      <div>
+        <BackLink href={{ url_for('administrator.db_stats') }} label="Database" />
+        <h1 class="display-font text-2xl font-extrabold text-sky-950 mt-1 font-mono">{{ table_name }}</h1>
+      </div>
+      <div class="flex gap-3 flex-wrap items-center">
+        <select onchange="location.href='{{ url_for('administrator.db_table', table_name='__TABLE__') }}'.replace('__TABLE__', this.value)">
+          <button><selectedcontent></selectedcontent></button>
+          {%- for name in all_tables %}
+          <option value="{{ name }}" {% if name == table_name %}selected{% endif %}>{{ name }}</option>
+          {%- endfor %}
+        </select>
+        <Button href={{ url_for('administrator.db_export_table', table_name=table_name) }} icon="arrow-down-tray">Export Table</Button>
+        {%- if pk_cols %}
+        <Button variant="sky" onclick="document.getElementById('addRowPanel').classList.toggle('hidden')">+ Add Row</Button>
+        {%- endif %}
+      </div>
+    </div>
+
+    {%- if not pk_cols %}
+    <div class="container mx-auto max-w-7xl mb-4 warn-banner">
+      No primary key detected — edit and delete are disabled.
+    </div>
+    {%- endif %}
+
+    <div id="toast" class="fixed top-5 end-5 z-50 hidden px-5 py-3 rounded-xl text-sm font-bold shadow-xl border-2 transition-[color,background-color,border-color,box-shadow]"></div>
+
+    {%- if pk_cols %}
+    <div id="addRowPanel" class="hidden container mx-auto max-w-7xl mb-6 add-row-panel">
+      <h3 class="font-bold text-sky-900 mb-4 text-sm">Add New Row</h3>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4" id="addRowFields">
+        {%- for col in col_names if col not in pk_cols %}
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-sky-500 font-mono font-semibold">{{ col }}</span>
+          <input type="text" data-col="{{ col }}" placeholder="{{ t('administrator.null_placeholder') }}" class="add-row-input cell-edit-input" />
+        </label>
+        {%- endfor %}
+      </div>
+      <div class="flex gap-3">
+        <Button onclick="addRow()">Save Row</Button>
+        <Button variant="gray" onclick="document.getElementById('addRowPanel').classList.add('hidden')">Cancel</Button>
+      </div>
+    </div>
+    {%- endif %}
+
+    <DbTableResults table_name={{ table_name }} col_names={{ col_names }} rows={{ rows }} pk_cols={{ pk_cols }}
+      page={{ page }} total_pages={{ total_pages }} total={{ total }} fk_map={{ fk_map }} focus={{ focus }} />
+  </main>
+
+  <script>
+    const TABLE = {{ table_name | tojson }};
+    const PK_COLS = {{ pk_cols | tojson }};
+    const COL_NAMES = {{ col_names | tojson }};
+
+    // Arriving from a foreign-key link: bring the highlighted row into view.
+    document.querySelector('tr[data-focused]')?.scrollIntoView({ block: 'center' });
+
+    function getPkValues(row) {
+      const pk = {};
+      PK_COLS.forEach(col => {
+        const td = row.querySelector(`td[data-col="${col}"]`);
+        pk[col] = td ? td.querySelector('span').textContent.trim() : null;
+      });
+      return pk;
+    }
+
+    function startEdit(td) {
+      if (td.querySelector('input')) return; // already editing
+      const display = td.querySelector('.cell-display');
+      const rawVal = display.textContent.trim();
+      const val = rawVal === 'NULL' ? '' : rawVal;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = val;
+      input.className = 'cell-edit-input';
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') saveRow(td.closest('tr'));
+        if (e.key === 'Escape') cancelEdit(td.closest('tr'));
+      });
+      display.classList.add('hidden');
+      td.appendChild(input);
+      input.focus();
+
+      const row = td.closest('tr');
+      row.querySelector('.save-btn').classList.remove('hidden');
+      row.querySelector('.cancel-btn').classList.remove('hidden');
+    }
+
+    function cancelEdit(row) {
+      row.querySelectorAll('td[data-col]').forEach(td => {
+        const input = td.querySelector('input');
+        if (input) {
+          td.querySelector('.cell-display').classList.remove('hidden');
+          input.remove();
+        }
+      });
+      row.querySelector('.save-btn').classList.add('hidden');
+      row.querySelector('.cancel-btn').classList.add('hidden');
+    }
+
+    async function saveRow(row) {
+      const pk = getPkValues(row);
+      const updates = {};
+      row.querySelectorAll('td[data-col]').forEach(td => {
+        const col = td.dataset.col;
+        if (PK_COLS.includes(col)) return;
+        const input = td.querySelector('input');
+        if (input) updates[col] = input.value;
+      });
+      if (Object.keys(updates).length === 0) { cancelEdit(row); return; }
+
+      const res = await fetch(`/admin/db/table/${TABLE}/update-row`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pk, updates}),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        row.querySelectorAll('td[data-col]').forEach(td => {
+          const input = td.querySelector('input');
+          if (input) {
+            const display = td.querySelector('.cell-display');
+            const newVal = input.value;
+            display.textContent = newVal === '' ? 'NULL' : newVal;
+            display.className = 'cell-display' + (newVal === '' ? ' null-val' : '');
+            display.classList.remove('hidden');
+            input.remove();
+          }
+        });
+        cancelEdit(row);
+        showToast('Saved', 'success');
+      } else {
+        showToast(data.error || 'Save failed', 'error');
+      }
+    }
+
+    async function deleteRow(row) {
+      if (!(await window.confirmDelete({{ t('confirm.delete_row')|tojson }}))) return;
+      const pk = getPkValues(row);
+      const res = await fetch(`/admin/db/table/${TABLE}/delete-row`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pk}),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        row.remove();
+        showToast('Deleted', 'success');
+      } else {
+        showToast(data.error || 'Delete failed', 'error');
+      }
+    }
+
+    async function addRow() {
+      const row = {};
+      document.querySelectorAll('.add-row-input').forEach(input => {
+        row[input.dataset.col] = input.value;
+      });
+      const res = await fetch(`/admin/db/table/${TABLE}/add-row`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({row}),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('Row added — refresh to see it', 'success');
+        document.querySelectorAll('.add-row-input').forEach(i => i.value = '');
+        document.getElementById('addRowPanel').classList.add('hidden');
+      } else {
+        showToast(data.error || 'Add failed', 'error');
+      }
+    }
+
+    function showToast(msg, type) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'fixed top-5 end-5 z-50 px-5 py-3 rounded-xl text-sm font-bold shadow-xl border-2 transition-all';
+      if (type === 'success') {
+        t.style.background = 'var(--color-green-50)';
+        t.style.borderColor = 'var(--color-green-300)';
+        t.style.color = 'var(--color-green-700)';
+      } else {
+        t.style.background = 'var(--color-red-50)';
+        t.style.borderColor = 'var(--color-red-200)';
+        t.style.color = 'var(--color-red-600)';
+      }
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 3000);
+    }
+  </script>
+</Page>

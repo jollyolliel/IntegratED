@@ -1,0 +1,50 @@
+{#- The styled error page the app's error handler renders for a browser (main.py), and the dev
+    `/error` route renders bare: an icon for the code, the code, its title and message, then the
+    way back or home. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/shell/main.jx" as Main #}
+{#def error_code=None, error_message=None #}
+{%- set icons = {404: "face-frown", 403: "lock-closed", 401: "user", 500: "exclamation-triangle"} %}
+{%- set titles = {401: "error.401_title", 403: "error.403_title", 500: "error.500_title", 404: "error.404_title"} %}
+<Page title={{ (error_code or "404") ~ " Error - IntegratED" }} styles="auth">
+  <Main layout="centered" width="md">
+    <div class="text-center">
+
+      <div class="error-card p-10">
+        <div class="float-err flex justify-center mb-6">
+          <div class="w-20 h-20 bg-rose-50 rounded-full border-[2.5px] border-rose-200 shadow-[3px_3px_0_var(--color-rose-200)] flex items-center justify-center">
+            <Icon name={{ icons.get(error_code, "exclamation-circle") }} size="10" class="text-rose-400" />
+          </div>
+        </div>
+
+        <div class="display-font text-7xl font-extrabold mb-2 text-rose-200 [text-shadow:3px_3px_0_var(--color-rose-300)]">
+          {{ error_code if error_code else '404' }}
+        </div>
+
+        <h1 class="display-font text-2xl font-extrabold text-sky-950 mb-3">
+          {{ t(titles.get(error_code, "error.generic_title")) }}
+        </h1>
+
+        <p class="text-ink-muted text-base leading-relaxed mb-8">
+          {{ error_message if error_message else t('error.generic') }}
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <a href="javascript:history.back()" class="error-btn-outline">
+            <Icon name="arrow-left" />
+            {{ t('error.go_back') }}
+          </a>
+          <a href="{{ url_for('base.home') }}" class="error-btn-accent">
+            <Icon name="home" />
+            {{ t('error.go_home') }}
+          </a>
+        </div>
+      </div>
+
+      <p class="mt-6 text-xs text-ink-faint">
+        {{ t('error.persistent_help') }}
+      </p>
+    </div>
+  </Main>
+</Page>

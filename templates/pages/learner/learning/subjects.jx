@@ -1,0 +1,118 @@
+{#- The learner's course picker: one card per course (the four `subject-card-N` colours repeat),
+    each opening that course's topics. The course the placement test recommends
+    (`recommended_subject_id`) is green with a "Start here" pill; every course stays open. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/shell/main.jx" as Main #}
+{#def subjects, recommended_subject_id=None #}
+<Page title={{ t('learner.subjects.page_title') }} styles="learning-nav">
+    <Main>
+      <div class="max-w-4xl mx-auto">
+        <!-- Page header -->
+        <div class="text-center mb-10">
+          <div
+            class="inline-block bg-sky-50 text-primary text-xs font-bold px-4 py-1.5 rounded-full mb-4 border border-primary-soft uppercase tracking-wider"
+          >
+            {{ t('learner.subjects.eyebrow') }}
+          </div>
+          <h1
+            class="display-font text-3xl md:text-4xl font-extrabold text-sky-950 mb-3"
+          >
+            {{ t('learner.subjects.heading') }}
+          </h1>
+          <p class="text-sky-400 text-lg font-medium">
+            {{ t('learner.subjects.subheading') }}
+          </p>
+        </div>
+
+        <!-- Subject grid -->
+        <div class="grid md:grid-cols-2 gap-6">
+          {% for subject in subjects %} {% set card_class = 'subject-card-' ~
+          (loop.index0 % 4) %}
+          {%- set is_recommended = subject.id == recommended_subject_id %}
+          <a
+            href="{{ url_for('learner.learner_subject_topics', subject_id=subject.id) }}"
+            class="subject-card {{ card_class }}{{ ' subject-card-recommended' if is_recommended }}"
+            {% if is_recommended %} onclick="window.analytics?.trackEvent?.('map_recommendation_clicked', {course_id: {{ subject.id }}, source: 'subjects_list'});" {% endif %}
+          >
+            <!-- Icon -->
+            <div class="subject-icon-bg">
+              <svg
+                class="w-7 h-7 subject-icon"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                />
+              </svg>
+            </div>
+
+            {%- if is_recommended %}
+            <span class="start-here-pill mb-2">{{ t('learner.subjects.start_here') }}</span>
+            {%- endif %}
+            <!-- Subject name — large, clear -->
+            <h3
+              class="display-font text-2xl font-extrabold text-sky-950 mb-2"
+            >
+              {{ subject.name }}
+            </h3>
+            <p class="text-sky-400 text-sm leading-relaxed mb-5">
+              {{ subject.description }}
+            </p>
+
+            <!-- Arrow indicator -->
+            <div
+              class="flex items-center gap-2 font-bold text-sm subject-arrow"
+            >
+              {{ t('learner.subjects.start_learning') }}
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+
+        {% if not subjects %}
+        <div
+          class="text-center py-20 border-2 border-dashed border-primary-light rounded-2xl bg-white"
+        >
+          <div
+            class="w-16 h-16 mx-auto rounded-2xl bg-sky-50 border-2 border-primary-light flex items-center justify-center mb-4"
+          >
+            <svg
+              class="w-8 h-8 text-sky-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+              />
+            </svg>
+          </div>
+          <p class="text-sky-300 font-semibold">
+            {{ t('learner.subjects.no_subjects') }}
+          </p>
+        </div>
+        {% endif %}
+      </div>
+    </Main>
+</Page>

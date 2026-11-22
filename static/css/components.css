@@ -1,0 +1,22 @@
+/* =========================================
+   IntegratED Clay Design System
+   Imported by input.css between Tailwind's components and utilities, so it
+   ships inside the single built tailwind.css that theme.html links.
+   Split by domain under components/ — design laws in docs/ui-design/visual-language.md,
+   where a style belongs in docs/ui-design/styling-system.md.
+   ========================================= */
+
+@import url('components/base.css');
+@import url('components/buttons.css');
+@import url('components/cards.css');
+@import url('components/badges.css');
+@import url('components/forms.css');
+@import url('components/tables.css');
+@import url('components/worksheet.css');
+@import url('components/misc.css');
+@import url('components/nav.css');
+@import url('components/toast.css');
+@import url('components/modal.css');
+@import url('components/announcement.css');
+@import url('components/assistant.css');
+@import url('components/journey.css');

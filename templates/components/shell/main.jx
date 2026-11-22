@@ -1,0 +1,14 @@
+{#- A page's <main> (docs/ui-design/building-ui.md). `contained` (the default): the centred container
+    with the standard gutters, `width` capping it. `centered`: one column — a form, a card —
+    centred both ways, `width` wide. Full-bleed pages (the landing page, the games) write their own
+    <main>. `class` and every other attribute go on the <main>. -#}
+{#def layout=None, width=None #}
+{%- set layout = prop("Main", "layout", layout) -%}
+{%- set max = look("Main", "width", width, "max") -%}
+{%- if layout == "centered" -%}
+<main {{ attrs.render(class="flex-1 flex items-center justify-center py-10 px-4") }}>
+  <div class="{{ ['w-full', max] | select | join(' ') }}">{{ content }}</div>
+</main>
+{%- else -%}
+<main {{ attrs.render(class=["flex-1 container mx-auto px-4 py-6 md:py-8", max] | select | join(" ")) }}>{{ content }}</main>
+{%- endif %}

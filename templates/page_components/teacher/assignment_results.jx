@@ -1,0 +1,118 @@
+{#- The assigned-worksheets tracker's results region (`data-swap-region`): the bulk bar, one page
+    of assignments and the pager. `routes/teacher/worksheet_assignments.py` renders it alone for an
+    `X-Fragment` request. One form holds every row's checkbox; its buttons pick their own
+    action (`formaction`), so print and complete work with JavaScript off and the page's script
+    only upgrades complete/reopen to in-place requests. `next_url` brings a plain post back here. -#}
+{#import "@components/base/badge.jx" as Badge #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/pagination.jx" as Pagination #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#def assignments, filters, page_args, page, page_count, page_size, result_count, now, stale_after_days, next_url #}
+{%- set is_filtered = page_args | length > 0 %}
+<div data-swap-region>
+  {%- if assignments %}
+  <form method="post" action="{{ url_for('teacher.teacher_complete_assignments') }}" data-assignment-form>
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <div class="att-toolbar ws-bulk-bar mb-3">
+      <label class="ws-check-label">
+        <input type="checkbox" data-select-all>
+        <span>{{ t('teacher.worksheet_tracker.select_all') }}</span>
+      </label>
+      <span class="att-count" data-selected-count aria-live="polite"><b class="text-sky-700">0</b> {{ t('teacher.worksheet_tracker.selected') }}</span>
+      <div class="att-toolbar-actions items-center">
+        <label class="ws-check-label">
+          <input type="checkbox" name="double_sided" value="on">
+          <span>{{ t('teacher.worksheets.double_sided_label') }}</span>
+        </label>
+        <Button variant="sky" flat type="submit" icon="printer" name="source" value="tracker_selected"
+          formaction={{ url_for('teacher.teacher_print_assignments') }} formmethod="get" formtarget="_blank"
+          data-needs-selection>{{ t('teacher.worksheet_tracker.btn_print_selected') }}</Button>
+        <Button variant="sky" flat type="submit" icon="check" data-needs-selection data-ajax-submit>
+          {{- t('teacher.worksheet_tracker.btn_complete_selected') -}}
+        </Button>
+      </div>
+    </div>
+
+    <Table>
+      <thead>
+        <tr>
+          <th class="w-10"><span class="sr-only">{{ t('teacher.worksheet_tracker.col_select') }}</span></th>
+          <th>{{ t('teacher.worksheet_tracker.col_worksheet') }}</th>
+          <th>{{ t('teacher.worksheet_tracker.col_pair') }}</th>
+          <th>{{ t('teacher.worksheet_tracker.col_assigned') }}</th>
+          <th>{{ t('teacher.worksheet_tracker.col_status') }}</th>
+          <th class="text-end">{{ t('teacher.worksheet_tracker.col_actions') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for assignment in assignments %}
+        {%- set ws = assignment.worksheet %}
+        {%- set learner = assignment.learner %}
+        {%- set volunteer = assignment.pair_volunteer %}
+        {%- set waiting_days = (now - assignment.assigned_at).days %}
+        <tr>
+          <td>
+            <input type="checkbox" name="ids" value="{{ assignment.id }}"
+                   aria-label="{{ t('teacher.worksheet_tracker.select_row', title=ws.title) }}">
+          </td>
+          <td>
+            <a href="{{ url_for('teacher.teacher_worksheet_preview', worksheet_id=ws.id, learner_id=learner.id if learner.is_matched and learner.volunteer_match else none) }}"
+               class="font-bold text-sky-900 hover:text-primary transition-colors">{{ ws.title }}</a>
+            <p class="text-xs text-ink-faint mt-0.5">
+              {{- ws.subject }}{% if ws.level %} &middot; {{ t('components.worksheet_card.level', level=ws.level) }}{% endif -%}
+            </p>
+          </td>
+          <td>
+            <a href="{{ url_for('teacher.teacher_learner_detail', learner_id=learner.id) }}"
+               class="font-semibold text-primary hover:text-primary-dark transition-colors">{{ learner.name or learner.username }}</a>
+            <p class="text-xs text-ink-faint mt-0.5">
+              {%- if volunteer %}{{ volunteer.short_name }}{% else %}{{ t('teacher.worksheet_tracker.no_volunteer') }}{% endif -%}
+            </p>
+          </td>
+          <td class="whitespace-nowrap text-ink-muted">{{ assignment.assigned_at.strftime('%d %b %Y') }}</td>
+          <td class="whitespace-nowrap">
+            {%- if assignment.completed %}
+            <Badge tone="green">{{ t('teacher.worksheet_tracker.completed_on', date=assignment.completed_at.strftime('%d %b') if assignment.completed_at else '') }}</Badge>
+            {%- elif waiting_days >= stale_after_days %}
+            <Badge tone="red">{{ t('teacher.worksheet_tracker.outstanding_days', count=waiting_days) }}</Badge>
+            {%- elif waiting_days == 0 %}
+            <Badge tone="amber">{{ t('teacher.worksheet_tracker.outstanding_today') }}</Badge>
+            {%- else %}
+            <Badge tone="amber">{{ t('teacher.worksheet_tracker.outstanding_days', count=waiting_days) }}</Badge>
+            {%- endif %}
+          </td>
+          <td>
+            <div class="flex items-center justify-end gap-2">
+              <Button variant="sky" flat icon="printer" target="_blank"
+                href={{ url_for('teacher.teacher_print_assignments', ids=assignment.id, source='tracker_row') }}>{{ t('teacher.worksheet_tracker.btn_print') }}</Button>
+              {%- if assignment.completed %}
+              <Button variant="gray" flat type="submit" data-ajax-submit
+                formaction={{ url_for('teacher.teacher_reopen_assignment', assignment_id=assignment.id) }}>{{ t('teacher.worksheet_tracker.btn_reopen') }}</Button>
+              {%- else %}
+              <Button flat type="submit" data-ajax-submit
+                formaction={{ url_for('teacher.teacher_complete_assignment', assignment_id=assignment.id) }}>{{ t('teacher.worksheet_tracker.btn_complete') }}</Button>
+              {%- endif %}
+            </div>
+          </td>
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </Table>
+  </form>
+
+  <Pagination endpoint="teacher.teacher_worksheet_assignments" page={{ page }} total_pages={{ page_count }} args={{ page_args }}
+    label={{ t('teacher.worksheet_tracker.pagination_label') }} class="mt-4" />
+  {%- set first = (page - 1) * page_size + 1 %}
+  <p class="text-xs text-ink-faint text-center mt-3">
+    {{ t('teacher.worksheet_tracker.showing', start=first, end=first + assignments|length - 1, total=result_count) }}
+  </p>
+  {%- elif is_filtered %}
+  <EmptyState message={{ t('teacher.worksheet_tracker.empty_filtered') }} />
+  {%- else %}
+  <EmptyState>
+    <p class="text-ink-faint text-sm">{{ t('teacher.worksheet_tracker.empty') }}</p>
+    <Button variant="sky" flat href={{ url_for('teacher.teacher_worksheets') }} class="mt-3" icon_end="arrow-right">{{ t('teacher.worksheet_tracker.btn_go_library') }}</Button>
+  </EmptyState>
+  {%- endif %}
+</div>

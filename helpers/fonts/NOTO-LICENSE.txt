@@ -1,0 +1,3 @@
+NotoSansArabic-Bold.ttf and NotoSansEthiopic-Bold.ttf are from the Noto project
+(https://github.com/notofonts), Copyright 2022 The Noto Project Authors.
+Licensed under the SIL Open Font License, Version 1.1: https://openfontlicense.org

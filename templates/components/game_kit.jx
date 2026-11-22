@@ -1,0 +1,189 @@
+{#- What every learner game shares, loaded once by <GamePage>: `window.GameKit`.
+
+    GameKit.init({lessonId, game})        tags analytics with the game and lesson
+    GameKit.questions()                   → {questions, progress}, or null when they couldn't load
+    GameKit.check(questionId, answer)     → true | false | null — null means the request failed:
+                                            say "try again", never count it as a wrong answer
+    GameKit.checkPair(left, right)        → the same, for one Match Up pair
+    GameKit.finish(bonus, {after})        → posts the lesson's completion at once; once saved, shows
+                                            the completion overlay with the server's score (no sooner
+                                            than `after` ms, so the game's own finale can play) and
+                                            resolves the response; a failure shows a retry bar instead
+    GameKit.progress({label, fraction, streak, streakText})  updates the HUD (#progressLabel,
+                                            #progressFill, #streakNote)
+    GameKit.shuffle(items)                → an unbiased shuffled copy (Fisher–Yates)
+    GameKit.speak(text) / speakQuestion(q) → the recorded audio if there is one, else browser speech
+    GameKit.track(name, props)            → a PostHog event tagged with the game and lesson -#}
+<div id="gameSaveError" class="game-save-error" role="alert" hidden>
+  <p>{{ t('learner.game.save_failed') }}</p>
+  <button type="button" id="gameSaveRetry" class="game-save-retry">{{ t('learner.game.save_retry') }}</button>
+</div>
+<style>
+  .game-save-error {
+    position: fixed; inset-inline: 1rem; bottom: 1rem; z-index: 60; margin-inline: auto; max-width: 28rem;
+    display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; border-radius: 1rem;
+    background: var(--color-rose-50); color: var(--color-rose-800); border: 2px solid var(--color-rose-200);
+    font-weight: 600; font-size: 0.875rem; box-shadow: 0 10px 30px -12px rgb(var(--color-ink-heading-rgb) / 0.25);
+  }
+  .game-save-error[hidden] { display: none; }
+  .game-save-error p { flex: 1; }
+  .game-save-retry {
+    flex: none; padding: 0.5rem 0.875rem; border-radius: 0.75rem; background: var(--color-rose-600);
+    color: white; font-weight: 700;
+  }
+  .game-save-retry:focus-visible { outline: 3px solid var(--color-rose-300); outline-offset: 2px; }
+</style>
+<script>
+window.GameKit = (function () {
+  let lessonId = null;
+  let game = null;
+
+  function meta(extra) {
+    return Object.assign({ game: game, lesson_id: lessonId }, extra || {});
+  }
+
+  function fetchJson(url, options, extra) {
+    return window.analytics.trackedFetch(url, options || {}, meta(extra));
+  }
+
+  function postJson(url, body) {
+    return fetchJson(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
+    });
+  }
+
+  // The answer a check returns: true / false from the server, null when it never answered.
+  async function verdict(resp) {
+    if (!resp.ok) return null;
+    const data = await resp.json().catch(() => null);
+    return data && typeof data.is_correct === 'boolean' ? data.is_correct : null;
+  }
+
+  function showResult(result) {
+    window.CompletionOverlay.show({
+      xpEarned: result.xp_earned,
+      scoreText: result.correct_count + ' / ' + result.total_count,
+      nextLessonData: result.next_lesson,
+      isLast: result.is_last,
+      leveledUp: result.leveled_up,
+      newLevel: result.new_level,
+      levelName: result.level_name,
+      newItems: result.new_items_unlocked,
+      lessonTitle: result.lesson.title,
+      xpBoosted: result.xp_boosted,
+      boostEarned: result.boost_earned,
+    });
+  }
+
+  function speechText(text) {
+    if (!text || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(String(text).replace(/_{2,}/g, 'blank'));
+    u.lang = 'en-US';
+    u.rate = 0.85;
+    window.speechSynthesis.speak(u);
+  }
+
+  return {
+    init(opts) {
+      lessonId = opts.lessonId;
+      game = opts.game;
+    },
+
+    track(name, props) {
+      window.analytics.trackEvent(name, meta(props));
+    },
+
+    async questions() {
+      try {
+        const resp = await fetchJson('/api/quiz/' + lessonId + '/questions');
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        return Array.isArray(data.questions) ? data : null;
+      } catch (e) {
+        return null;
+      }
+    },
+
+    async check(questionId, answer) {
+      try {
+        return await verdict(await postJson('/api/quiz/validate-answer', {
+          lesson_id: lessonId, question_id: questionId, user_answer: answer,
+        }));
+      } catch (e) {
+        return null;
+      }
+    },
+
+    async checkPair(left, right) {
+      try {
+        return await verdict(await postJson('/api/match-up/' + lessonId + '/pair', { left: left, right: right }));
+      } catch (e) {
+        return null;
+      }
+    },
+
+    // Only a saved completion is celebrated; a failed one offers to try again, and keeps
+    // offering until it is saved — the answers are still on the server's log meanwhile.
+    async finish(bonus, opts) {
+      const after = (opts && opts.after) || 0;
+      const started = Date.now();
+      const bar = document.getElementById('gameSaveError');
+      bar.hidden = true;
+      let result = null;
+      try {
+        const resp = await postJson('/api/lesson/' + lessonId + '/completion', bonus);
+        if (resp.ok) result = await resp.json();
+      } catch (e) {
+        result = null;
+      }
+      if (result && result.status === 'success') {
+        const wait = after - (Date.now() - started);
+        if (wait > 0) await new Promise((done) => setTimeout(done, wait));
+        showResult(result);
+        return result;
+      }
+      bar.hidden = false;
+      const retry = document.getElementById('gameSaveRetry');
+      return new Promise((resolve) => {
+        retry.onclick = () => { retry.onclick = null; resolve(window.GameKit.finish(bonus)); };
+        retry.focus();
+      });
+    },
+
+    progress(opts) {
+      const label = document.getElementById('progressLabel');
+      const fill = document.getElementById('progressFill');
+      const note = document.getElementById('streakNote');
+      if (label && opts.label !== undefined) label.textContent = opts.label;
+      if (fill && opts.fraction !== undefined) {
+        fill.style.width = (Math.max(0, Math.min(1, opts.fraction)) * 100) + '%';
+      }
+      if (note && opts.streak !== undefined) {
+        note.hidden = opts.streak < 2;
+        if (opts.streakText) note.textContent = opts.streakText;
+      }
+    },
+
+    shuffle(items) {
+      const copy = Array.from(items || []);
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    },
+
+    speak: speechText,
+
+    speakQuestion(q) {
+      const text = q ? (q.question_text || q.question_prompt) : '';
+      if (q && q.question_sound_url) {
+        new Audio(q.question_sound_url).play().catch(() => speechText(text));
+        return;
+      }
+      speechText(text);
+    },
+  };
+})();
+</script>

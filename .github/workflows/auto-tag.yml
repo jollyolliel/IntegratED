@@ -1,0 +1,109 @@
+name: Auto Tag
+
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    types: [completed]
+    branches: [master]
+
+permissions:
+  contents: write # create the version tag + GitHub Release
+  pull-requests: read # read the merged PR's release:* label
+
+jobs:
+  tag:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # need every tag to find the latest version
+
+      # Decide how much to bump. Precedence:
+      #   1. PR merge -> the release:* LABEL on the PR (attach it in the UI,
+      #      no commit token needed). Commit tokens inside the PR are ignored
+      #      so a stray "#patch" in one squashed commit can't hijack the bump.
+      #      A PR with no release:* label defaults to "minor".
+      #   2. Direct push (no PR) -> a #major/#minor/#patch/#none TOKEN anywhere
+      #      in the commit message. No token defaults to "patch".
+      #   release:skip / #none -> skip tagging entirely.
+      #
+      # Untrusted text (the commit message) is read via an env var, never
+      # inlined as ${{ }}, to avoid shell injection (same as deploy.yml).
+      - name: Decide version bump
+        id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          COMMIT_MSG: ${{ github.event.workflow_run.head_commit.message }}
+        run: |
+          set -euo pipefail
+          level=""
+
+          # PR whose head/merge is this pushed commit (any merge method).
+          pr_json=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+            -H "Accept: application/vnd.github+json" || echo '[]')
+          pr_number=$(printf '%s' "$pr_json" | jq -r '.[0].number // empty')
+
+          if [ -n "$pr_number" ]; then
+            # --- PR merge: the release:* label decides ----------------------
+            for lbl in $(printf '%s' "$pr_json" | jq -r '.[0].labels[].name'); do
+              case "$lbl" in
+                release:major) level=major ;;
+                release:minor) level=minor ;;
+                release:patch) level=patch ;;
+                release:skip|release:none) level=none ;;
+              esac
+            done
+            level="${level:-minor}" # PR with no release:* label -> minor
+            echo "Bump from PR #$pr_number: $level"
+          else
+            # --- Direct push: a #token in the commit message decides --------
+            case "$COMMIT_MSG" in
+              *"#major"*) level=major ;;
+              *"#minor"*) level=minor ;;
+              *"#patch"*) level=patch ;;
+              *"#none"*) level=none ;;
+              *) level=patch ;; # direct-push default
+            esac
+            echo "Bump from direct-push commit: $level"
+          fi
+
+          echo "level=$level" >> "$GITHUB_OUTPUT"
+
+      - name: Compute next version
+        id: version
+        if: steps.bump.outputs.level != 'none'
+        env:
+          LEVEL: ${{ steps.bump.outputs.level }}
+        run: |
+          set -euo pipefail
+          current=$(git tag -l 'v*.*.*' | sed 's/^v//' | sort -V | tail -n1)
+          current="${current:-0.0.0}"
+          IFS='.' read -r major minor patch <<< "$current"
+          case "$LEVEL" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+          new="v${major}.${minor}.${patch}"
+          echo "tag=$new" >> "$GITHUB_OUTPUT"
+          echo "Bumping v$current -> $new ($LEVEL)"
+
+      - name: Create tag and GitHub Release
+        if: steps.bump.outputs.level != 'none'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_TAG: ${{ steps.version.outputs.tag }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          # Creates the tag (at $SHA) and the Release with auto-generated
+          # notes in one call. Done here rather than leaving it to release.yml
+          # because a tag pushed with GITHUB_TOKEN does not trigger other
+          # workflows -- that is why no Releases existed before this change.
+          gh release create "$NEW_TAG" \
+            --target "$SHA" \
+            --title "$NEW_TAG" \
+            --generate-notes

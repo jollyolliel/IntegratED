@@ -1,0 +1,205 @@
+{#- One matched learner's progress, read-only: a switcher when the volunteer has several, the
+    learner's profile beside their overview, topics per subject, finished lessons and assigned
+    worksheets. Unmatched volunteers get the no-partner card. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/shell/main.jx" as Main #}
+{#def learner, partners, completed_topics=(), completed_lessons=(), subjects=(), completed_lesson_objs=(),
+    assigned_worksheets=(), assignment_total=0 #}
+{%- set head %}
+  <style>
+    .topic-row:hover { border-color: var(--color-sky-200); }
+    .badge-complete { display: inline-flex; align-items: center; gap: 4px; background: var(--color-green-50); color: var(--color-accent-dark); font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--color-emerald-200); }
+    .badge-progress { display: inline-flex; align-items: center; gap: 4px; background: var(--color-sky-50); color: var(--color-sky-500); font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--color-sky-200); }
+    .avatar-circle { width: 96px; height: 96px; border-radius: 50%; background: var(--color-sky-50); border: 3px solid var(--color-sky-200); box-shadow: 3px 3px 0 var(--color-sky-200); display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 0 auto 12px; }
+    .avatar-img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 3px solid var(--color-emerald-200); box-shadow: 3px 3px 0 var(--color-emerald-200); }
+  </style>
+{%- endset %}
+{%- set done %}<span class="badge-complete"><Icon name="check" size="3.5" />{{ t('volunteer.my_partner.yes') }}</span>{% endset %}
+{%- set not_done %}<span class="badge-progress">{{ t('volunteer.my_partner.no') }}</span>{% endset %}
+<Page title={{ t('volunteer.my_partner.title') }} styles="admin" head={{ head }}>
+  <Main>
+    <BackLink href={{ url_for('volunteer.volunteer_dashboard') }} label="Dashboard" />
+
+    <div class="mb-8">
+      <SectionBadge tag="div">{{ t('volunteer.my_partner.eyebrow') }}</SectionBadge>
+      <h1 class="display-font text-3xl md:text-4xl font-extrabold text-sky-950 leading-tight">
+        {{ t('volunteer.my_partner.heading') }}
+      </h1>
+      <p class="text-ink-faint text-sm mt-1">{{ t('volunteer.my_partner.subheading') }}</p>
+    </div>
+
+    {%- if partners and partners|length > 1 %}
+    <div class="flex flex-wrap items-center gap-2 mb-6">
+      <span class="text-xs font-bold uppercase tracking-wider text-sky-400">{{ t('volunteer.my_partner.switch_partner') }}</span>
+      {%- for p in partners %}
+      <Button flat variant={{ 'accent' if p.id == learner.id else 'sky' }} href={{ url_for('volunteer.volunteer_my_partner', learner=p.id) }}>
+        {{ p.name or p.username }}
+      </Button>
+      {%- endfor %}
+    </div>
+    {%- endif %}
+
+    {%- if learner %}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+      <div class="md:col-span-1">
+        <Card tone="green" class="sticky top-6">
+          <div class="text-center mb-4">
+            {%- if learner.user_picture %}
+            <img src="{{ learner.user_picture }}" alt="{{ learner.name }}" class="avatar-img mx-auto mb-3" />
+            {%- else %}
+            <div class="avatar-circle">
+              <Icon name="user" size="10" class="text-sky-300" />
+            </div>
+            {%- endif %}
+            <h2 class="display-font text-xl font-bold text-sky-950">{{ learner.name or learner.username }}</h2>
+            {% if learner.school %}<p class="text-sm text-ink-faint mt-0.5">{{ learner.school.name }}</p>{% endif %}
+          </div>
+
+          <div class="space-y-3 border-t border-green-100 pt-4 mt-2">
+            {%- for subject, level in learner.subject_levels.items() %}
+            <div class="stat-mini-green">
+              <p class="text-xs text-accent uppercase tracking-wider font-bold mb-0.5">{{ subject }} {{ t('volunteer.my_partner.subject_level') }}</p>
+              <div class="display-font text-2xl font-extrabold text-accent-dark">{{ level }}</div>
+            </div>
+            {%- endfor %}
+
+            <div class="stat-mini">
+              <p class="text-xs text-sky-400 uppercase tracking-wider font-bold mb-0.5">{{ t('volunteer.my_partner.hours_learned') }}</p>
+              <div class="display-font text-2xl font-extrabold text-sky-700">{{ "%.1f"|format(learner.hours_learned) }}</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div class="md:col-span-2 space-y-6">
+
+        <Card>
+          <div class="flex items-center gap-2 mb-5">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-400 flex-shrink-0"></span>
+            <h3 class="font-bold text-sky-900 text-lg">{{ t('volunteer.my_partner.learning_overview') }}</h3>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mb-5">
+            <div class="stat-mini text-center">
+              <p class="text-xs text-sky-400 uppercase tracking-wider font-bold mb-1">{{ t('volunteer.my_partner.total_topics_completed') }}</p>
+              <div class="display-font text-3xl font-extrabold text-primary">{{ completed_topics|length }}</div>
+            </div>
+            <div class="stat-mini text-center">
+              <p class="text-xs text-sky-400 uppercase tracking-wider font-bold mb-1">{{ t('volunteer.my_partner.lessons_completed') }}</p>
+              <div class="display-font text-3xl font-extrabold text-primary">{{ completed_lessons|length }}</div>
+            </div>
+          </div>
+
+          <div class="space-y-2 text-sm">
+            <div class="flex items-center gap-2">
+              <span class="text-ink-faint">{{ t('volunteer.my_partner.survey_completed') }}</span>
+              {{ done if learner.completed_survey else not_done }}
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-ink-faint">{{ t('volunteer.my_partner.placement_test_completed') }}</span>
+              {#- Deferred = completed_map_test True as a gate only; not actually taken. #}
+              {{ done if learner.completed_map_test and not learner.map_test_deferred else not_done }}
+            </div>
+          </div>
+        </Card>
+
+        {%- for subject in subjects %}
+        <Card>
+          <div class="flex items-center gap-2 mb-4">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-400 flex-shrink-0"></span>
+            <h3 class="font-bold text-sky-900 text-lg">{{ subject.name }} {{ t('volunteer.my_partner.subject_topics') }}</h3>
+          </div>
+
+          {%- if subject.topics %}
+          <div>
+            {%- for topic in subject.topics %}
+            <div class="topic-row">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-sky-50 flex items-center justify-center flex-shrink-0 border-[1.5px] border-primary-light">
+                  <i class="{{ topic.icon or 'fas fa-book' }} text-sky-400 text-xs" aria-hidden="true"></i>
+                </div>
+                <span class="text-sm font-semibold text-sky-900">{{ topic.title }}</span>
+              </div>
+              {%- if topic.id in completed_topics %}
+              <span class="badge-complete"><Icon name="check" size="3.5" />{{ t('volunteer.my_partner.completed') }}</span>
+              {%- else %}
+              <span class="badge-progress">{{ t('volunteer.my_partner.in_progress') }}</span>
+              {%- endif %}
+            </div>
+            {%- endfor %}
+          </div>
+          {%- else %}
+          <div class="text-center py-6 text-ink-faint text-sm italic border-2 border-dashed border-primary-soft rounded-xl">
+            {{ t('volunteer.my_partner.no_topics_assigned') }}
+          </div>
+          {%- endif %}
+        </Card>
+        {%- endfor %}
+
+        {%- if completed_lessons %}
+        <Card tone="green">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="w-2.5 h-2.5 rounded-full bg-green-400 flex-shrink-0"></span>
+            <h3 class="font-bold text-sky-900 text-lg">{{ t('volunteer.my_partner.completed_lessons') }}</h3>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {%- for lesson in completed_lesson_objs %}
+            <div class="flex items-center gap-2 p-2 text-sm text-gray-600">
+              <Icon name="check" class="text-green-500 flex-shrink-0" />
+              <span>{{ lesson.title }}</span>
+            </div>
+            {%- endfor %}
+          </div>
+        </Card>
+        {%- endif %}
+
+        {%- if assigned_worksheets %}
+        <Card tone="amber">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0"></span>
+            <h3 class="font-bold text-sky-900 text-lg">{{ t('volunteer.my_partner.assigned_worksheets') }} ({{ assignment_total }})</h3>
+          </div>
+          <div class="space-y-2">
+            {%- for assignment in assigned_worksheets %}
+            <div class="topic-row">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0 border-[1.5px] border-card-amber-border">
+                  <i class="fas fa-file-alt text-amber-500 text-xs" aria-hidden="true"></i>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-sky-900 truncate">{{ assignment.worksheet.title }}</p>
+                  <p class="text-xs text-ink-faint">{{ assignment.worksheet.subject }}</p>
+                </div>
+              </div>
+              {%- if assignment.completed %}
+              <span class="badge-complete">{{ t('volunteer.my_partner.completed') }}</span>
+              {%- else %}
+              <span class="badge-progress">{{ t('volunteer.my_partner.in_progress') }}</span>
+              {%- endif %}
+            </div>
+            {%- endfor %}
+          </div>
+        </Card>
+        {%- endif %}
+
+      </div>
+    </div>
+
+    {%- else %}
+    <Card class="text-center py-12">
+      <IconBox icon="user-group" size="xl" class="mx-auto mb-4" />
+      <h3 class="display-font text-xl font-bold text-sky-900 mb-2">{{ t('volunteer.my_partner.no_partner_title') }}</h3>
+      <p class="text-ink-faint text-sm max-w-md mx-auto">
+        {{ t('volunteer.my_partner.no_partner_desc') }}
+      </p>
+    </Card>
+    {%- endif %}
+  </Main>
+</Page>

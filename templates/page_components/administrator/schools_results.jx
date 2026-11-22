@@ -1,0 +1,62 @@
+{#- The schools table and its pager: the swap region on
+    `pages/administrator/schools.jx`. `routes/administrator/people.py` renders it alone for an
+    `X-Fragment` request. A delete removes its row in place (`js-ajax-form`). -#}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/pagination.jx" as Pagination #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#def school_stats, page, page_count #}
+<div data-swap-region>
+{%- if school_stats %}
+<Table wrap_class="overflow-x-auto">
+  <thead>
+    <tr>
+      <th>{{ t('admin.schools.col_school') }}</th>
+      <th>{{ t('admin.schools.col_domains') }}</th>
+      <th class="text-center">{{ t('admin.schools.col_learners') }}</th>
+      <th class="text-center">{{ t('admin.schools.col_volunteers') }}</th>
+      <th class="text-center">{{ t('admin.schools.col_teachers') }}</th>
+      <th class="text-right">{{ t('admin.schools.col_donations') }}</th>
+      <th class="text-right">{{ t('admin.schools.col_actions') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {%- for s in school_stats %}
+    <tr>
+      <td>
+        <a href="{{ url_for('administrator.school_detail', school_id=s.school.id) }}" class="font-bold text-sky-700 hover:text-sky-900">{{ s.school.name }}</a>
+        {%- if s.school.school_admin %}
+        <p class="text-xs text-ink-faint mt-0.5">Admin: {{ s.school.school_admin.username }}</p>
+        {%- endif %}
+      </td>
+      <td class="font-mono text-xs text-ink-faint">
+        {% if s.school.volunteer_domain %}V: {{ s.school.volunteer_domain }}<br>{% endif %}
+        {% if s.school.teacher_domain %}T: {{ s.school.teacher_domain }}{% endif %}
+        {% if not s.school.volunteer_domain and not s.school.teacher_domain %}—{% endif %}
+      </td>
+      <td class="text-center font-semibold text-sky-700">{{ s.learner_count }}</td>
+      <td class="text-center font-semibold text-accent">{{ s.volunteer_count }}</td>
+      <td class="text-center font-semibold text-amber-600">{{ s.teacher_count }}</td>
+      <td class="text-right text-accent font-bold">${{ "%.2f"|format(s.donations_total) }}</td>
+      <td class="text-right">
+        <div class="flex items-center justify-end gap-3">
+          <Button variant="sky" flat href={{ url_for('administrator.school_detail', school_id=s.school.id) }}>{{ t('admin.schools.view') }}</Button>
+          <form action="{{ url_for('administrator.delete_school', school_id=s.school.id) }}" method="POST"
+                class="js-ajax-form" data-remove-selector="tr"
+                data-confirm="{{ t('confirm.delete_school', name=s.school.name) }}">
+            <Button variant="danger" flat type="submit">{{ t('admin.schools.delete') }}</Button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {%- endfor %}
+  </tbody>
+</Table>
+<Pagination endpoint="administrator.schools" page={{ page }} total_pages={{ page_count }} />
+{%- else %}
+<EmptyState class="py-16">
+  <p class="text-ink-faint font-medium mb-4">{{ t('admin.schools.no_schools') }}</p>
+  <Button href={{ url_for('administrator.create_school') }}>{{ t('admin.schools.create_first') }}</Button>
+</EmptyState>
+{%- endif %}
+</div>

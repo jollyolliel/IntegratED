@@ -1,0 +1,6 @@
+{#- The standard icon box: a pale tile with a 2px border and no shadow (docs/ui-design/visual-language.md). -#}
+{#import "@components/base/icon.jx" as Icon #}
+{#def icon, tone=None, size=None #}
+<div {{ attrs.render(class=look("IconBox", "size", size, "box") ~ " " ~ look("IconBox", "tone", tone, "box") ~ " border-2 flex items-center justify-center flex-shrink-0") }}>
+  <Icon name={{ icon }} size={{ look("IconBox", "size", size, "icon_size") }} />
+</div>

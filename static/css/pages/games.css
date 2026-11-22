@@ -1,0 +1,202 @@
+/* Interactive minigame mechanics shared by the quiz and every game (<GamePage> links it).
+   Each game's own rules live in its own sheet: game-rocket.css, game-word-storm.css,
+   game-match-up.css, game-garden-grow.css, game-potion-workshop.css. */
+
+.quiz-btn-accent {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 28px; font-weight: 700; font-size: 1rem;
+  background: var(--color-accent); color: white;
+  border: 2.5px solid var(--color-accent-dark); border-radius: 16px;
+  box-shadow: 3px 3px 0 var(--color-accent-dark);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+  text-decoration: none; cursor: pointer; border-style: solid;
+}
+.quiz-btn-accent:hover { transform: translate(-1.5px, -1.5px); box-shadow: 4.5px 4.5px 0 var(--color-accent-dark); }
+.quiz-btn-accent:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--color-accent-dark); }
+.quiz-btn-accent:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.quiz-btn-outline {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 28px; font-weight: 700; font-size: 1rem;
+  background: white; color: var(--color-primary);
+  border: 2.5px solid var(--color-primary); border-radius: 16px;
+  box-shadow: 3px 3px 0 var(--color-primary);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, background 150ms;
+  text-decoration: none; cursor: pointer;
+}
+.quiz-btn-outline:hover { transform: translate(-1.5px, -1.5px); box-shadow: 4.5px 4.5px 0 var(--color-primary); background: var(--color-sky-50); }
+.quiz-btn-outline:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--color-primary); }
+/* This partial loads after Tailwind, so the display above would beat .hidden at equal specificity. */
+.quiz-btn-accent.hidden, .quiz-btn-outline.hidden { display: none; }
+
+/* quiz.jx hint — sits at the inline end of the wrong-answer card once a typed answer has missed
+   three times: a small clay button, then the revealed answer in its place. */
+.quiz-hint-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem; flex-shrink: 0;
+  padding: 0.5rem 1rem; font-weight: 700; font-size: 0.9rem;
+  background: var(--color-surface); color: var(--color-primary);
+  border: 2.5px solid var(--color-primary); border-radius: 14px;
+  box-shadow: 2px 2px 0 var(--color-primary);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, background 150ms;
+  cursor: pointer;
+}
+.quiz-hint-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--color-primary); background: var(--color-primary-tint); }
+.quiz-hint-btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--color-primary); }
+.quiz-hint-btn:focus-visible { outline: 3px solid var(--color-primary-light); outline-offset: 2px; }
+.quiz-hint-btn.hidden { display: none; }
+.quiz-hint-answer {
+  font-weight: 800; font-size: 1.25rem; color: var(--color-sky-900);
+  padding: 0.25rem 0.9rem; border-radius: 999px;
+  background: var(--color-surface); border: 2px solid var(--color-primary-light);
+}
+@media (prefers-reduced-motion: reduce) { .quiz-hint-btn { transition: none; } }
+
+/* Continuous fill bar — the five games. quiz.jx uses the tick strip below instead. */
+.progress-track { background: var(--color-sky-100); border-radius: 999px; height: 10px; overflow: hidden; }
+.progress-fill { background: linear-gradient(90deg, var(--color-primary), var(--color-sky-500)); border-radius: 999px; height: 100%; transition: width 400ms ease-out; }
+
+/* quiz.jx progress — one tick per question, in question order, so the strip
+   is a direct map of the quiz rather than an abstract fill: a learner who can't
+   read the label can still count how many boxes are left. Same shape/colour
+   language as the "Your progress" block in overview.jx
+   (.progress-ticks in learning-nav.css) — separate class names because
+   the two pages link different partials and these live in this one. */
+/* The strip sticks *below* header.jx, which is itself `sticky top-0 z-50`
+   (nav h-16 = 64px + 1px bottom border). At top-0 it slid underneath the
+   header instead of stacking under it, which is what made it look broken on
+   the first bit of scroll.
+   It reads as one piece with the navbar, so it takes the navbar's white +
+   sky-100 border (header.jx: `bg-white/96 backdrop-blur-sm border-sky-100`)
+   rather than its old bluer #F5F7FF/0.92. The white is fully transparent
+   (alpha 0) — the strip is pure frosted glass, tinted only by whatever scrolls
+   under it, so the question text stays visible as it passes behind the ticks.
+   saturate() keeps what shows through from going grey. The @supports fallback
+   below covers the case where nothing blurs it. */
+.quiz-progress-bar {
+  top: 65px;
+  background: rgb(var(--color-surface-rgb) / 0);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(12px) saturate(150%);
+  border-bottom: 1px solid var(--color-sky-100);
+  /* margin-bottom: the page-height hold set by initProgressCondense() (quiz.jx).
+     It eases back to 0 as the bar grows, but must jump — not ease — to its full
+     size as the bar condenses, hence no margin transition in .is-condensed. */
+  transition: margin-bottom 250ms ease-out;
+}
+/* No backdrop-filter (older Safari/Firefox builds, or blocked by a low-power
+   mode) means nothing blurs it — with the white at alpha 0 the strip would be
+   invisible and text would collide with the ticks. Fall back to a near-solid
+   bar. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .quiz-progress-bar { background: rgb(var(--color-surface-rgb) / 0.97); }
+}
+/* Scroll-position probe for the condense below. Absolutely positioned inside
+   <main> (which is `relative`), so it is *out of flow and above the bar*: its
+   position can't be moved by the bar changing height. (The scroll clamp near the
+   bottom of a short page still could — the bar's margin-bottom hold above is
+   what stops that.) Height = how far you scroll before it condenses. */
+.quiz-progress-sentinel { position: absolute; top: 0; inset-inline-start: 0; width: 1px; height: 32px; pointer-events: none; }
+.quiz-progress-inner { padding-top: 16px; padding-bottom: 16px; transition: padding 250ms ease-out; }
+.quiz-progress-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin-bottom: 10px; max-height: 40px; overflow: hidden;
+  transition: max-height 250ms ease-out, margin-bottom 250ms ease-out, opacity 180ms ease-out;
+}
+.quiz-progress-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--color-sky-400); }
+.quiz-progress-readout { display: flex; align-items: baseline; gap: 6px; font-size: 0.75rem; font-weight: 600; color: var(--color-ink-muted); }
+.quiz-progress-percent { font-size: 1.05rem; font-weight: 800; color: var(--color-accent-dark); }
+.quiz-progress-ticks { display: flex; gap: 4px; }
+.quiz-progress-tick { flex: 1 1 0; min-width: 0; height: 10px; border-radius: 3px; background: var(--color-sky-100); transition: background 300ms ease-out, height 250ms ease-out; }
+.quiz-progress-tick.is-done { background: var(--color-accent); }
+.quiz-progress-tick.is-current { box-shadow: inset 0 0 0 2px var(--color-primary); }
+/* Condensed state (added once the sentinel above scrolls under the header):
+   the text row collapses
+   and the ticks slim down, so once the learner is reading a question the strip
+   is a thin marker instead of a block eating the top of the screen. The tick
+   count — the part a non-reader uses — never goes away. The bar's own surface
+   (glass, border, no shadow) is identical in both states — only its size changes. */
+.quiz-progress-bar.is-condensed { transition: none; }
+.quiz-progress-bar.is-condensed .quiz-progress-inner { padding-top: 8px; padding-bottom: 8px; }
+.quiz-progress-bar.is-condensed .quiz-progress-head { max-height: 0; margin-bottom: 0; opacity: 0; }
+.quiz-progress-bar.is-condensed .quiz-progress-tick { height: 6px; }
+.hidden-scrollbar::-webkit-scrollbar { display: none; }
+.hidden-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.interactive-word { cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; padding: 0.1rem 0.2rem; border-radius: 0.25rem; border-bottom: 2px solid transparent; }
+.interactive-word:hover { background-color: rgb(var(--color-primary-rgb) / 0.1); border-bottom: 2px solid var(--color-primary); }
+.interactive-word.selected { background-color: rgb(var(--color-primary-rgb) / 0.15); color: var(--color-primary); font-weight: 700; border-bottom: 2px solid var(--color-primary); }
+.droppable-blank {
+  display: inline-block; min-width: 6rem; height: 2.2rem; margin: 0 0.2rem;
+  border: 2px dashed var(--color-sky-200); border-radius: 0.5rem; vertical-align: middle;
+  background-color: var(--color-sky-50); transition: border-color 0.2s, background-color 0.2s; text-align: center; line-height: 2rem;
+}
+.droppable-blank.drag-over { border-color: var(--color-primary); background-color: rgb(var(--color-primary-rgb) / 0.08); }
+.droppable-blank.filled {
+  border-style: solid; border-color: var(--color-primary); background-color: rgb(var(--color-primary-rgb) / 0.08);
+  min-width: 0; padding-left: 0.5rem; padding-right: 0.5rem; color: var(--color-primary); font-weight: bold;
+}
+.draggable-word { cursor: grab; }
+.draggable-word:active { cursor: grabbing; }
+/* Word-bank read-aloud chip (renderWordBankAudio) — tap a word to hear it.
+   Was raw Tailwind with `shadow-sm` stacked on an inline hard shadow, no hover
+   state at all, and `active:scale-95` (a shrink, not the clay press) — fixed
+   2026-08-08. Clay motion: base 3px shadow, 1.5px lift -> 4.5px, 2px press ->
+   1px, exact. Border and shadow are the same colour in every state. */
+.word-audio-chip {
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 12px 20px; border-radius: 12px;
+  font-size: 1.125rem; font-weight: 600;
+  background: white; color: var(--color-sky-700);
+  border: 2px solid var(--color-sky-200); box-shadow: 3px 3px 0 var(--color-sky-200);
+  cursor: pointer;
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out,
+              border-color 150ms ease-out, background 150ms ease-out;
+}
+.word-audio-chip:hover {
+  transform: translate(-1.5px, -1.5px); box-shadow: 4.5px 4.5px 0 var(--color-primary);
+  border-color: var(--color-primary); background: var(--color-sky-50);
+}
+.word-audio-chip:active {
+  transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--color-primary);
+  border-color: var(--color-primary); background: var(--color-sky-50);
+}
+.word-audio-chip:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+.word-audio-chip svg {
+  width: 20px; height: 20px; flex-shrink: 0;
+  color: var(--color-sky-400); transition: color 150ms ease-out;
+}
+.word-audio-chip:hover svg, .word-audio-chip:active svg { color: var(--color-primary); }
+@media (prefers-reduced-motion: reduce) {
+  .word-audio-chip { transition: none; }
+  .word-audio-chip:hover, .word-audio-chip:active { transform: none; }
+  .quiz-progress-tick { transition: none; }
+  /* Condense still happens — it just snaps instead of animating. */
+  .quiz-progress-bar, .quiz-progress-inner, .quiz-progress-head { transition: none; }
+}
+.inline-input-blank {
+  display: inline-block; background: var(--color-sky-50); border: 2px dashed var(--color-sky-200); border-radius: 0.5rem;
+  color: var(--color-primary); font-weight: 600; text-align: center; width: auto; min-width: 6rem; height: 2.2rem;
+  margin: 0 0.2rem; outline: none; padding: 0 0.5rem; transition: border-color 0.2s, background 0.2s;
+}
+.inline-input-blank:focus { border-color: var(--color-primary); background: rgb(var(--color-primary-rgb) / 0.08); border-style: solid; }
+/* Static reading panel — crisp static recipe (pale shadow, no hover/press). */
+.context-panel { background: white; border-radius: 20px; padding: 24px; border: 2px solid var(--color-sky-200); box-shadow: 4px 4px 0 var(--color-sky-100); overflow-y: auto; }
+
+
+/* ── Shared by the games ───────────────────────────────────────────── */
+/* Read-aloud speaker button is .audio-play-btn — global now, see
+   static/css/components/buttons.css (originally map.jx-only, promoted
+   once these two games needed the identical button and had each grown
+   their own near-duplicate instead). */
+
+.game-hint-toast {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+  background: var(--color-surface); border: 2px solid var(--color-rose-200); border-radius: 14px;
+  padding: 10px 20px; font-weight: 700; color: var(--color-rose-700);
+  box-shadow: 0 2px 10px rgb(var(--color-ink-heading-rgb) / 0.07); opacity: 0; pointer-events: none; z-index: 40;
+}
+.game-stat-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--color-surface); border: 2px solid var(--color-amber-200); border-radius: 9999px;
+  padding: 4px 12px; font-weight: 800; font-size: 0.85rem; color: var(--color-amber-800);
+  box-shadow: 0 2px 10px rgb(var(--color-ink-heading-rgb) / 0.07);
+}
+.game-stat-pill.sky { border-color: var(--color-sky-200); color: var(--color-primary-dark); }

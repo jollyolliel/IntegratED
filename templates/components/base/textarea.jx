@@ -1,0 +1,2 @@
+{#- Every <textarea>; the content is its value. -#}
+<textarea {{ attrs.render(class="clay-textarea") }}>{{ content }}</textarea>

@@ -1,0 +1,256 @@
+/* Learning-path browsing & reading pages (not the games themselves — see games.css).
+   Used by: pages/learner/learning/subjects.jx, pages/learner/learning/topics.jx,
+   components/topic_card.jx,
+   pages/learner/learning/overview.jx, pages/learner/map.jx,
+   pages/learner/worksheet_view.jx, pages/article_detail.jx. */
+
+/* subjects.jx — subject grid, 4 color variants by index */
+.subject-card {
+  background: white; border-radius: 24px; padding: 28px 24px;
+  border: 2.5px solid var(--color-sky-200); box-shadow: 4px 4px 0 var(--color-sky-200);
+  cursor: pointer; text-decoration: none; display: block;
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms;
+}
+.subject-card:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--color-sky-300); border-color: var(--color-sky-300); }
+.subject-card:active { transform: translate(1px,1px); box-shadow: 3px 3px 0 var(--color-sky-300); border-color: var(--color-sky-300); }
+.subject-card-0 { border-color: var(--color-sky-200); box-shadow: 4px 4px 0 var(--color-sky-200); }
+.subject-card-0:hover { border-color: var(--color-sky-300); box-shadow: 6px 6px 0 var(--color-sky-300); }
+.subject-card-0:active { box-shadow: 3px 3px 0 var(--color-sky-300); border-color: var(--color-sky-300); }
+.subject-card-0 .subject-icon-bg { background: var(--color-sky-50); border: 2px solid var(--color-sky-200); }
+.subject-card-0 .subject-icon { color: var(--color-primary); }
+.subject-card-0 .subject-arrow { color: var(--color-primary); }
+.subject-card-1 { border-color: var(--color-emerald-200); box-shadow: 4px 4px 0 var(--color-emerald-200); }
+.subject-card-1:hover { border-color: var(--color-emerald-300); box-shadow: 6px 6px 0 var(--color-emerald-300); }
+.subject-card-1:active { box-shadow: 3px 3px 0 var(--color-emerald-300); border-color: var(--color-emerald-300); }
+.subject-card-1 .subject-icon-bg { background: var(--color-emerald-50); border: 2px solid var(--color-emerald-200); }
+.subject-card-1 .subject-icon { color: var(--color-accent); }
+.subject-card-1 .subject-arrow { color: var(--color-accent); }
+.subject-card-2 { border-color: var(--color-amber-200); box-shadow: 4px 4px 0 var(--color-amber-200); }
+.subject-card-2:hover { border-color: var(--color-amber-300); box-shadow: 6px 6px 0 var(--color-amber-300); }
+.subject-card-2:active { box-shadow: 3px 3px 0 var(--color-amber-200); border-color: var(--color-amber-200); }
+.subject-card-2 .subject-icon-bg { background: var(--color-amber-200); border: 2px solid var(--color-amber-200); }
+.subject-card-2 .subject-icon { color: var(--color-amber-600); }
+.subject-card-2 .subject-arrow { color: var(--color-amber-600); }
+.subject-card-3 { border-color: var(--color-rose-200); box-shadow: 4px 4px 0 var(--color-rose-200); }
+.subject-card-3:hover { border-color: var(--color-rose-300); box-shadow: 6px 6px 0 var(--color-rose-300); }
+.subject-card-3:active { box-shadow: 3px 3px 0 var(--color-rose-200); border-color: var(--color-rose-200); }
+.subject-card-3 .subject-icon-bg { background: var(--color-rose-200); border: 2px solid var(--color-rose-200); }
+.subject-card-3 .subject-icon { color: var(--color-rose-600); }
+.subject-card-3 .subject-arrow { color: var(--color-rose-600); }
+/* The course the placement test recommends: the green of .topic-card-recommended,
+   declared after the index colours so it wins over them. */
+.subject-card-recommended { border-color: var(--color-accent); box-shadow: 4px 4px 0 var(--color-accent); }
+.subject-card-recommended:hover { border-color: var(--color-accent-dark); box-shadow: 6px 6px 0 var(--color-accent-dark); }
+.subject-card-recommended:active { border-color: var(--color-accent-dark); box-shadow: 3px 3px 0 var(--color-accent-dark); }
+.subject-icon-bg { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-bottom: 16px; }
+
+/* topics.jx — topic/lesson listing */
+.topic-card {
+  background: white; border: 2.5px solid var(--color-sky-200); border-radius: 20px; padding: 20px 22px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  text-decoration: none; box-shadow: 3px 3px 0 var(--color-sky-200);
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms;
+}
+.topic-card:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--color-sky-300); border-color: var(--color-sky-300); }
+.topic-card:active { transform: translate(1px,1px); box-shadow: 2px 2px 0 var(--color-sky-300); border-color: var(--color-sky-300); }
+/* A finished topic stays enterable (redo its lessons): same green at rest, and
+   the standard .topic-card motion with its own :hover + :active. */
+.topic-card-completed { background: var(--color-green-50); border-color: var(--color-emerald-200); box-shadow: 3px 3px 0 var(--color-emerald-200); }
+.topic-card-completed:hover { border-color: var(--color-emerald-300); box-shadow: 5px 5px 0 var(--color-emerald-300); }
+.topic-card-completed:active { border-color: var(--color-emerald-300); box-shadow: 2px 2px 0 var(--color-emerald-300); }
+/* A finished lesson stays clickable (replay), so it keeps the full press
+   animation. It needs its own :active because .topic-card-redo:hover is
+   declared after .topic-card:active at equal specificity — while the mouse is
+   held down both match, and the later hover rule would otherwise win and hold
+   the card in its lifted state with no press feedback at all. */
+.topic-card-redo { background: white; border-color: var(--color-sky-200); box-shadow: 3px 3px 0 var(--color-sky-200); }
+.topic-card-redo:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--color-sky-300); border-color: var(--color-sky-300); }
+.topic-card-redo:active { transform: translate(1px,1px); box-shadow: 2px 2px 0 var(--color-sky-300); border-color: var(--color-sky-300); }
+.topic-icon { width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; border: 2.5px solid; }
+.topic-icon-default { background: var(--color-sky-50); border-color: var(--color-sky-200); color: var(--color-primary); }
+.topic-icon-completed { background: var(--color-emerald-50); border-color: var(--color-emerald-200); color: var(--color-accent); }
+.arrow-circle { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--color-sky-50); border: 2px solid var(--color-sky-200); color: var(--color-primary); transition: background 200ms, border-color 200ms; }
+.topic-card:hover .arrow-circle { background: var(--color-primary); border-color: var(--color-primary-dark); color: white; }
+/* Green arrow on a finished topic. Must come after the two rules above: its
+   :hover ties .topic-card:hover .arrow-circle on specificity, so source order decides. */
+.topic-card-completed .arrow-circle { background: var(--color-emerald-50); border-color: var(--color-emerald-200); color: var(--color-accent); }
+.topic-card-completed:hover .arrow-circle { background: var(--color-accent); border-color: var(--color-accent-dark); color: white; }
+.redo-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-accent); white-space: nowrap; }
+.topic-card-redo:hover .redo-badge { color: var(--color-primary); }
+.finished-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-accent); background: var(--color-emerald-50); border: 1.5px solid var(--color-emerald-200); border-radius: 999px; padding: 2px 8px; }
+/* game-type indicator — which activity a lesson is (quiz vs each minigame).
+   Icon + colour only, no label: a small solid disc on the corner of the lesson's
+   round icon in the lesson list. Accessible name comes from title/aria-label on
+   the badge, so the icon is never the sole cue. */
+.topic-icon { position: relative; }
+.game-icon-badge { position: absolute; right: -4px; bottom: -4px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; border: 2px solid white; }
+.game-badge-quiz { background: var(--color-primary); color: white; }
+.game-badge-rocket { background: var(--color-amber-600); color: white; }
+.game-badge-word_storm { background: var(--color-violet-600); color: white; }
+.game-badge-match_up { background: var(--color-rose-600); color: white; }
+.game-badge-garden_grow { background: var(--color-accent); color: white; }
+.game-badge-potion_workshop { background: var(--color-pink-600); color: white; }
+
+/* The MAP-recommended topic is the same card in green — colours only. Geometry,
+   shadow sizes and motion all stay exactly as .topic-card (3px base, -2px lift
+   -> 5px, 1px press -> 2px) so it can't drift out of step with its neighbours.
+   It previously ran 4px -> 6px with no :active at all, so pressing a green card
+   fell through to .topic-card:active and flashed the sky shadow. */
+.topic-card-recommended { border-color: var(--color-accent); box-shadow: 3px 3px 0 var(--color-accent); }
+.topic-card-recommended:hover { border-color: var(--color-accent-dark); box-shadow: 5px 5px 0 var(--color-accent-dark); }
+.topic-card-recommended:active { border-color: var(--color-accent-dark); box-shadow: 2px 2px 0 var(--color-accent-dark); }
+/* ...and the bits inside it go green too, or a green card keeps a sky icon and
+   a sky arrow that turns sky-filled on hover. */
+.topic-card-recommended .topic-icon-default { background: var(--color-emerald-50); border-color: var(--color-emerald-200); color: var(--color-accent); }
+.topic-card-recommended .arrow-circle { background: var(--color-emerald-50); border-color: var(--color-emerald-200); color: var(--color-accent); }
+.topic-card-recommended:hover .arrow-circle { background: var(--color-accent); border-color: var(--color-accent-dark); color: white; }
+/* A topic with some lessons finished but not all — the same card in amber,
+   colours only, exactly like .topic-card-recommended above. Still clickable,
+   so shadow matches border in every state. */
+.topic-card-in-progress { background: var(--color-amber-50); border-color: var(--color-amber-300); box-shadow: 3px 3px 0 var(--color-amber-300); }
+.topic-card-in-progress:hover { border-color: var(--color-amber-400); box-shadow: 5px 5px 0 var(--color-amber-400); }
+.topic-card-in-progress:active { border-color: var(--color-amber-400); box-shadow: 2px 2px 0 var(--color-amber-400); }
+.topic-card-in-progress .topic-icon-default { background: var(--color-amber-100); border-color: var(--color-amber-300); color: var(--color-amber-700); }
+.topic-card-in-progress .arrow-circle { background: var(--color-amber-100); border-color: var(--color-amber-300); color: var(--color-amber-700); }
+.topic-card-in-progress:hover .arrow-circle { background: var(--color-amber-600); border-color: var(--color-amber-700); color: white; }
+.in-progress-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-amber-800); background: var(--color-amber-100); border: 1.5px solid var(--color-amber-300); border-radius: 999px; padding: 2px 8px; }
+.start-here-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-surface); background: var(--color-accent); border: 1.5px solid var(--color-accent-dark); border-radius: 999px; padding: 2px 10px; }
+.finished-pill i, .in-progress-pill i, .start-here-pill i { font-size: 0.55rem; }
+
+/* overview.jx — article reading.
+   Static card, but deliberately kept in the crisp clay family rather than the
+   soft-blur .clay-card look. Distinguishable from buttons by the shadow being
+   PALER than the border (#E0F2FE under a #BAE6FD border — clickable clay
+   always matches shadow color to border) plus having no hover/active motion.
+   The offset is diagonal like a button's, so the pale shadow is the ONLY
+   at-rest cue — never "fix" it to #BAE6FD or this becomes a button costume. */
+.overview-card { background: white; border-radius: 20px; padding: 24px; border: 2px solid var(--color-sky-200); box-shadow: 4px 4px 0 var(--color-sky-100); }
+.overview-boost { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--color-amber-50); border: 2px solid var(--color-amber-300); border-radius: 20px; box-shadow: 4px 4px 0 var(--color-amber-200); }
+.overview-btn-accent { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; font-weight: 700; font-size: 1rem; background: var(--color-accent); color: white; border: 2.5px solid var(--color-accent-dark); border-radius: 16px; box-shadow: 3px 3px 0 var(--color-accent-dark); transition: transform 150ms ease-out, box-shadow 150ms ease-out; text-decoration: none; cursor: pointer; }
+.overview-btn-accent:hover { transform: translate(-1.5px,-1.5px); box-shadow: 4.5px 4.5px 0 var(--color-accent-dark); }
+.overview-btn-accent:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--color-accent-dark); }
+.article-prose { color: var(--color-ink-heading); line-height: 1.75; }
+.article-prose h1, .article-prose h2, .article-prose h3 { color: var(--color-ink-heading); font-weight: 700; }
+.article-prose h2 { font-size: 1.35rem; margin-top: 2rem; margin-bottom: 0.75rem; }
+.article-prose h3 { font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+.article-prose p { color: var(--color-ink-body); margin-bottom: 1rem; }
+.article-prose strong { color: var(--color-ink-heading); }
+.article-prose ul, .article-prose ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+.article-prose li { color: var(--color-ink-body); margin-bottom: 0.35rem; }
+.article-prose code { background: var(--color-sky-50); color: var(--color-primary); padding: 2px 6px; border-radius: 6px; font-size: 0.9em; }
+.article-prose pre { background: var(--color-sky-50); border: 2px solid var(--color-sky-200); border-radius: 12px; padding: 16px; overflow-x: auto; }
+.article-prose blockquote { border-left: 4px solid var(--color-sky-200); padding-left: 16px; color: var(--color-ink-muted); font-style: italic; }
+.article-prose a { color: var(--color-primary); text-decoration: underline; }
+.article-prose table { width: 100%; border-collapse: collapse; }
+.article-prose th { background: var(--color-sky-50); color: var(--color-ink-heading); padding: 10px 14px; text-align: left; border: 1px solid var(--color-sky-200); }
+.article-prose td { padding: 10px 14px; border: 1px solid var(--color-sky-100); color: var(--color-ink-body); }
+.article-prose tr:nth-child(even) td { background: var(--color-surface-card); }
+/* overview.jx sidebar — "In this topic" lesson list.
+   Each row carries its own completion state: a filled green disc + tick for a
+   finished lesson, a hollow ring for one not started, a sky ring for the lesson
+   being read. Shape (tick vs empty ring) carries the meaning, colour only
+   reinforces it, and the state is also announced via an sr-only label. */
+.lesson-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; border: 2px solid transparent; font-size: 0.875rem; font-weight: 600; color: var(--color-ink-muted); text-decoration: none; transition: color 150ms, background 150ms, border-color 150ms; }
+.lesson-row:hover { color: var(--color-primary); background: var(--color-sky-50); }
+.lesson-row-mark { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--color-slate-300); display: flex; align-items: center; justify-content: center; }
+.lesson-row-mark svg { width: 12px; height: 12px; }
+.lesson-row-title { min-width: 0; }
+.lesson-row.is-done { color: var(--color-accent-dark); }
+.lesson-row.is-done .lesson-row-mark { background: var(--color-accent); border-color: var(--color-accent-dark); color: white; }
+.lesson-row.is-done:hover { color: var(--color-green-800); background: var(--color-emerald-50); }
+.lesson-row.is-current { color: var(--color-sky-900); background: var(--color-sky-50); border-color: var(--color-sky-200); }
+.lesson-row.is-current .lesson-row-mark { border-color: var(--color-primary); }
+.lesson-row.is-current.is-done .lesson-row-mark { background: var(--color-accent); border-color: var(--color-accent-dark); }
+
+/* Progress — one tick per lesson, same order as the list above it, so the bar
+   is a direct map of that list rather than an abstract fill. */
+.progress-ticks { display: flex; gap: 4px; }
+.progress-tick { flex: 1 1 0; min-width: 0; height: 10px; border-radius: 3px; background: var(--color-sky-100); }
+.progress-tick.is-done { background: var(--color-accent); }
+.progress-tick.is-current { box-shadow: inset 0 0 0 2px var(--color-primary); }
+.progress-readout { display: flex; align-items: baseline; gap: 6px; margin-top: 10px; font-size: 0.75rem; font-weight: 600; color: var(--color-ink-muted); }
+.progress-percent { font-size: 1.05rem; font-weight: 800; color: var(--color-accent-dark); }
+
+/* Shared breadcrumb (overview.jx + worksheet_view.jx) */
+.breadcrumb-link { display: inline-flex; align-items: center; gap: 4px; color: var(--color-primary); font-size: 0.875rem; font-weight: 600; text-decoration: none; transition: color 150ms; }
+.breadcrumb-link:hover { color: var(--color-primary-dark); }
+.breadcrumb-sep { color: var(--color-sky-200); margin: 0 6px; font-weight: 400; }
+.breadcrumb-current { color: var(--color-sky-300); font-size: 0.875rem; font-weight: 600; }
+
+/* pages/learner/map.jx — placement test.
+   Cards here are the global .clay-card (static, soft flat shadow) and buttons
+   the global .btn-clay (btn-accent / btn-sky) — .map-card/.map-btn-accent were
+   hand-rolled copies of both, the card wearing a clickable hard-offset shadow.
+   Deleted 2026-08-08; only the genuinely map-specific pieces remain below. */
+
+/* .audio-play-btn moved to static/css/components/buttons.css (global) —
+   garden_grow.jx/potion_workshop.jx reuse it now too. */
+/* Static strip that holds the read-aloud button — the button inside is the
+   clickable thing, so the strip gets the crisp-static shadow (pale #E0F2FE
+   under its #BAE6FD border), never a matched-color one. */
+.audio-clay { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--color-sky-50); border: 2px solid var(--color-sky-200); border-radius: 16px; box-shadow: 4px 4px 0 var(--color-sky-100); }
+/* .audio-clay sets display:flex after Tailwind, so it would beat the .hidden utility and show an
+   empty "audio available" row; hidden has to win. */
+.audio-clay.hidden { display: none; }
+/* An emoji inside a question's words is the picture to find, so draw it big. */
+.map-emoji { display: inline-block; font-size: 3.5rem; line-height: 1.1; vertical-align: middle; }
+/* Deliberately larger than the global .clay-textarea (bigger touch target +
+   readable answer text), same reason survey.css sizes .survey-input up. */
+.map-textarea {
+  width: 100%; background: var(--color-surface-card); color: var(--color-ink-heading); border: 2px solid var(--color-sky-200); border-radius: 16px;
+  padding: 16px 18px; font-size: 1.1rem; transition: border-color 150ms, box-shadow 150ms;
+  outline: none; resize: none;
+}
+.map-textarea:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgb(var(--color-primary-rgb) / 0.12); }
+/* map.jx loading spinner */
+.map-spinner { width: 32px; height: 32px; border-radius: 50%; border: 3px solid var(--color-sky-200); border-top-color: var(--color-primary); animation: map-spin 800ms linear infinite; }
+@keyframes map-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .map-spinner { animation-duration: 2400ms; }
+}
+
+/* worksheet_view.jx */
+/* Static reading card — crisp static recipe (pale shadow, no hover/press). */
+.wv-card { background: white; border-radius: 20px; padding: 24px; border: 2px solid var(--color-sky-200); box-shadow: 4px 4px 0 var(--color-sky-100); }
+/* Edge-to-edge card for an embedded PDF: the viewer fills it, so no padding. */
+.wv-card-flush { padding: 0; overflow: hidden; }
+.wv-btn-accent { display: inline-flex; align-items: center; gap: 8px; padding: 13px 24px; font-weight: 700; font-size: 0.95rem; background: var(--color-accent); color: white; border: 2.5px solid var(--color-accent-dark); border-radius: 14px; box-shadow: 3px 3px 0 var(--color-accent-dark); transition: transform 150ms ease-out, box-shadow 150ms ease-out; text-decoration: none; cursor: pointer; }
+.wv-btn-accent:hover { transform: translate(-1.5px,-1.5px); box-shadow: 4.5px 4.5px 0 var(--color-accent-dark); }
+.wv-btn-accent:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--color-accent-dark); }
+@media (prefers-reduced-motion: reduce) {
+  .wv-btn-accent { transition: none; }
+}
+
+/* pages/article_detail.jx */
+/* Static reading card — crisp static recipe (pale shadow, no hover/press). */
+.article-content-card { background: white; border-radius: 20px; border: 2px solid var(--color-sky-200); box-shadow: 4px 4px 0 var(--color-sky-100); }
+.article-back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--color-primary); font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: color 150ms; }
+.article-back-link:hover { color: var(--color-primary-dark); }
+.prose { color: var(--color-ink-body); max-width: none; }
+.prose h1, .prose h2, .prose h3 { color: var(--color-primary-dark); font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; margin-top: 2rem; margin-bottom: 1rem; }
+.prose h1 { font-size: 2rem; }
+.prose h2 { font-size: 1.6rem; }
+.prose h3 { font-size: 1.3rem; }
+.prose p { margin-bottom: 1.25rem; line-height: 1.8; }
+.prose ul, .prose ol { margin-bottom: 1.25rem; padding-left: 1.5rem; }
+.prose li { margin-bottom: 0.5rem; line-height: 1.7; }
+.prose ul { list-style-type: disc; }
+.prose ol { list-style-type: decimal; }
+.prose a { color: var(--color-primary); text-decoration: underline; }
+.prose a:hover { color: var(--color-primary-dark); }
+.prose blockquote {
+  border-left: 4px solid var(--color-sky-300); padding-left: 1.25rem; font-style: italic; color: var(--color-ink-muted);
+  margin: 1.5rem 0; background: var(--color-surface-page); border-radius: 0 12px 12px 0; padding-top: 0.75rem; padding-bottom: 0.75rem;
+}
+.prose code { background: var(--color-sky-50); color: var(--color-sky-700); padding: 0.2rem 0.5rem; border-radius: 6px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.88em; border: 1px solid var(--color-sky-200); }
+.prose pre {
+  background: var(--color-ink-heading); color: var(--color-sky-100); padding: 1.25rem; border-radius: 14px; overflow-x: auto;
+  margin-bottom: 1.25rem; border: 2px solid var(--color-sky-900); box-shadow: 3px 3px 0 var(--color-sky-900);
+}
+.prose pre code { background: transparent; color: inherit; padding: 0; border: none; font-size: 0.9em; }
+.prose strong { color: var(--color-ink-heading); font-weight: 700; }
+.prose hr { border: none; border-top: 2px solid var(--color-sky-100); margin: 2rem 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .subject-card, .topic-card { transition: none; }
+}

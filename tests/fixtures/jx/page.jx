@@ -1,0 +1,3 @@
+{#import "@fixtures/panel.jx" as Panel #}
+{#def title #}
+<main><h1>{{ title }}</h1><Panel /></main>

@@ -1,0 +1,7 @@
+{#- Every data table, in its static card that scrolls itself on x (docs/ui-design/page-behaviour.md). `class` and every
+    other attribute go on the <table>; `wrap_class` takes layout utilities for the card. The page
+    writes <thead>/<tbody>; an action cell is a flex row with `items-center` of flat buttons. -#}
+{#def wrap=True, wrap_class="" #}
+{%- if wrap %}<div class="clay-table-wrap {{ wrap_class }}">{% endif -%}
+<table {{ attrs.render(class="clay-table") }}>{{ content }}</table>
+{%- if wrap %}</div>{% endif %}

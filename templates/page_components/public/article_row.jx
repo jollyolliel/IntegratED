@@ -1,0 +1,20 @@
+{#- One article in a reading list (`<ul class="article-list">`): its hero image (else book art), title,
+    a two-line plain-text excerpt and the date. Used by the News index and the landing page's latest
+    news; styles in public.css. -#}
+{#import "@components/base/icon.jx" as Icon #}
+{#def article #}
+<a href="{{ url_for('base.article_detail', id=article.id) }}" class="article-row">
+  <span class="article-row-thumb">
+    {%- if article.hero_image %}
+    <img src="{{ url_for('base.article_image', filename=article.hero_image) }}" alt="" loading="lazy" />
+    {%- else %}
+    <img class="article-row-art" src="{{ url_for('static', filename='svg/book.svg') }}" alt="" />
+    {%- endif %}
+  </span>
+  <span>
+    <span class="article-row-title display-font font-bold">{{ article.title }}</span>
+    <span class="article-row-text">{{ article.content_markdown | markdown | striptags | truncate(160) }}</span>
+    <span class="article-row-date">{{ article.created_at.strftime('%d %b %Y') }}</span>
+  </span>
+  <span class="article-row-arrow" aria-hidden="true"><Icon name="arrow-right" size="5" /></span>
+</a>

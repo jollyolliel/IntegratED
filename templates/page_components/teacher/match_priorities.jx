@@ -1,0 +1,272 @@
+{#- Matching-priorities modal for the teacher people page — what Auto-Match
+   optimises for. Nothing here touches a standing pair: it decides what the
+   next run aims at, and (because scores are recomputed at render time) what
+   every score chip on the person pages means.
+
+   A modal, on the announcement-popup pattern (docs/ui-design/page-behaviour.md): the roster
+   below is the page's subject, and an inline panel this tall pushes it off
+   screen every time the teacher opens it.
+
+   Self-contained — markup plus its own script; the `.mp-*` styling lives in
+   `static/css/pages/matching.css`. Takes `match_factors`, `match_levels`,
+   `weight_level_count` and `spread_level_count` from the rendering route, and
+   opens off `#priorities-btn`, which the page's toolbar owns because it sits
+   beside Auto-Match rather than inside the dialog it opens. -#}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+{#def match_factors, match_levels, weight_level_count, spread_level_count #}
+<div id="priorities-overlay" class="mp-overlay hidden" role="dialog" aria-modal="true"
+     aria-labelledby="priorities-title">
+  <form method="post"
+        action="{{ url_for('teacher.teacher_set_match_settings') }}"
+        class="js-ajax-form mp-card" id="priorities-panel">
+    <button type="button" class="mp-close" data-mp-close
+            aria-label="{{ t('common.close') }}">
+      <Icon name="x-mark" aria-hidden="true" />
+    </button>
+
+    <div class="mp-head">
+      <SectionBadge>{{ t('teacher.people.priorities_badge') }}</SectionBadge>
+      <h2 id="priorities-title" class="mp-title display-font">{{ t('teacher.people.priorities_heading') }}</h2>
+      <p class="mp-sub">{{ t('teacher.people.priorities_hint') }}</p>
+    </div>
+
+    <div class="mp-body clay-scroll">
+      {# An equaliser, not seven dropdowns: the filled bars make the
+         teacher's weighting readable as one silhouette, which is the whole
+         point of a setting whose values only mean anything relative to
+         each other. Native radios, so the group is keyboard-operable and
+         submits without JS. #}
+      <div class="mp-eq">
+        {% for factor in match_factors %}
+        <div class="mp-eq-row" role="radiogroup" aria-labelledby="eq-label-{{ factor }}">
+          <span class="mp-eq-name" id="eq-label-{{ factor }}">
+            {{ t('teacher.people.factor_' ~ factor) }}
+            <span class="mp-tip">
+              <span class="mp-tip-dot" tabindex="0" role="img"
+                    aria-label="{{ t('teacher.people.factor_' ~ factor ~ '_hint') }}">i</span>
+              <span class="mp-tip-bubble" aria-hidden="true">{{ t('teacher.people.factor_' ~ factor ~ '_hint') }}</span>
+            </span>
+          </span>
+          <span class="mp-eq-scale" data-level="{{ match_levels.weights[factor] }}">
+            {% for level in range(weight_level_count) %}
+            <label class="mp-eq-step">
+              <input type="radio" name="weight_{{ factor }}" value="{{ level }}"
+                     {% if level == match_levels.weights[factor] %}checked{% endif %} />
+              <span class="mp-eq-bar"></span>
+              <span class="sr-only">{{ t('teacher.people.level_' ~ level) }}</span>
+            </label>
+            {% endfor %}
+          </span>
+          <span class="mp-eq-value" data-eq-value>
+            {{ t('teacher.people.level_' ~ match_levels.weights[factor]) }}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <p class="mp-note">{{ t('teacher.people.priorities_relative_note') }}</p>
+
+      {# The diagram stays on screen rather than hiding behind a help
+         toggle: it *is* the explanation of this control, and the sentence
+         underneath it changes with the choice. #}
+      <div class="mp-spread">
+        <h3 class="mp-section-title">{{ t('teacher.people.spread_label') }}</h3>
+        <p class="mp-sub">{{ t('teacher.people.spread_hint') }}</p>
+
+        <div class="mp-spread-grid">
+          <div class="mp-spread-choices" role="radiogroup" aria-labelledby="spread-heading">
+            <span class="sr-only" id="spread-heading">{{ t('teacher.people.spread_label') }}</span>
+            {% for level in range(spread_level_count) %}
+            <label class="mp-spread-choice">
+              <input type="radio" name="spread" value="{{ level }}"
+                     {% if level == match_levels.spread %}checked{% endif %} />
+              <span>{{ t('teacher.people.spread_level_' ~ level) }}</span>
+            </label>
+            {% endfor %}
+          </div>
+
+          {# Every candidate connector is always in the DOM and only its
+             weight changes — an SVG `d` cannot be transitioned, so morphing
+             the line would mean redrawing it per frame in JS. #}
+          <figure class="mp-demo" id="spread-demo" data-spread="even">
+            {# Bowed, never straight: two horizontal rules between round
+               caps read as a pair of sliders, which is exactly the control
+               this diagram sits next to. #}
+            <svg class="mp-demo-svg" viewBox="0 0 200 108" role="img"
+                 aria-label="{{ t('teacher.people.spread_demo_label') }}">
+              <path class="mp-demo-line mp-demo-line-fixed" d="M44 28 C 92 16, 108 16, 156 28" />
+              <path class="mp-demo-line mp-demo-line-stack" d="M44 80 C 96 84, 120 60, 156 32" />
+              <path class="mp-demo-line mp-demo-line-even"  d="M44 80 C 92 92, 108 92, 156 80" />
+              <g class="mp-demo-side">
+                <circle class="mp-demo-node mp-demo-learner" cx="30" cy="28" r="13" />
+                <circle class="mp-demo-node mp-demo-learner" cx="30" cy="80" r="13" />
+              </g>
+              <g class="mp-demo-side">
+                <circle class="mp-demo-node mp-demo-strong" cx="170" cy="28" r="13" />
+                <circle class="mp-demo-node mp-demo-idle"   cx="170" cy="80" r="13" />
+              </g>
+            </svg>
+            <figcaption class="mp-demo-caption" id="spread-demo-caption"></figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+
+    {# Auto-Match is this screen's one green primary (docs/ui-design/visual-language.md:
+       "one green primary per screen"), so saving here stays secondary. #}
+    {# The reset flag rides a hidden input as well as the button's own
+       value. `js-ajax-form` disables the form's *first* submit button
+       before it builds the FormData, and a disabled control is barred from
+       submission — so the button's `name="reset"` alone is dropped on
+       exactly the press that needs it, and "reset" silently saves whatever
+       is on screen. The hidden input is never disabled; the button's value
+       still carries it when JS is off. #}
+    <input type="hidden" name="reset" id="priorities-reset-flag" value="" />
+    <div class="mp-actions">
+      <Button variant="gray" type="submit" name="reset" value="1" data-mp-reset>{{ t('teacher.people.priorities_reset') }}</Button>
+      <Button variant="sky" type="submit" data-mp-save>{{ t('teacher.people.priorities_save') }}</Button>
+    </div>
+  </form>
+</div>
+
+<script>
+  (() => {
+    // Matching priorities. Both controls are named steps rather than numbers,
+    // so the level word and the diagram caption are the only place the teacher
+    // reads what a position means — all three are driven off the checked radio.
+    const weightLevelLabels = [
+      {% for level in range(weight_level_count) -%}
+      {{ t('teacher.people.level_' ~ level)|tojson }}{{ ", " if not loop.last else "" }}
+      {%- endfor %}
+    ];
+    const spreadDemoCaptions = {
+      even: {{ t('teacher.people.spread_demo_even')|tojson }},
+      mixed: {{ t('teacher.people.spread_demo_mixed')|tojson }},
+      stack: {{ t('teacher.people.spread_demo_best')|tojson }},
+    };
+
+    function bindPrioritiesPanel() {
+      const overlay = document.getElementById("priorities-overlay");
+      const panel = document.getElementById("priorities-panel");
+      const toggle = document.getElementById("priorities-btn");
+      if (!overlay || !panel || !toggle) return;
+
+      function setOpen(open) {
+        overlay.classList.toggle("hidden", !open);
+        toggle.setAttribute("aria-expanded", String(open));
+        // Nothing behind the overlay should scroll while it is up.
+        document.body.style.overflow = open ? "hidden" : "";
+        if (open) overlay.querySelector(".mp-close")?.focus();
+        else toggle.focus();
+      }
+
+      toggle.addEventListener("click", () => setOpen(true));
+      overlay.querySelectorAll("[data-mp-close]").forEach((btn) => {
+        btn.addEventListener("click", () => setOpen(false));
+      });
+      // Backdrop and Escape close it, same as the announcement popup.
+      overlay.addEventListener("mousedown", (e) => {
+        if (e.target === overlay) setOpen(false);
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !overlay.classList.contains("hidden")) setOpen(false);
+      });
+
+      // Tooltips are measured and placed at fixed coordinates rather than
+      // being laid out against their dot — the modal body scrolls, and an
+      // absolutely-positioned bubble on the first row gets clipped by it.
+      function placeTip(dot) {
+        const bubble = dot.nextElementSibling;
+        if (!bubble) return;
+        bubble.classList.add("is-open");
+        const dotBox = dot.getBoundingClientRect();
+        const bubbleBox = bubble.getBoundingClientRect();
+        const centred = dotBox.left + dotBox.width / 2 - bubbleBox.width / 2;
+        const left = Math.max(8, Math.min(centred, window.innerWidth - bubbleBox.width - 8));
+        bubble.style.left = `${left}px`;
+        bubble.style.top = `${dotBox.top - bubbleBox.height - 8}px`;
+        // The arrow tracks the dot even when the bubble was pushed off-centre
+        // to stay on screen.
+        bubble.style.setProperty("--mp-tip-arrow", `${dotBox.left + dotBox.width / 2 - left}px`);
+      }
+
+      function hideTip(dot) {
+        dot.nextElementSibling?.classList.remove("is-open");
+      }
+
+      panel.querySelectorAll(".mp-tip-dot").forEach((dot) => {
+        dot.addEventListener("mouseenter", () => placeTip(dot));
+        dot.addEventListener("focus", () => placeTip(dot));
+        dot.addEventListener("mouseleave", () => hideTip(dot));
+        dot.addEventListener("blur", () => hideTip(dot));
+      });
+      // A fixed bubble does not travel with the content it points at.
+      panel.querySelector(".mp-body")?.addEventListener("scroll", () => {
+        panel.querySelectorAll(".mp-tip-bubble.is-open").forEach((b) => b.classList.remove("is-open"));
+      });
+
+      // Click lands before submit, so the flag is already set by the time the
+      // AJAX handler reads the form.
+      const resetFlag = panel.querySelector("#priorities-reset-flag");
+      panel.querySelector("[data-mp-reset]")?.addEventListener("click", () => {
+        if (resetFlag) resetFlag.value = "1";
+      });
+      panel.querySelector("[data-mp-save]")?.addEventListener("click", () => {
+        if (resetFlag) resetFlag.value = "";
+      });
+
+      function renderWeights() {
+        panel.querySelectorAll(".mp-eq-row").forEach((row) => {
+          const checked = row.querySelector("input:checked");
+          if (!checked) return;
+          const level = Number(checked.value);
+          row.querySelector(".mp-eq-scale").dataset.level = String(level);
+          const value = row.querySelector("[data-eq-value]");
+          if (value) value.textContent = weightLevelLabels[level] ?? "";
+        });
+      }
+
+      function renderSpread() {
+        const checked = panel.querySelector('input[name="spread"]:checked');
+        const demo = panel.querySelector("#spread-demo");
+        const caption = panel.querySelector("#spread-demo-caption");
+        if (!checked || !demo) return;
+        const level = Number(checked.value);
+        const top = panel.querySelectorAll('input[name="spread"]').length - 1;
+        // The middle of the range is the one setting whose outcome genuinely
+        // depends on how big the score gap is, so it says so rather than
+        // picking a side the matcher would not always pick.
+        const state = level <= 1 ? "even" : level >= top - 1 ? "stack" : "mixed";
+        demo.dataset.spread = state;
+        if (caption) caption.textContent = spreadDemoCaptions[state] ?? "";
+      }
+
+      panel.addEventListener("change", (e) => {
+        if (e.target.name === "spread") renderSpread();
+        else if (e.target.name?.startsWith("weight_")) renderWeights();
+      });
+      renderWeights();
+      renderSpread();
+
+      panel.addEventListener("ajaxform:success", (e) => {
+        const levels = e.detail?.levels;
+        if (!levels) return;
+        Object.entries(levels.weights || {}).forEach(([factor, level]) => {
+          panel.querySelector(`input[name="weight_${factor}"][value="${level}"]`)?.click();
+        });
+        panel.querySelector(`input[name="spread"][value="${levels.spread}"]`)?.click();
+        renderWeights();
+        renderSpread();
+        setOpen(false);
+      });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bindPrioritiesPanel);
+    } else {
+      bindPrioritiesPanel();
+    }
+  })();
+</script>

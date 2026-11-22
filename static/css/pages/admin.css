@@ -1,0 +1,315 @@
+/* Staff back-office pages: settings, admin DB tools, teacher/volunteer rosters.
+   Used by: pages/settings.jx, pages/school_admin/settings.jx, pages/administrator/db_table.jx,
+   pages/administrator/users.jx, pages/administrator/db_stats.jx, pages/administrator/school_detail.jx,
+   pages/volunteer/profile.jx, pages/volunteer/my_partner.jx, pages/teacher/people.jx,
+   pages/teacher/attendance.jx, pages/teacher/attendance_history.jx,
+   pages/teacher/dashboard.jx,
+   pages/teacher/volunteer_detail.jx, pages/teacher/learner_detail.jx,
+   pages/teacher/worksheet_assigner.jx, pages/teacher/worksheet_assignments.jx,
+   components/shell/worksheet_library.jx. */
+
+/* pages/settings.jx + pages/school_admin/settings.jx — form chrome */
+.settings-nav-link {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px;
+  font-size: 0.875rem; font-weight: 600; color: var(--color-ink-muted); border: 1.5px solid transparent;
+  transition: background 150ms, color 150ms, border-color 150ms; text-decoration: none;
+}
+.settings-nav-link:hover { background: var(--color-sky-50); color: var(--color-sky-700); border-color: var(--color-sky-100); }
+.settings-nav-link.active { background: var(--color-sky-50); color: var(--color-sky-700); border-color: var(--color-sky-200); }
+.settings-nav-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.field-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--color-sky-700); margin-bottom: 6px; }
+.field-label span { font-weight: 400; color: var(--color-ink-muted); }
+.field-hint { font-size: 0.78rem; color: var(--color-ink-faint); margin-top: 4px; }
+.hint-text { font-size: 0.78rem; color: var(--color-ink-muted); margin-top: 4px; }
+.section-divider { border: none; border-top: 1.5px solid var(--color-sky-50); margin: 20px 0; }
+.section-icon { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-bottom: 12px; }
+.danger-input {
+  width: 100%; padding: 10px 14px; background: var(--color-rose-50); color: var(--color-ink-heading);
+  border: 2px solid var(--color-rose-200); border-radius: 12px; font-size: 0.9rem; transition: border-color 150ms;
+}
+.danger-input:focus { border-color: var(--color-danger); box-shadow: 0 0 0 3px rgb(var(--color-danger-rgb) / 0.1); outline: none; }
+
+/* pages/administrator/db_table.jx — table itself uses global .clay-table(-wrap), see docs/ui-design/page-behaviour.md */
+.add-row-panel { background: white; border-radius: 16px; border: 2px solid var(--color-sky-200); box-shadow: 4px 4px 0 var(--color-sky-100); padding: 20px; }
+.db-table thead th.pk-col { color: var(--color-amber-600); }
+.db-table tbody td { max-width: 280px; }
+.pk-val { color: var(--color-amber-600); font-weight: 600; }
+.fk-link { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: 8px; padding: 1px 8px; border-radius: 999px; background: var(--color-sky-50); border: 1.5px solid var(--color-sky-200); color: var(--color-primary); font-weight: 700; font-size: 0.7rem; text-decoration: none; white-space: nowrap; transition: background 150ms, border-color 150ms, transform 150ms; }
+.fk-link:hover { background: var(--color-primary); border-color: var(--color-primary); color: white; transform: translateX(2px); }
+.db-table td:has(input) .fk-link { display: none; }
+/* Arrival highlight from a foreign-key link: flashes, then fades out over 2s. */
+.db-table tbody tr.focused-row td { animation: focus-fade 2s ease-out forwards; }
+@keyframes focus-fade { 0%, 15% { background-color: var(--color-amber-200); } 100% { background-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .db-table tbody tr.focused-row td { animation-duration: 0.01s; } }
+.null-val { color: var(--color-ink-faint); font-style: italic; }
+.cell-edit-input { background: var(--color-surface-page); border: 2px solid var(--color-primary); border-radius: 8px; padding: 3px 8px; font-size: 0.76rem; font-family: inherit; color: var(--color-ink-heading); outline: none; width: 100%; min-width: 80px; }
+
+/* pages/administrator/users.jx */
+.user-badge { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1.5px solid; }
+
+/* pages/administrator/db_stats.jx */
+.modal-overlay { background: rgb(var(--color-ink-heading-rgb) / 0.45); backdrop-filter: blur(4px); }
+
+/* pages/administrator/school_detail.jx */
+.dl-row { display: flex; gap: 8px; font-size: 0.88rem; padding: 6px 0; border-bottom: 1px solid var(--color-gray-100); }
+.dl-row:last-child { border-bottom: none; }
+.dl-dt { color: var(--color-ink-faint); width: 140px; flex-shrink: 0; font-size: 0.82rem; }
+.dl-dd { font-family: 'Courier New', Courier, monospace; font-size: 0.82rem; color: var(--color-ink-body); font-weight: 600; }
+
+/* pages/volunteer/profile.jx + pages/volunteer/my_partner.jx + pages/teacher/people.jx */
+.stat-mini { background: var(--color-sky-50); border-radius: 14px; padding: 14px 16px; border: 1.5px solid var(--color-sky-200); }
+.stat-mini-green { background: var(--color-green-50); border-radius: 14px; padding: 14px 16px; border: 1.5px solid var(--color-emerald-200); }
+.avatar-circle-lg { width: 120px; height: 120px; border-radius: 50%; background: var(--color-sky-50); border: 3px solid var(--color-sky-200); box-shadow: 3px 3px 0 var(--color-sky-200); display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 0 auto 12px; }
+.avatar-circle-sm { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
+.avatar-circle-sky { background: var(--color-sky-50); color: var(--color-sky-700); border: 2px solid var(--color-sky-200); }
+.avatar-circle-green { background: var(--color-green-100); color: var(--color-accent); border: 2px solid var(--color-emerald-200); }
+.topic-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--color-surface-card); border-radius: 12px; border: 1.5px solid var(--color-sky-100); margin-bottom: 8px; transition: border-color 150ms; }
+.people-item { background: white; border-radius: 14px; padding: 14px 16px; border: 2px solid var(--color-sky-100); transition: border-color 150ms; }
+.people-item:hover { border-color: var(--color-sky-200); }
+/* Search hides cards with the `hidden` attribute, and the card is also a
+   Tailwind `flex` box — a bare [hidden] rule loses that tie on source order and
+   the filter silently does nothing. Same trap as .att-hidden on table rows. */
+.people-item[hidden], .people-no-match[hidden] { display: none; }
+.people-no-match { font-size: 0.85rem; font-style: italic; color: var(--color-ink-faint); padding: 8px 2px; }
+
+/* pages/teacher/people.jx — the roster is two columns and the pairing is the line
+   drawn between them, so there is no third list repeating both sides. The SVG
+   spans the whole map and sits *under* the cards: a line that would cross a
+   card is clipped by it instead, leaving only the gutter run visible. */
+.people-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.people-map { position: relative; }
+.people-map-lines { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: visible; }
+.people-map-cols { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr; gap: 24px; }
+@media (min-width: 768px) { .people-map-cols { grid-template-columns: 1fr 1fr; column-gap: 56px; } }
+/* Never transition `transform` on .people-item — the volunteer cards are slid
+   into place with one, and each redraw clears it to re-measure the natural box.
+   Mid-animation measurements would feed the next redraw its own wrong answer. */
+.people-line path { fill: none; stroke: var(--color-sky-200); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: stroke 150ms ease-out; }
+.people-line circle { fill: var(--color-sky-200); transition: fill 150ms ease-out; }
+/* Key for the connector colours. Swatches are line segments, not dots — they
+   have to read as the same object the map draws. */
+.people-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 0.75rem; color: var(--color-ink-muted); }
+.people-legend-label { font-weight: 700; color: var(--color-ink-body); }
+.people-legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.people-legend-swatch { display: inline-block; width: 18px; height: 3px; border-radius: 999px; }
+.people-legend-strong { background: var(--color-accent); }
+.people-legend-good { background: var(--color-primary); }
+.people-legend-fair { background: var(--color-amber-600); }
+.people-legend-weak { background: var(--color-ink-faint); }
+
+/* A connector is coloured by its pair's match band (`helpers/matching.py` →
+   `match_band`), muted at rest and saturated while the pair is hovered. The
+   rest weight is 300, not the usual 200 — here the colour carries information
+   rather than decorating, so it has to survive a 2px stroke on a pale ground. Band-plus-active
+   sits after the plain active rules so it outweighs them. */
+.people-line-strong path { stroke: var(--color-green-300); }
+.people-line-strong circle { fill: var(--color-green-300); }
+.people-line-good path { stroke: var(--color-sky-300); }
+.people-line-good circle { fill: var(--color-sky-300); }
+.people-line-fair path { stroke: var(--color-amber-300); }
+.people-line-fair circle { fill: var(--color-amber-300); }
+.people-line-weak path { stroke: var(--color-gray-300); }
+.people-line-weak circle { fill: var(--color-gray-300); }
+.people-line-active path { stroke: var(--color-primary); }
+.people-line-active circle { fill: var(--color-primary); }
+.people-line-strong.people-line-active path { stroke: var(--color-accent); }
+.people-line-strong.people-line-active circle { fill: var(--color-accent); }
+.people-line-good.people-line-active path { stroke: var(--color-primary); }
+.people-line-good.people-line-active circle { fill: var(--color-primary); }
+.people-line-fair.people-line-active path { stroke: var(--color-amber-600); }
+.people-line-fair.people-line-active circle { fill: var(--color-amber-600); }
+.people-line-weak.people-line-active path { stroke: var(--color-ink-muted); }
+.people-line-weak.people-line-active circle { fill: var(--color-ink-muted); }
+
+/* pages/teacher/attendance.jx + pages/teacher/attendance_history.jx */
+/* The register is one sheet: a single table, marks in their own columns so a
+   teacher reads down a column instead of across every row. The column heading
+   carries the status word, so the cell control is a bare radio dot. */
+.att-radio {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 999px;
+  background: white; border: 2px solid var(--color-slate-300); cursor: pointer;
+  transition: border-color 150ms ease-out, background 150ms ease-out;
+}
+.att-radio:hover { border-color: var(--color-sky-300); background: var(--color-sky-50); }
+.att-radio-dot { width: 12px; height: 12px; border-radius: 999px; background: transparent; }
+.att-radio[aria-pressed="true"] { border-color: var(--color-accent); background: var(--color-green-100); }
+.att-radio[aria-pressed="true"] .att-radio-dot { background: var(--color-accent); }
+.att-radio-absent[aria-pressed="true"] { border-color: var(--color-rose-600); background: var(--color-rose-100); }
+.att-radio-absent[aria-pressed="true"] .att-radio-dot { background: var(--color-rose-600); }
+/* History repeats the same two columns read-only, so a recorded session looks
+   identical to the sheet that recorded it. The row's data-status paints them —
+   patching that attribute after an edit is what redraws the dots. */
+.att-radio-static { cursor: default; }
+.att-radio-static:hover { border-color: var(--color-slate-300); background: white; }
+tr[data-status="present"] .att-radio-static[data-mark-cell="present"] { border-color: var(--color-accent); background: var(--color-green-100); }
+tr[data-status="present"] .att-radio-static[data-mark-cell="present"] .att-radio-dot { background: var(--color-accent); }
+tr[data-status="absent"] .att-radio-static[data-mark-cell="absent"] { border-color: var(--color-rose-600); background: var(--color-rose-100); }
+tr[data-status="absent"] .att-radio-static[data-mark-cell="absent"] .att-radio-dot { background: var(--color-rose-600); }
+
+/* Sheet density — a full register has to fit on one screen. */
+.att-sheet thead th { padding: 9px 12px; white-space: nowrap; }
+.att-sheet tbody td { padding: 7px 12px; }
+.att-sheet .att-hours, .att-sheet .att-note { padding: 6px 10px; font-size: 0.82rem; }
+.att-col-mark { width: 76px; text-align: center; }
+/* The global `.clay-table thead th` left-align outweighs a single class. */
+.att-sheet thead th.att-col-mark { text-align: center; }
+.att-col-hours { width: 96px; }
+.att-hours { width: 76px; text-align: center; }
+.att-note { min-width: 190px; }
+/* Whole row dims until it carries a decision, so an unfinished register is
+   visible at a glance instead of needing a per-row read. */
+.att-row-unmarked .att-hours, .att-row-unmarked .att-note { opacity: 0.45; }
+.att-row-absent .att-hours { opacity: 0.45; }
+/* Volunteer sub-header inside the sheet — keeps grouping without breaking the
+   table into one card per volunteer. */
+.att-group-row td { background: var(--color-sky-50); padding: 6px 12px; border-top: 2px solid var(--color-sky-100); }
+.att-group-row:hover td { background: var(--color-sky-50); }
+.att-group-status { padding-inline-end: 12px; }
+/* Day separator — one band per date, carrying nothing but the date, so the
+   sheet reads as a stack of days rather than one undifferentiated list. */
+.att-day-row td {
+  background: var(--color-sky-100); padding: 7px 12px; border-top: 2.5px solid var(--color-sky-200);
+  font-family: "Baloo 2", system-ui, sans-serif; font-weight: 800;
+  font-size: 0.85rem; color: var(--color-sky-900); letter-spacing: 0.02em;
+}
+.att-day-row:hover td { background: var(--color-sky-100); }
+.att-day-row:first-child td { border-top: none; }
+/* Filtering a table can't rely on [hidden] alone — a `display` rule on the row
+   outranks the attribute. Every hide in the sheet goes through this class. */
+.att-hidden { display: none !important; }
+.att-group-bar { display: flex; align-items: center; gap: 10px; }
+.att-group-name { font-size: 0.8rem; font-weight: 700; color: var(--color-sky-900); }
+.att-group-count { font-size: 0.7rem; font-weight: 700; color: var(--color-ink-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+/* Toolbar above the sheet: date, the default-hours field, search, bulk chips. */
+.att-toolbar {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;
+  padding: 12px 16px; background: white; border: 2px solid var(--color-sky-200);
+  border-radius: 16px; box-shadow: 4px 4px 0 var(--color-sky-100);
+}
+.att-field { display: flex; flex-direction: column; gap: 4px; width: 170px; }
+.att-field-narrow { width: 110px; }
+.att-field-grow { flex: 1 1 200px; width: auto; }
+/* A name needs more room than a date, and a date input renders its own
+   mm/dd/yyyy mask — sizing them alike is what makes the strip look ragged. */
+.att-field-wide { width: 210px; }
+.att-field-date { width: 160px; }
+.att-field label { font-size: 0.7rem; font-weight: 700; color: var(--color-sky-700); text-transform: uppercase; letter-spacing: 0.04em; }
+/* Input and select must be given the same padding here or the two controls
+   sit at different heights on one row. */
+.att-field .clay-input, .att-field select { padding: 7px 12px; font-size: 0.85rem; }
+/* Type-to-filter people picker. The hidden input carries the id the form
+   submits; the visible one is only ever a filter over the local roster. */
+.att-combo { position: relative; }
+.att-combo-list {
+  position: absolute; top: 100%; inset-inline-start: 0; z-index: 30; width: 100%;
+  margin-top: 4px; padding: 4px; list-style: none; background: white;
+  border: 2px solid var(--color-sky-200); border-radius: 12px; box-shadow: 4px 4px 0 var(--color-sky-100);
+}
+.att-combo-option {
+  padding: 6px 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+  color: var(--color-sky-900); cursor: pointer;
+}
+.att-combo-option:hover, .att-combo-option-active { background: var(--color-sky-100); }
+.att-combo-empty { padding: 6px 10px; font-size: 0.8rem; font-weight: 600; color: var(--color-ink-muted); }
+.att-toolbar-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-inline-start: auto; }
+.att-counts { display: flex; flex-wrap: wrap; gap: 16px; padding-inline-start: 4px; }
+.att-count { font-size: 0.75rem; font-weight: 700; color: var(--color-ink-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.att-count b { font-size: 1rem; font-weight: 800; margin-inline-end: 3px; }
+/* A history row being edited. The row itself is the form — it stays in its day,
+   so the tint and the live inputs are the whole "you are editing this" signal. */
+.att-row-editing td { background: var(--color-sky-100); }
+.att-row-editing:hover td { background: var(--color-sky-100); }
+.att-row-editing .att-radio-static { cursor: pointer; }
+.att-row-editing .att-radio-static:hover { border-color: var(--color-sky-300); background: var(--color-sky-50); }
+.att-row-editing .clay-input { padding: 6px 10px; font-size: 0.82rem; }
+.att-row-editing .att-hours { width: 76px; text-align: center; }
+.att-savebar {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  align-items: center; justify-content: space-between; margin-top: 20px; padding: 14px 18px;
+  background: white; border: 2px solid var(--color-sky-200); border-radius: 18px; box-shadow: 4px 4px 0 var(--color-sky-100);
+}
+/* Card shown instead of the sheet once the day is already fully recorded. */
+.att-marked-card {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px;
+}
+.att-marked-card p { color: var(--color-green-800); font-size: 0.85rem; }
+/* history filter bar */
+.att-chip {
+  padding: 6px 14px; border-radius: 999px; font-size: 0.75rem; font-weight: 700;
+  color: var(--color-sky-700); background: white; border: 2px solid var(--color-sky-100); text-decoration: none;
+  transition: background 150ms ease-out, border-color 150ms ease-out;
+}
+.att-chip:hover { border-color: var(--color-sky-200); background: var(--color-sky-50); }
+.att-chip-active { background: var(--color-primary); border-color: var(--color-primary); color: white; }
+.att-chip-active:hover { background: var(--color-sky-700); border-color: var(--color-sky-700); }
+.att-pill-present { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; color: var(--color-accent-dark); background: var(--color-green-100); border: 1.5px solid var(--color-emerald-200); }
+.att-pill-absent { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; color: var(--color-rose-700); background: var(--color-rose-100); border: 1.5px solid var(--color-rose-200); }
+.att-pill-unmarked { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; color: var(--color-ink-muted); background: var(--color-gray-100); border: 1.5px solid var(--color-line); }
+/* pages/teacher/dashboard.jx */
+.list-item-clay { background: var(--color-surface-card); border-radius: 12px; padding: 12px 16px; border: 1.5px solid var(--color-sky-100); transition: border-color 150ms; }
+.list-item-clay:hover { border-color: var(--color-sky-200); }
+
+/* pages/teacher/volunteer_detail.jx + pages/teacher/learner_detail.jx */
+.tag-chip { display: inline-block; background: var(--color-sky-50); color: var(--color-sky-700); font-size: 0.75rem; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--color-sky-200); }
+.tag-chip-green { background: var(--color-green-50); color: var(--color-accent); border-color: var(--color-emerald-200); }
+.tag-chip-orange { background: var(--color-orange-50); color: var(--color-orange-600); border-color: var(--color-orange-200); }
+
+/* pages/teacher/volunteer_detail.jx + pages/teacher/learner_detail.jx — the
+   matcher's compatibility score for one pair. Colour IS the band, so the
+   number never has to be read to see whether a pair is a good one. */
+.match-score-chip {
+  display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+  padding: 2px 9px; border-radius: 999px; border: 1.5px solid;
+  font-size: 0.7rem; font-weight: 800; line-height: 1.5; letter-spacing: 0.02em;
+}
+.match-score-strong { background: var(--color-green-100); color: var(--color-accent-dark); border-color: var(--color-emerald-200); }
+.match-score-good { background: var(--color-sky-100); color: var(--color-sky-700); border-color: var(--color-sky-200); }
+.match-score-fair { background: var(--color-orange-50); color: var(--color-orange-700); border-color: var(--color-orange-200); }
+.match-score-weak { background: var(--color-gray-100); color: var(--color-ink-muted); border-color: var(--color-line); }
+
+/* pages/teacher/learner_detail.jx — one assigned worksheet. Colour IS the state:
+   gray outstanding, green just-done, blue done a while back. Static tiles, so
+   flat borders and no offset shadow (docs/ui-design/visual-language.md: never make a dead card look
+   tappable). The [hidden] rules are what the client-side pager hides off-page
+   cards with. */
+.assigned-card, .assigned-card-fresh, .assigned-card-stale {
+  border-radius: 14px; padding: 14px 16px; border: 2px solid;
+}
+.assigned-card { background: var(--color-surface-card); border-color: var(--color-line); }
+.assigned-card-fresh { background: var(--color-green-50); border-color: var(--color-emerald-200); }
+.assigned-card-stale { background: var(--color-sky-50); border-color: var(--color-sky-200); }
+.assigned-card[hidden], .assigned-card-fresh[hidden], .assigned-card-stale[hidden] { display: none; }
+
+/* pages/teacher/worksheet_assigner.jx */
+.ws-select-btn { text-align: left; border-radius: 16px; border: 2px solid var(--color-sky-100); background: var(--color-surface-card); padding: 14px 16px; cursor: pointer; transition: border-color 150ms, background 150ms; width: 100%; }
+.ws-select-btn:hover { border-color: var(--color-sky-200); background: white; }
+
+/* page_components/teacher/worksheet_tabs.jx — the Worksheets area's Assigned / Library
+   switch. A segmented pill: the strip is the static frame, the active tab is filled. */
+.ws-tabs {
+  display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: white;
+  border: 2px solid var(--color-sky-200); border-radius: 999px; box-shadow: 3px 3px 0 var(--color-sky-100);
+}
+.ws-tab {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 999px;
+  font-size: 0.85rem; font-weight: 700; color: var(--color-sky-700); text-decoration: none;
+  transition: background 150ms ease-out, color 150ms ease-out;
+}
+.ws-tab:hover { background: var(--color-sky-50); }
+.ws-tab-active, .ws-tab-active:hover { background: var(--color-primary); color: white; }
+.ws-tab-count {
+  min-width: 22px; padding: 1px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 800; text-align: center;
+  background: var(--color-amber-100); color: var(--color-amber-700);
+}
+.ws-tab-active .ws-tab-count { background: white; color: var(--color-primary); }
+
+/* page_components/teacher/assignment_results.jx — the bulk bar sits on .att-toolbar;
+   its checkboxes are plain inputs with a label beside them. */
+.ws-bulk-bar { align-items: center; padding-block: 10px; }
+.ws-check-label { display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 700; color: var(--color-sky-900); cursor: pointer; }
+[data-assignment-form] input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--color-primary); }
+
+/* components/shell/worksheet_library.jx — .ws-card/.ws-card-highlighted are bare JS hooks
+   (search/filter data-attrs, scrollIntoView target) with no styling of their own;
+   visuals come from clay-card/clay-card-amber, see templates/components/worksheet_card.jx */

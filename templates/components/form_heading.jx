@@ -1,0 +1,2 @@
+{#- Uppercase sky heading with a trailing rule, inside a form card. -#}
+<div {{ attrs.render(class="section-heading") }}>{{ content }}</div>

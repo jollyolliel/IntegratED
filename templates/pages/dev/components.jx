@@ -1,0 +1,632 @@
+{#- Dev-only component gallery (routes/base/_dev.py). With no `shell` it is the gallery: every
+    shared component in every allowed value, read from the source of truth (`spec`). With a
+    `shell` it renders that page shell on its own, since shells are whole documents; the gallery
+    frames each one. `?lang=ar` flips it to RTL. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/shell/game_page.jx" as GamePage #}
+{#import "@components/shell/legal_page.jx" as LegalPage #}
+{#import "@components/shell/worksheet_library.jx" as WorksheetLibrary #}
+{#import "@components/shell/nav_link.jx" as NavLink #}
+{#import "@components/shell/nav_button.jx" as NavButton #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/badge.jx" as Badge #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/textarea.jx" as Textarea #}
+{#import "@components/base/choice.jx" as Choice #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/base/progress_bar.jx" as ProgressBar #}
+{#import "@components/page_header.jx" as PageHeader #}
+{#import "@components/google_button.jx" as GoogleButton #}
+{#import "@components/lang_button.jx" as LangButton #}
+{#import "@components/audio_button.jx" as AudioButton #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/quick_action.jx" as QuickAction #}
+{#import "@components/empty_state.jx" as EmptyState #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/count_pill.jx" as CountPill #}
+{#import "@components/status_pill.jx" as StatusPill #}
+{#import "@components/file_type_badge.jx" as FileTypeBadge #}
+{#import "@components/section_title.jx" as SectionTitle #}
+{#import "@components/match_score_chip.jx" as MatchScoreChip #}
+{#import "@components/form_heading.jx" as FormHeading #}
+{#import "@components/language_row.jx" as LanguageRow #}
+{#import "@components/step_indicator.jx" as StepIndicator #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/pagination.jx" as Pagination #}
+{#import "@components/worksheet_viewer.jx" as WorksheetViewer #}
+{#import "@components/worksheet_prose.jx" as WorksheetProse #}
+{#import "@components/worksheet_meta.jx" as WorksheetMeta #}
+{#import "@components/worksheet_card.jx" as WorksheetCard #}
+{#import "@components/topic_card.jx" as TopicCard #}
+{#import "@components/mc_options.jx" as McOptions #}
+{#import "@components/journey_scene.jx" as JourneyScene #}
+{#import "@components/journey_loader.jx" as JourneyLoader #}
+{#import "@components/assistant_panel.jx" as AssistantPanel #}
+{#import "@components/shell/main.jx" as Main #}
+{#def spec, demo, shell=None #}
+
+{#- ── Page shells, one per request, framed by the gallery below ── #}
+{%- if shell == "game" %}
+<GamePage title="GamePage" lesson={{ demo.lesson }}>
+  <Main width="3xl" class="space-y-4">
+    <PageHeader badge="GamePage" title="Game shell" subtitle="No footer; games styles, GSAP and GameKit loaded; both overlays below." />
+    <div class="flex flex-wrap gap-3">
+      <Button onclick="window.CompletionOverlay.show({xpEarned: 40, scoreText: '4 / 5', nextLessonData: {id: 1, title: 'Counting to ten'}})">CompletionOverlay</Button>
+      <Button variant="sky" onclick="window.CompletionOverlay.show({xpEarned: 60, scoreText: '5 / 5', isLast: true})">CompletionOverlay, last lesson</Button>
+      <Button variant="amber" onclick="window.showLevelUpModal(3, 'Navigator', [{id: 'face_hair_afro', type: 'hair', label: 'Afro'}, {id: 'avatar_top_sweater', type: 'top', label: 'Sweater'}])">LevelUpModal</Button>
+      <Button variant="rose" onclick="document.getElementById('gameSaveError').hidden = false">GameKit, save failed</Button>
+      <Button variant="gray" onclick="window.CompletionOverlay.reset(); document.getElementById('gameSaveError').hidden = true">Reset</Button>
+    </div>
+  </Main>
+</GamePage>
+{%- elif shell == "legal" %}
+<LegalPage title="Terms of Use" updated="25 May 2026" other_href="#" other_label="Privacy Policy" other_icon="lock-closed">
+  <h2>1. Using the service</h2>
+  <p>Policy prose sits in the card, styled by <code>.legal-prose</code> from the legal partial.</p>
+</LegalPage>
+{%- elif shell == "library" %}
+<WorksheetLibrary title="WorksheetLibrary" endpoint="base.component_gallery" subjects={{ ["Maths", "English"] }}
+  worksheets={{ demo.worksheets }} has_more={{ true }} search_placeholder="Search worksheets"
+  all_label="All" no_results_text="No worksheets match" no_results_sub_text="Try another word or subject.">
+  {% fill header %}<PageHeader badge="Library" title="Worksheets" subtitle="The shared worksheet library shell." />{% endfill %}
+  {% fill cards %}
+    {%- for ws in demo.worksheets %}
+    <WorksheetCard ws={{ ws }} primary_url="#" primary_label="Preview" matched_pairs={{ demo.pairs }} assign_url="#" assign_label="Assign" />
+    {%- endfor %}
+  {% endfill %}
+</WorksheetLibrary>
+{%- elif shell == "announcement" %}
+<Page title="FeatureAnnouncement" announcement={{ demo.announcement }}>
+  <Main>
+    <PageHeader badge="FeatureAnnouncement" title="A page with a pending announcement" />
+  </Main>
+</Page>
+{%- elif shell == "assistant" %}
+<Page title="AssistantPanel">
+  <Main>
+    <PageHeader badge="AssistantPanel" title="The teacher assistant panel">
+      <NavButton icon data-assist-toggle aria-label="Open the assistant" aria-expanded="false" aria-controls="assist-panel">
+        <Icon name="chat-bubble-left-ellipsis" />
+      </NavButton>
+    </PageHeader>
+  </Main>
+  <AssistantPanel />
+</Page>
+{%- else %}
+
+{#- ── The gallery, one group per layer (helpers/clay_primitives.py) ── #}
+{%- set layers = [
+  ("base", "Base", "templates/components/base/ — the building blocks. Everything else is built from these.",
+    ["Type", "Icon", "Button", "Card", "Badge", "Input", "Textarea", "Choice", "Field", "Table", "ProgressBar"]),
+  ("composed", "Composed", "templates/components/ — bases plus a class or two, or a few bases together.",
+    ["IconBox", "StatTile", "QuickAction", "EmptyState", "PageHeader", "SectionTitle", "SectionBadge", "CountPill",
+     "StatusPill", "FileTypeBadge", "MatchScoreChip", "GoogleButton", "LangButton", "AudioButton", "FormHeading",
+     "LanguageRow", "StepIndicator", "JourneyScene", "JourneyLoader", "BackLink", "Pagination", "WorksheetCard", "TopicCard", "WorksheetViewer", "WorksheetProse",
+     "WorksheetMeta", "McOptions", "LevelUpModal", "GameKit", "FeatureAnnouncement", "AssistantPanel"]),
+  ("shell", "Shell", "templates/components/shell/ — whole pages and the header / footer chrome.",
+    ["NavLink", "NavButton", "Header", "GamePage", "LegalPage", "WorksheetLibrary"]),
+] -%}
+{%- set label = "text-[11px] font-mono text-ink-muted" -%}
+{%- set heading = "text-2xl font-extrabold text-sky-950" -%}
+{%- set gallery_head %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css" />
+{%- endset %}
+<Page title="Component gallery" styles="survey admin learning-nav" head={{ gallery_head }}>
+  <Main>
+    <PageHeader badge="Dev only" title="Component gallery"
+      subtitle="Every shared component in templates/components/, by layer, in every allowed value.">
+      <div class="flex gap-2">
+        <Button variant="sky" href={{ url_for("base.component_gallery", lang="en") }} icon="language">LTR</Button>
+        <Button variant="sky" href={{ url_for("base.component_gallery", lang="ar") }} icon="language">RTL (ar)</Button>
+      </div>
+    </PageHeader>
+
+    <div class="grid gap-8 lg:grid-cols-[13rem_minmax(0,1fr)]">
+      <nav class="hidden lg:block" aria-label="Components">
+        <div class="clay-scroll sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pe-2">
+          {%- for layer, title, _, names in layers %}
+          <a href="#layer-{{ layer }}" class="block text-[11px] font-bold uppercase tracking-widest text-ink-faint hover:text-primary mt-4 mb-1">{{ title }}</a>
+          {%- for name in names %}
+          <a href="#{{ name }}" class="block text-sm text-ink-body hover:text-primary py-0.5">{{ name }}</a>
+          {%- endfor %}
+          {%- endfor %}
+        </div>
+      </nav>
+
+      <div class="space-y-16 min-w-0">
+
+        {#- ───────────────────────────── Base ───────────────────────────── #}
+        <div id="layer-base" data-layer="base" class="scroll-mt-24 space-y-12">
+          <div class="border-b-2 border-line pb-3">
+            <h2 class="text-3xl font-extrabold text-sky-950">{{ layers[0][1] }}</h2>
+            <p class="{{ label }}">{{ layers[0][2] }}</p>
+          </div>
+
+          <section id="Type" class="scroll-mt-24 space-y-3">
+            <h3 class="{{ heading }}">Type</h3>
+            <p class="text-sm text-ink-muted">Not a component: every <code>h1</code>–<code>h4</code> is Baloo 2 (base.css).
+              A non-heading takes it with the free <code>display-font</code> class; a heading that wants the body font says <code>font-sans</code>.</p>
+            <h1 class="text-3xl font-extrabold text-sky-950">h1 — a heading</h1>
+            <h2 class="text-2xl font-bold text-sky-900">h2 — a heading</h2>
+            <h3 class="text-xl font-bold text-sky-900">h3 — a heading</h3>
+            <h4 class="text-lg font-bold text-sky-900">h4 — a heading</h4>
+            <p class="display-font text-3xl font-extrabold text-primary">42 <span class="{{ label }}">p.display-font</span></p>
+            <h3 class="font-sans text-lg font-bold text-sky-900">h3.font-sans — a heading in the body font</h3>
+            <p class="text-sm text-ink-muted">The free <code>clay-scroll</code> class gives any scroll container the clay scrollbar:</p>
+            <div class="clay-scroll overflow-x-auto whitespace-nowrap rounded-xl border-2 border-line bg-white p-3">
+              <span class="{{ label }}">div.clay-scroll</span> — a long line that scrolls sideways inside its container so the clay scrollbar shows; keep scrolling to see the floating sky pill.
+            </div>
+          </section>
+
+          <section id="Icon" data-component="Icon" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">Icon</h3>
+            <div class="flex flex-wrap items-end gap-5">
+              {%- for size in spec.Icon.props.size.allowed %}
+              <div class="flex flex-col items-center gap-1 text-primary"><Icon name="academic-cap" size={{ size }} /><span class="{{ label }}">{{ size }}</span></div>
+              {%- endfor %}
+            </div>
+            <p class="text-sm text-ink-muted">Every outline name at size 5 (hover for the name). Chevrons and arrows mirror in RTL.</p>
+            <Card class="p-4">
+              <div class="grid grid-cols-6 sm:grid-cols-10 lg:grid-cols-[repeat(14,minmax(0,1fr))] gap-3 text-ink-body">
+                {%- for name in spec.Icon.props.name.allowed %}
+                <span title="{{ name }}" class="flex justify-center"><Icon name={{ name }} size="5" /></span>
+                {%- endfor %}
+              </div>
+            </Card>
+          </section>
+
+          <section id="Button" data-component="Button" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">Button</h3>
+            {%- for size in spec.Button.props.size.allowed %}
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="{{ label }} w-16">size={{ size }}</span>
+              {%- for variant in spec.Button.props.variant.allowed %}
+              <Button variant={{ variant }} size={{ size }}>{{ variant }}</Button>
+              {%- endfor %}
+            </div>
+            {%- endfor %}
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="{{ label }} w-16">flat</span>
+              {%- for variant in spec.Button.props.variant.allowed %}
+              <Button variant={{ variant }} flat>{{ variant }}</Button>
+              {%- endfor %}
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="{{ label }} w-16">more</span>
+              <Button icon="check" icon_end="chevron-right">icon + icon_end</Button>
+              <Button variant="sky" href="#Button" icon="arrow-left">href (a link)</Button>
+              <Button disabled>disabled</Button>
+              <Button href="#Button" disabled>disabled link</Button>
+            </div>
+          </section>
+
+          <section id="Card" data-component="Card" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">Card</h3>
+            <p class="{{ label }}">static</p>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {%- for tone in spec.Card.props.tone.allowed %}
+              <Card tone={{ tone }}><span class="{{ label }}">tone={{ tone }}</span><p class="mt-1 text-ink-body">A static panel: pale shadow, no motion.</p></Card>
+              {%- endfor %}
+            </div>
+            <div class="flex flex-wrap gap-3">
+              {%- for tag in spec.Card.props.tag.allowed %}
+              <Card tag={{ tag }} class="p-3"><span class="{{ label }}">tag={{ tag }}</span></Card>
+              {%- endfor %}
+            </div>
+            <p class="{{ label }}">clickable: href, or clickable without one</p>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {%- for tone in spec.Card.props.tone.looks.clickable %}
+              <Card tone={{ tone }} href="#Card"><span class="{{ label }}">href, tone={{ tone }}</span><p class="font-bold">A link card</p></Card>
+              {%- endfor %}
+              <Card tone="green" clickable class="text-start"><span class="{{ label }}">clickable</span><p class="font-bold">A button card</p></Card>
+              <Card tone="amber" clickable disabled class="text-start"><span class="{{ label }}">clickable disabled</span><p class="font-bold">A dimmed button card</p></Card>
+            </div>
+          </section>
+
+          <section id="Badge" data-component="Badge" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">Badge</h3>
+            {%- for tag in spec.Badge.props.tag.allowed %}
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="{{ label }} w-16">tag={{ tag }}</span>
+              {%- for tone in spec.Badge.props.tone.allowed %}
+              <Badge tone={{ tone }} tag={{ tag }}>{{ tone }}</Badge>
+              {%- endfor %}
+            </div>
+            {%- endfor %}
+          </section>
+
+          <section id="Input" data-component="Input" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">Input</h3>
+            <div class="grid gap-3 sm:grid-cols-3">
+              {%- for kind in spec.Input.props.type.allowed %}
+              <div><span class="{{ label }}">type={{ kind }}</span><Input type={{ kind }} placeholder={{ kind }} /></div>
+              {%- endfor %}
+              <div><span class="{{ label }}">icon (a search bar)</span><Input type="search" icon="magnifying-glass" placeholder="Search worksheets" /></div>
+              <div><span class="{{ label }}">size=lg (the sign-in card)</span><Input type="password" size="lg" id="gallery-password-lg" placeholder="Password" /></div>
+            </div>
+          </section>
+
+          <section id="Textarea" data-component="Textarea" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">Textarea</h3>
+            <div class="max-w-2xl"><Textarea rows="3">A note about today's session.</Textarea></div>
+          </section>
+
+          <section id="Choice" data-component="Choice" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">Choice</h3>
+            <div class="grid gap-3 sm:grid-cols-2 max-w-2xl">
+              {%- for kind in spec.Choice.props.type.allowed %}
+              <Choice type={{ kind }} name={{ "gallery-" ~ kind }} value="a" label={{ kind ~ ", checked" }} checked />
+              <Choice type={{ kind }} name={{ "gallery-" ~ kind }} value="b" label={{ kind }} />
+              {%- endfor %}
+            </div>
+          </section>
+
+          <section id="Field" data-component="Field" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">Field</h3>
+            <div class="grid gap-3 sm:grid-cols-2 max-w-2xl">
+              <Field label="Full name" for_id="gallery-name" required><Input id="gallery-name" required /></Field>
+              <Field label="School" for_id="gallery-school">
+                <select id="gallery-school"><button><selectedcontent></selectedcontent></button><option>ACS Athens</option></select>
+              </Field>
+              <Field label="With an error" for_id="gallery-error" error="Please fill this in." error_id="gallery-error-msg">
+                <Input id="gallery-error" />
+              </Field>
+            </div>
+            <Button variant="gray" flat onclick="document.getElementById('gallery-error-msg').classList.toggle('hidden')">toggle the error</Button>
+          </section>
+
+          <section id="Table" data-component="Table" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">Table</h3>
+            <Table>
+              <thead><tr><th>Name</th><th>Role</th><th class="text-right">Actions</th></tr></thead>
+              <tbody>
+                {%- for name, role in [("Amina", "Learner"), ("Nikos", "Volunteer"), ("Ms Rossi", "Teacher")] %}
+                <tr>
+                  <td class="font-semibold">{{ name }}</td>
+                  <td>{{ role }}</td>
+                  <td class="text-end">
+                    <div class="flex gap-2 justify-end items-center">
+                      <Button variant="sky" flat href="#Table">View</Button>
+                      <Button variant="danger" flat>Remove</Button>
+                    </div>
+                  </td>
+                </tr>
+                {%- endfor %}
+              </tbody>
+            </Table>
+          </section>
+
+          <section id="ProgressBar" data-component="ProgressBar" class="scroll-mt-24 space-y-3 max-w-xl">
+            <h3 class="{{ heading }}">ProgressBar</h3>
+            {%- for tone in spec.ProgressBar.props.tone.allowed %}
+            {%- for size in spec.ProgressBar.props.size.allowed %}
+            <div><span class="{{ label }}">tone={{ tone }}, size={{ size }}</span><ProgressBar value={{ 25 * loop.index }} tone={{ tone }} size={{ size }} /></div>
+            {%- endfor %}
+            {%- endfor %}
+          </section>
+        </div>
+
+        {#- ─────────────────────────── Composed ─────────────────────────── #}
+        <div id="layer-composed" data-layer="composed" class="scroll-mt-24 space-y-12">
+          <div class="border-b-2 border-line pb-3">
+            <h2 class="text-3xl font-extrabold text-sky-950">{{ layers[1][1] }}</h2>
+            <p class="{{ label }}">{{ layers[1][2] }}</p>
+          </div>
+
+          <section id="IconBox" data-component="IconBox" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">IconBox <span class="{{ label }}">Icon</span></h3>
+            {%- for size in spec.IconBox.props.size.allowed %}
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="{{ label }} w-16">size={{ size }}</span>
+              {%- for tone in spec.IconBox.props.tone.allowed %}
+              <IconBox icon="users" tone={{ tone }} size={{ size }} />
+              {%- endfor %}
+            </div>
+            {%- endfor %}
+          </section>
+
+          <section id="StatTile" data-component="StatTile" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">StatTile <span class="{{ label }}">Card + IconBox</span></h3>
+            <div class="grid gap-4 grid-cols-2 lg:grid-cols-4">
+              {%- for tone in spec.StatTile.props.tone.allowed %}
+              <StatTile tone={{ tone }} icon="clock" label="Hours learned" value="12.5" sub={{ "tone=" ~ tone }} />
+              {%- endfor %}
+              <StatTile label="Learners" value="42" />
+            </div>
+          </section>
+
+          <section id="QuickAction" data-component="QuickAction" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">QuickAction <span class="{{ label }}">Card href + IconBox</span></h3>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {%- for tone in spec.QuickAction.props.tone.allowed %}
+              <QuickAction tone={{ tone }} href="#QuickAction" icon="users" title="Manage people" description={{ "layout=stack, tone=" ~ tone }} />
+              {%- endfor %}
+            </div>
+            {%- for tone in spec.QuickAction.props.tone.allowed %}
+            <QuickAction layout="row" tone={{ tone }} href="#QuickAction" icon="bookmark" eyebrow="Recommended start" title="Fractions" description={{ "layout=row, tone=" ~ tone }} />
+            {%- endfor %}
+          </section>
+
+          <section id="EmptyState" data-component="EmptyState" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">EmptyState</h3>
+            <EmptyState message="No worksheets yet." />
+            <EmptyState><p class="font-semibold text-ink-muted">Custom content</p><p class="text-sm text-ink-faint">replaces the message.</p></EmptyState>
+          </section>
+
+          <section id="PageHeader" data-component="PageHeader" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">PageHeader <span class="{{ label }}">SectionBadge</span></h3>
+            <PageHeader badge="Teacher Portal" title="People" subtitle="badge_tone=sky, with an action">
+              <Button icon="plus">Add a learner</Button>
+            </PageHeader>
+            <PageHeader badge="Pending review" badge_tone="amber" title="Donations" subtitle="badge_tone=amber" />
+            <PageHeader badge="School admin" title="ACS Athens" subtitle="boxed" boxed />
+            <PageHeader badge="Learner" title="Amina">
+              {% fill lead %}<IconBox icon="user" size="xl" />{% endfill %}
+              <StatusPill status="matched">Matched</StatusPill>
+            </PageHeader>
+          </section>
+
+          <section id="SectionTitle" data-component="SectionTitle" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">SectionTitle <span class="{{ label }}">IconBox + CountPill</span></h3>
+            {%- for tone in spec.SectionTitle.props.tone.allowed %}
+            <SectionTitle icon="academic-cap" tone={{ tone }} count={{ loop.index * 4 }}>Teachers ({{ tone }})</SectionTitle>
+            {%- endfor %}
+          </section>
+
+          <section id="SectionBadge" data-component="SectionBadge" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">SectionBadge <span class="{{ label }}">Badge</span></h3>
+            <div class="flex flex-wrap items-center gap-3">
+              {%- for tone in spec.SectionBadge.props.tone.allowed %}
+              {%- for tag in spec.SectionBadge.props.tag.allowed %}
+              <SectionBadge tone={{ tone }} tag={{ tag }}>{{ tone }} / {{ tag }}</SectionBadge>
+              {%- endfor %}
+              {%- endfor %}
+            </div>
+          </section>
+
+          <section id="CountPill" data-component="CountPill" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">CountPill <span class="{{ label }}">Badge</span></h3>
+            <div class="flex flex-wrap items-center gap-3">
+              {%- for tone in spec.CountPill.props.tone.allowed %}
+              <CountPill tone={{ tone }}>{{ loop.index * 7 }}</CountPill><span class="{{ label }}">{{ tone }}</span>
+              {%- endfor %}
+            </div>
+          </section>
+
+          <section id="StatusPill" data-component="StatusPill" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">StatusPill <span class="{{ label }}">Badge</span></h3>
+            <div class="flex flex-wrap items-center gap-3">
+              {%- for status in spec.StatusPill.props.status.allowed %}
+              <StatusPill status={{ status }}>{{ status }}</StatusPill>
+              {%- endfor %}
+            </div>
+          </section>
+
+          <section id="FileTypeBadge" data-component="FileTypeBadge" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">FileTypeBadge <span class="{{ label }}">Badge</span></h3>
+            <div class="flex flex-wrap items-center gap-3">
+              {%- for kind in spec.FileTypeBadge.props.type.allowed %}
+              <FileTypeBadge type={{ kind }} />
+              {%- endfor %}
+            </div>
+          </section>
+
+          <section id="MatchScoreChip" data-component="MatchScoreChip" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">MatchScoreChip <span class="{{ label }}">Icon</span></h3>
+            <div class="flex flex-wrap items-center gap-3">
+              {%- for band in spec.MatchScoreChip.props.band.allowed %}
+              <MatchScoreChip match={{ {"score": 90 - loop.index0 * 20, "band": band} }} /><span class="{{ label }}">{{ band }}</span>
+              {%- endfor %}
+            </div>
+          </section>
+
+          <section id="GoogleButton" data-component="GoogleButton" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">GoogleButton</h3>
+            <div class="max-w-sm"><GoogleButton href="#GoogleButton">Sign in with Google</GoogleButton></div>
+          </section>
+
+          <section id="LangButton" data-component="LangButton" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">LangButton <span class="{{ label }}">Icon</span></h3>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-xl">
+              <LangButton active>English</LangButton>
+              <LangButton>Ελληνικά</LangButton>
+              <LangButton>العربية</LangButton>
+              <LangButton>Türkçe</LangButton>
+            </div>
+          </section>
+
+          <section id="AudioButton" data-component="AudioButton" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">AudioButton <span class="{{ label }}">Icon</span></h3>
+            <div class="flex items-center gap-4">
+              <AudioButton label="Read aloud" />
+              <AudioButton label="Read aloud" size="lg" />
+            </div>
+          </section>
+
+          <section id="FormHeading" data-component="FormHeading" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">FormHeading</h3>
+            <div class="max-w-2xl"><FormHeading>Personal details</FormHeading></div>
+          </section>
+
+          <section id="LanguageRow" data-component="LanguageRow" class="scroll-mt-24 space-y-3 max-w-2xl">
+            <h3 class="{{ heading }}">LanguageRow</h3>
+            <LanguageRow value="Greek" levels={{ ["Beginner", "Intermediate", "Advanced"] }} />
+            <LanguageRow value="English" checked levels={{ ["Beginner", "Intermediate", "Advanced"] }} level="Advanced" />
+            <LanguageRow value="None" label="Other / none of these" muted />
+          </section>
+
+          <section id="StepIndicator" data-component="StepIndicator" class="scroll-mt-24 space-y-2">
+            <h3 class="{{ heading }}">StepIndicator</h3>
+            {%- for step in range(1, 4) %}
+            <StepIndicator current={{ step }} class="!mb-4" />
+            {%- endfor %}
+          </section>
+
+          <section id="JourneyScene" data-component="JourneyScene" class="scroll-mt-24 space-y-2">
+            <h3 class="{{ heading }}">JourneyScene</h3>
+            <p class="text-sm text-ink-muted">The loader illustrations at rest, on their finished pose. They move only inside a playing JourneyLoader.</p>
+            <div class="flex flex-wrap gap-6">
+              {%- for name in ["quiz"] %}
+              <figure class="text-center">
+                <JourneyScene name={{ name }} class="w-40 h-40" />
+                <figcaption class="{{ label }}">name="{{ name }}"</figcaption>
+              </figure>
+              {%- endfor %}
+            </div>
+          </section>
+
+          <section id="JourneyLoader" data-component="JourneyLoader" class="scroll-mt-24 space-y-2">
+            <h3 class="{{ heading }}">JourneyLoader <span class="{{ label }}">JourneyScene Icon</span></h3>
+            <p class="text-sm text-ink-muted">The hand-over at the end of the placement test. "Play" runs it against a 0.5s fake request; "Slow" against a 4s one, so the working loop shows; "Fail" against a rejected one.</p>
+            <div class="flex flex-wrap gap-2">
+              <Button variant="sky" onclick="galleryJourney(500, false)">Play</Button>
+              <Button variant="sky" onclick="galleryJourney(4000, false)">Slow</Button>
+              <Button variant="gray" onclick="galleryJourney(800, true)">Fail</Button>
+            </div>
+            <JourneyLoader scene="quiz" step={{ 3 }} working="Looking at your answers" done="Found your place to start!" />
+            <script>
+              function galleryJourney(ms, fail) {
+                const work = new Promise((resolve, reject) => setTimeout(() => (fail ? reject(new Error("demo")) : resolve()), ms));
+                window.JourneyLoader.run(work).then(() => window.JourneyLoader.hide(), () => window.showToast("The request failed, so the loader stepped aside.", "error"));
+              }
+            </script>
+          </section>
+
+          <section id="BackLink" data-component="BackLink" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">BackLink <span class="{{ label }}">Icon</span></h3>
+            <BackLink href="#BackLink" label="Back to People" />
+          </section>
+
+          <section id="Pagination" data-component="Pagination" class="scroll-mt-24 space-y-2">
+            <h3 class="{{ heading }}">Pagination</h3>
+            {%- for page, total in [(1, 3), (5, 20), (10, 20), (20, 20)] %}
+            <div class="flex items-center gap-3"><span class="{{ label }} w-20">{{ page }} of {{ total }}</span>
+              <Pagination endpoint="base.component_gallery" page={{ page }} total_pages={{ total }} class="!mt-0" />
+            </div>
+            {%- endfor %}
+          </section>
+
+          <section id="WorksheetCard" data-component="WorksheetCard" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">WorksheetCard <span class="{{ label }}">Card + FileTypeBadge + Button</span></h3>
+            <div class="grid gap-4 md:grid-cols-3">
+              <WorksheetCard ws={{ demo.worksheets[0] }} primary_url="#" primary_label="Preview" matched_pairs={{ demo.pairs }} assign_url="#" assign_label="Assign" />
+              <WorksheetCard ws={{ demo.worksheets[1] }} primary_url="#" primary_label="View worksheet" />
+              <WorksheetCard ws={{ demo.worksheets[0] }} primary_url="#" primary_label="View worksheet" highlighted />
+            </div>
+          </section>
+
+          <section id="TopicCard" data-component="TopicCard" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">TopicCard <span class="{{ label }}">learning-nav partial + Font Awesome</span></h3>
+            {%- set demo_topic = {"id": 1, "title": "Fractions", "description": "Parts of a whole", "icon": "star", "level": 2} %}
+            {%- for state in spec.TopicCard.props.state.allowed %}
+            <span class="{{ label }}">state={{ state }}</span>
+            <TopicCard topic={{ demo_topic }} state={{ state }} href="#TopicCard" />
+            {%- endfor %}
+          </section>
+
+          <section id="WorksheetViewer" data-component="WorksheetViewer" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">WorksheetViewer</h3>
+            {%- for kind in spec.WorksheetViewer.props.file_type.allowed %}
+            <span class="{{ label }}">file_type={{ kind }}</span>
+            <WorksheetViewer file_type={{ kind }} file_url="about:blank" worksheet_html={{ demo.markdown }} class="[&_iframe]:h-48 [&_iframe]:min-h-0" />
+            {%- endfor %}
+          </section>
+
+          <section id="WorksheetProse" data-component="WorksheetProse" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">WorksheetProse</h3>
+            {%- for tag in spec.WorksheetProse.props.tag.allowed %}
+            <Card class="p-0"><WorksheetProse tag={{ tag }}>{{ demo.markdown | safe }}</WorksheetProse></Card>
+            {%- endfor %}
+          </section>
+
+          <section id="WorksheetMeta" data-component="WorksheetMeta" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">WorksheetMeta</h3>
+            <Card class="max-w-xs"><WorksheetMeta rows={{ demo.meta }} /></Card>
+          </section>
+
+          <section id="McOptions" data-component="McOptions" class="scroll-mt-24 space-y-4 max-w-md">
+            <h3 class="{{ heading }}">McOptions</h3>
+            <div id="gallery-mc" class="flex flex-col gap-2"></div>
+            <div class="flex gap-2">
+              <Button variant="gray" flat onclick="MCOptions.markResult(document.getElementById('gallery-mc'), true)">mark correct</Button>
+              <Button variant="gray" flat onclick="MCOptions.markResult(document.getElementById('gallery-mc'), false)">mark wrong</Button>
+              <Button variant="gray" flat onclick="MCOptions.clearResult(document.getElementById('gallery-mc'))">clear</Button>
+            </div>
+            <McOptions />
+            <script>MCOptions.render(document.getElementById("gallery-mc"), ["A cat", "A dog", "A bird"], function () {}, "A dog");</script>
+          </section>
+
+          <section id="LevelUpModal" data-component="LevelUpModal" class="scroll-mt-24 space-y-2">
+            <span id="CompletionOverlay" data-component="CompletionOverlay"></span>
+            <span id="GameKit" data-component="GameKit"></span>
+            <h3 class="{{ heading }}">LevelUpModal, CompletionOverlay, GameKit <span class="{{ label }}">Card + StatTile look + Button</span></h3>
+            <p class="text-sm text-ink-muted">Every game page carries all three (GameKit is the games' shared script and its save-failed bar): open them with the buttons in the <a class="underline" href="#GamePage">GamePage</a> frame below.</p>
+          </section>
+
+          {%- for name, shell_name, height in [("FeatureAnnouncement", "announcement", "h-[32rem]"), ("AssistantPanel", "assistant", "h-[36rem]")] %}
+          <section id="{{ name }}" data-component="{{ name }}" class="scroll-mt-24 space-y-2">
+            <h3 class="{{ heading }}">{{ name }}</h3>
+            <p class="{{ label }}"><a class="underline" href="{{ url_for('base.component_gallery_shell', name=shell_name) }}">/dev/components/shell/{{ shell_name }}</a></p>
+            <iframe src="{{ url_for('base.component_gallery_shell', name=shell_name) }}" title="{{ name }}" loading="lazy"
+              class="w-full {{ height }} rounded-2xl border-2 border-line bg-white"></iframe>
+          </section>
+          {%- endfor %}
+        </div>
+
+        {#- ───────────────────────────── Shell ───────────────────────────── #}
+        <div id="layer-shell" data-layer="shell" class="scroll-mt-24 space-y-12">
+          <div class="border-b-2 border-line pb-3">
+            <h2 class="text-3xl font-extrabold text-sky-950">{{ layers[2][1] }}</h2>
+            <p class="{{ label }}">{{ layers[2][2] }}</p>
+          </div>
+
+          <section id="NavLink" data-component="NavLink" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">NavLink</h3>
+            <div class="flex flex-wrap items-center gap-1">
+              <NavLink href="#NavLink" label="Dashboard" active />
+              <NavLink href="#NavLink" label="People" />
+              <NavLink href="#NavLink" label="Learn" pulse class="relative" />
+            </div>
+            <div class="max-w-xs space-y-1">
+              <NavLink variant="menu" href="#NavLink" label="Dashboard (menu, active)" active />
+              <NavLink variant="menu" href="#NavLink" label="People (menu)" />
+              <NavLink variant="menu" href="#NavLink" label="Learn" pulse class="relative" />
+            </div>
+          </section>
+
+          <section id="NavButton" data-component="NavButton" class="scroll-mt-24 space-y-4">
+            <h3 class="{{ heading }}">NavButton</h3>
+            <div class="flex flex-wrap items-center gap-3">
+              {%- for variant in spec.NavButton.props.variant.allowed %}
+              <NavButton variant={{ variant }} href="#NavButton">{{ variant }}</NavButton>
+              {%- endfor %}
+              <NavButton icon href="#NavButton" title="Settings"><Icon name="cog-6-tooth" /></NavButton>
+            </div>
+          </section>
+
+          <section id="Header" data-component="Header" class="scroll-mt-24 space-y-2">
+            <h3 class="{{ heading }}">Header, Theme, Footer, Page, Main</h3>
+            <span data-component="Theme"></span><span data-component="Footer"></span><span data-component="Page"></span><span data-component="Main"></span>
+            <p class="text-ink-body">This page is a <code>&lt;Page&gt;</code>: its <code>&lt;Theme&gt;</code> is in the head, and the
+              <code>&lt;Header&gt;</code> above and <code>&lt;Footer&gt;</code> below are the real ones for whoever is signed in.
+              Its content sits in a <code>&lt;Main&gt;</code>; the sign-in page shows <code>layout="centered"</code>.</p>
+          </section>
+
+          {%- for name, shell_name, height in [("GamePage", "game", "h-[40rem]"), ("LegalPage", "legal", "h-[30rem]"), ("WorksheetLibrary", "library", "h-[44rem]")] %}
+          <section id="{{ name }}" data-component="{{ name }}" class="scroll-mt-24 space-y-2">
+            <h3 class="{{ heading }}">{{ name }}</h3>
+            <p class="{{ label }}"><a class="underline" href="{{ url_for('base.component_gallery_shell', name=shell_name) }}">/dev/components/shell/{{ shell_name }}</a></p>
+            <iframe src="{{ url_for('base.component_gallery_shell', name=shell_name) }}" title="{{ name }}" loading="lazy"
+              class="w-full {{ height }} rounded-2xl border-2 border-line bg-white"></iframe>
+          </section>
+          {%- endfor %}
+        </div>
+      </div>
+    </div>
+  </Main>
+</Page>
+{%- endif %}

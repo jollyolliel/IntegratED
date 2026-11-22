@@ -1,0 +1,63 @@
+{#- The learner's onboarding step 3: what the placement (MAP) test is, then start it or save it
+    for later. "Later" marks the test deferred and goes to the dashboard. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/step_indicator.jx" as StepIndicator #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{%- set points = [
+  ("clock", "duration"),
+  ("face-smile", "no_wrong"),
+  ("bolt", "personalise"),
+] %}
+<Page title={{ t('learner.map_intro.title') }} styles="survey">
+  <Main layout="centered" width="lg">
+
+    <StepIndicator current={{ 3 }} />
+
+    <div class="survey-card text-center">
+      <div class="w-20 h-20 mx-auto bg-sky-50 rounded-2xl flex items-center justify-center mb-6 border-2 border-primary-light">
+        <Icon name="check-circle" size="10" class="text-primary" />
+      </div>
+
+      <div class="mb-6">
+        <h1 class="display-font text-3xl font-extrabold text-sky-950 mb-2">{{ t('learner.map_intro.heading') }}</h1>
+        <p class="text-sky-400 text-base leading-relaxed">
+          {{ t('learner.map_intro.subheading') }}
+        </p>
+      </div>
+
+      <div class="space-y-3 mb-8 text-start">
+        {%- for icon, key in points %}
+        <div class="info-row">
+          <div class="info-icon">
+            <Icon name={{ icon }} size="5" class="text-primary" />
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-primary-dark">{{ t('learner.map_intro.' ~ key ~ '_title') }} <strong>{{ t('learner.map_intro.' ~ key ~ '_bold') }}</strong></p>
+            <p class="text-xs text-sky-400 mt-0.5">{{ t('learner.map_intro.' ~ key ~ '_sub') }}</p>
+          </div>
+        </div>
+        {%- endfor %}
+      </div>
+
+      <div class="space-y-3">
+        <Button href={{ url_for('learner.learner_map') }} icon_end="arrow-right" class="w-full">
+          {{- t('learner.map_intro.start') -}}
+        </Button>
+        <Button variant="gray" onclick="skipMapTest()" class="w-full">
+          {{- t('learner.map_intro.skip') -}}
+        </Button>
+      </div>
+    </div>
+  </Main>
+
+  <script>
+    function skipMapTest() {
+      fetch("{{ url_for('api.learner.skip_map_test') }}", { method: "POST" })
+        .then(r => r.json())
+        .then(() => { window.location.href = "{{ url_for('learner.learner_dashboard') }}"; })
+        .catch(console.error);
+    }
+  </script>
+</Page>

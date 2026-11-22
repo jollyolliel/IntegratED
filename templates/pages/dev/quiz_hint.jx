@@ -1,0 +1,32 @@
+{#- Dev-only (routes/base/_dev.py): the quiz's wrong-answer card in its two hint states, so the
+    hint button can be designed without answering a question wrong three times. The card markup
+    mirrors #feedbackContainer in templates/pages/learner/learning/quiz.jx; keep them in step. -#}
+{#import "@components/shell/game_page.jx" as GamePage #}
+{#import "@components/base/icon.jx" as Icon #}
+{#def lesson #}
+{%- set head %}
+  <style>
+    .hint-dev-card { background: var(--color-red-50); border: 2px solid var(--color-red-200); box-shadow: 4px 4px 0 var(--color-red-100); }
+    .hint-dev-msg { color: var(--color-danger); }
+  </style>
+{%- endset %}
+<GamePage title="Quiz hint — dev" lesson={{ lesson }} head={{ head }}>
+  <main class="container mx-auto px-4 py-8 max-w-3xl space-y-6">
+    <div id="hintStates" class="space-y-6">
+      <div class="space-y-2">
+        <p class="text-xs font-mono text-ink-muted">After 3 wrong tries: button showing</p>
+        <div class="hint-dev-card p-5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+          <p class="hint-dev-msg font-bold text-lg">Incorrect. Try again.</p>
+          <button type="button" class="quiz-hint-btn"><Icon name="light-bulb" size="5" /> Show hint</button>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <p class="text-xs font-mono text-ink-muted">After tapping the hint: answer revealed</p>
+        <div class="hint-dev-card p-5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+          <p class="hint-dev-msg font-bold text-lg">Incorrect. Try again.</p>
+          <p class="quiz-hint-answer">The answer is: d</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</GamePage>

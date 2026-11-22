@@ -1,0 +1,5 @@
+{#- A worksheet's file type: PDF (red) or Markdown (sky, in a deeper sky text). -#}
+{#import "@components/base/badge.jx" as Badge #}
+{#def type=None #}
+{%- set type = prop("FileTypeBadge", "type", type) -%}
+<Badge tone={{ look("FileTypeBadge", "type", type, "tone") }} class={{ (look("FileTypeBadge", "type", type, "text") ~ " px-2.5 py-[3px] text-[0.7rem] tracking-[0.05em] uppercase") | trim }} attrs={{ attrs }}>{{ t("components.file_type." ~ type) }}</Badge>

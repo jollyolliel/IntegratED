@@ -1,0 +1,91 @@
+{#- Every text-like field. Inputs carry no shadow (docs/ui-design/visual-language.md). `icon` adds a leading icon
+    inside the field; the wrapper then takes `class`, and the input keeps every other attribute.
+    `type="password"` adds a show/hide button at the field's end (same wrapper rule): it flips the
+    field to text and back, carries `aria-pressed`, and its script binds once per page. A form's
+    submit hides every shown password again, so the browser still offers to save it.
+    `size="lg"` is the larger field of the sign-in card. Add `data-no-spaces` to a username or password
+    field and no space can be typed or pasted into it (every whitespace character is dropped as it
+    arrives); its script binds once per page. -#}
+{#import "@components/base/icon.jx" as Icon #}
+{#def type=None, icon=None, size=None #}
+{%- set type = prop("Input", "type", type) -%}
+{%- set classes = ["clay-input", look("Input", "size", size, "field"), "ps-[38px]" if icon] | select | join(" ") -%}
+{%- set password = type == "password" -%}
+{%- if icon or password -%}
+{%- set outer = attrs.classes -%}
+{%- do attrs.remove_class(*outer.split()) -%}
+{%- set field_id = attrs.get("id") -%}
+<div class="{{ ['relative', 'password-field' if password, outer] | select | join(' ') }}">
+  {%- if icon %}
+  <Icon name={{ icon }} class="absolute start-3 top-1/2 -translate-y-1/2 text-sky-300 pointer-events-none" />
+  {%- endif %}
+  <input {{ attrs.render(class=classes, type=type) }} />
+  {%- if password %}
+  <button type="button" class="password-toggle" aria-pressed="false"
+    aria-label="{{ t('auth.show_password') }}" title="{{ t('auth.show_password') }}"
+    {%- if field_id %} aria-controls="{{ field_id }}"{% endif %}>
+    <Icon name="eye" size="5" hidden /><Icon name="eye-slash" size="5" />
+  </button>
+  <script>
+    (() => {
+      if (window.passwordTogglesBound) return;
+      window.passwordTogglesBound = true;
+      const show = (button, field, visible) => {
+        field.type = visible ? "text" : "password";
+        button.setAttribute("aria-pressed", String(visible));
+        // An <svg> has no `hidden` property, only the attribute.
+        const [eye, eyeSlash] = button.querySelectorAll("svg");
+        // The icon shows the field's state: a crossed-out eye while it is hidden, an open eye while shown.
+        eye.toggleAttribute("hidden", !visible);
+        eyeSlash.toggleAttribute("hidden", visible);
+      };
+      document.addEventListener("click", (event) => {
+        const button = event.target.closest(".password-toggle");
+        const field = button?.closest(".password-field")?.querySelector("input");
+        if (!field) return;
+        const visible = field.type === "password";
+        show(button, field, visible);
+        window.analytics?.trackEvent("auth_password_visibility_toggled", {
+          visible, field: field.id || field.name || "",
+        });
+      });
+      document.addEventListener("submit", (event) => {
+        event.target.querySelectorAll(".password-toggle[aria-pressed='true']").forEach((button) => {
+          show(button, button.closest(".password-field").querySelector("input"), false);
+        });
+      }, true);
+    })();
+  </script>
+  {%- endif %}
+</div>
+{%- else -%}
+<input {{ attrs.render(class=classes, type=type) }} />
+{%- endif %}
+{%- if attrs.get("data-no-spaces") is not none %}
+<script>
+  (() => {
+    if (window.noSpacesBound) return;
+    window.noSpacesBound = true;
+    const field = (event) => (event.target.matches?.("input[data-no-spaces]") ? event.target : null);
+    // What is typed or pasted goes in without its whitespace ("hello " pastes as "hello"); nothing is
+    // dropped as a whole.
+    document.addEventListener("beforeinput", (event) => {
+      const input = field(event);
+      if (!input || !event.data || !/\s/.test(event.data)) return;
+      event.preventDefault();
+      const clean = event.data.replace(/\s/g, "");
+      if (!clean) return;
+      input.setRangeText(clean, input.selectionStart, input.selectionEnd, "end");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    document.addEventListener("input", (event) => {
+      const input = field(event);
+      if (!input || !/\s/.test(input.value)) return;
+      const caret = input.selectionStart ?? input.value.length;
+      const kept = input.value.slice(0, caret).replace(/\s/g, "").length;
+      input.value = input.value.replace(/\s/g, "");
+      try { input.setSelectionRange(kept, kept); } catch (_) { /* not every type has a caret */ }
+    });
+  })();
+</script>
+{%- endif %}

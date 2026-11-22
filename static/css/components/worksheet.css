@@ -1,0 +1,16 @@
+/* ---- Worksheet Viewer ---- (card chrome is .clay-card, applied in the worksheet_viewer macro) */
+/* .preview-topbar: Worksheet viewer top bar */
+.preview-topbar { background: var(--color-surface-card); border-bottom: 1.5px solid var(--color-sky-100); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; }
+/* .preview-topbar-label: Label inside the viewer top bar */
+.preview-topbar-label { font-size: 0.72rem; font-weight: 700; color: var(--color-ink-faint); text-transform: uppercase; letter-spacing: 0.07em; }
+/* .worksheet-prose: Rendered worksheet markdown body */
+.worksheet-prose { padding: 28px; }
+.worksheet-prose h1, .worksheet-prose h2, .worksheet-prose h3 { color: var(--color-ink-heading); font-family: 'Baloo 2', system-ui, sans-serif; }
+.worksheet-prose p, .worksheet-prose li { color: var(--color-ink-body); line-height: 1.7; }
+.worksheet-prose strong { color: var(--color-ink-heading); }
+
+/* Worksheet metadata */
+/* .meta-label: Worksheet metadata key */
+.meta-label { display: block; font-size: 0.7rem; font-weight: 700; color: var(--color-ink-faint); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
+/* .meta-value: Worksheet metadata value */
+.meta-value  { font-size: 0.9rem; font-weight: 600; color: var(--color-ink-body); }

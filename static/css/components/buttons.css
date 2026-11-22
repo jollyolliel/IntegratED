@@ -1,0 +1,160 @@
+/* Buttons — btn-clay (+ colour, btn-flat, btn-large), btn-google, btn-lang,
+   audio-play-btn (see docs/ui-design/building-ui.md) */
+
+/* A button is composed, never restyled:  btn-clay  + one colour  [+ btn-flat | btn-large]
+     <button class="btn-clay btn-accent">          raised clay CTA
+     <a class="btn-clay btn-sky btn-large">        hero-sized
+     <button class="btn-clay btn-flat btn-danger"> flat table-row chip
+   btn-clay owns shape + motion; every colour class only sets --btn-* vars, with a
+   second value set under .btn-flat. Hover/press shadows derive from the geometry
+   tokens, so the shadow maths of docs/ui-design/visual-language.md holds by construction; a
+   shadowless look (btn-gray, btn-flat) zeroes the offset, lift and press instead
+   of overriding the rules. Padding/text/colour utilities on a btn-clay fail lint —
+   add a colour or size here only when a design explicitly calls for one. */
+/* .btn-clay: Every button — shape + clay motion; add one colour class */
+.btn-clay {
+  --btn-offset: var(--clay-offset); --btn-lift: var(--clay-lift); --btn-press: var(--clay-press);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 22px; font-size: 0.9rem; font-weight: var(--btn-weight, 700);
+  background: var(--btn-bg); color: var(--btn-fg);
+  border: var(--clay-border-width) solid var(--btn-border); border-radius: var(--radius-btn);
+  box-shadow: var(--btn-offset) var(--btn-offset) 0 var(--btn-shadow, transparent);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, background 150ms, border-color 150ms, color 150ms;
+  text-decoration: none; cursor: pointer;
+  /* An <a> and a <button> with the same classes measure the same. */
+  text-align: center; appearance: none;
+}
+.btn-clay:hover {
+  transform: translate(calc(-1 * var(--btn-lift)), calc(-1 * var(--btn-lift)));
+  box-shadow: calc(var(--btn-offset) + var(--btn-lift)) calc(var(--btn-offset) + var(--btn-lift)) 0 var(--btn-shadow, transparent);
+  background: var(--btn-hover-bg, var(--btn-bg));
+  border-color: var(--btn-hover-border, var(--btn-border));
+  color: var(--btn-hover-fg, var(--btn-fg));
+}
+.btn-clay:active {
+  transform: translate(var(--btn-press), var(--btn-press));
+  box-shadow: calc(var(--btn-offset) - var(--btn-press)) calc(var(--btn-offset) - var(--btn-press)) 0 var(--btn-shadow, transparent);
+  background: var(--btn-active-bg, var(--btn-hover-bg, var(--btn-bg)));
+  border-color: var(--btn-active-border, var(--btn-hover-border, var(--btn-border)));
+}
+
+/* Colours — meaning is fixed (docs/ui-design/visual-language.md): accent = the one primary action,
+   sky = secondary, gray = tertiary/cancel/back, danger = destructive,
+   amber = pending, rose = the game-over retry. */
+/* .btn-accent: Button colour — primary CTA: save, submit, register, start */
+.btn-accent { --btn-bg: var(--color-accent); --btn-fg: white; --btn-border: var(--color-accent-dark); --btn-shadow: var(--color-accent-dark); }
+/* .btn-sky: Button colour — secondary: login, view, edit, export */
+.btn-sky { --btn-bg: white; --btn-fg: var(--color-primary); --btn-border: var(--color-primary); --btn-shadow: var(--color-primary); --btn-hover-bg: var(--color-primary-tint); }
+/* .btn-soft: Button colour — quiet navigation on learner pages: back to the list (pale sky border + shadow) */
+.btn-soft { --btn-bg: white; --btn-fg: var(--color-primary); --btn-border: var(--color-sky-200); --btn-shadow: var(--color-sky-200); --btn-hover-bg: var(--color-primary-tint); }
+/* .btn-gray: Button colour — tertiary: cancel, back, close (shadowless ghost) */
+.btn-gray { --btn-bg: white; --btn-fg: var(--color-ink-muted); --btn-border: var(--color-line); --btn-weight: 600;
+              --btn-offset: 0px; --btn-lift: 0px; --btn-press: 0px;
+              --btn-hover-border: var(--color-ink-faint); --btn-hover-fg: var(--color-ink-body);
+              --btn-active-bg: var(--color-line); --btn-active-border: var(--color-ink-muted); }
+/* .btn-danger: Button colour — destructive: delete, remove, ban */
+.btn-danger { --btn-bg: var(--color-danger); --btn-fg: white; --btn-border: var(--color-danger-dark); --btn-shadow: var(--color-danger-dark); }
+/* .btn-amber: Button colour — pending: mark done, review */
+.btn-amber { --btn-bg: var(--color-amber-400); --btn-fg: var(--color-amber-950); --btn-border: var(--color-amber-600); --btn-shadow: var(--color-amber-600); }
+/* .btn-rose: Button colour — game-over retry on a rose "you lost" panel */
+.btn-rose { --btn-bg: var(--color-rose-600); --btn-fg: white; --btn-border: var(--color-rose-700); --btn-shadow: var(--color-rose-700); }
+
+/* Flat — a small tinted chip for dense table-row actions: no offset shadow, no
+   lift, no press, only the background shifts on hover (docs/ui-design/building-ui.md). */
+/* .btn-flat: Flat chip button — table-row / action-cell actions; pair with a colour */
+.btn-flat {
+  --btn-offset: 0px; --btn-lift: 0px; --btn-press: 0px;
+  gap: 4px; padding: 6px 12px; font-size: 0.7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+  border-width: var(--clay-border-width-thin); border-radius: 8px;
+}
+.btn-flat.btn-accent { --btn-bg: var(--color-green-50); --btn-fg: var(--color-accent-dark); --btn-border: var(--color-green-200); --btn-hover-bg: var(--color-green-100); }
+.btn-flat.btn-sky    { --btn-bg: var(--color-sky-50); --btn-fg: var(--color-primary); --btn-border: var(--color-sky-200); --btn-hover-bg: var(--color-sky-100); }
+.btn-flat.btn-soft   { --btn-bg: var(--color-sky-50); --btn-fg: var(--color-primary); --btn-border: var(--color-sky-200); --btn-hover-bg: var(--color-sky-100); }
+.btn-flat.btn-gray   { --btn-bg: var(--color-gray-50); --btn-fg: var(--color-ink-muted); --btn-border: var(--color-line); --btn-weight: 700;
+                       --btn-hover-bg: var(--color-gray-100); --btn-hover-border: var(--color-gray-300); --btn-hover-fg: var(--color-ink-body);
+                       --btn-active-bg: var(--color-gray-300); --btn-active-border: var(--color-ink-muted); }
+.btn-flat.btn-danger { --btn-bg: var(--color-red-50); --btn-fg: var(--color-danger); --btn-border: var(--color-red-200); --btn-hover-bg: var(--color-red-100); }
+.btn-flat.btn-amber  { --btn-bg: var(--color-amber-50); --btn-fg: var(--color-amber-700); --btn-border: var(--color-amber-200); --btn-hover-bg: var(--color-amber-100); }
+.btn-flat.btn-rose   { --btn-bg: var(--color-rose-50); --btn-fg: var(--color-rose-700); --btn-border: var(--color-rose-200); --btn-hover-bg: var(--color-rose-100); }
+
+/* .btn-large: Hero-sized clay button — landing-page CTAs */
+.btn-large { padding: 16px 32px; }
+
+/* Disabled — dimmed, keeps its base shadow, no lift/press. pointer-events:none
+   stops :hover/:active firing at all, so the motion can't run on a dead button.
+   Same treatment as .quick-action-card:disabled / .quiz-btn-accent:disabled.
+   aria-disabled styles a disabled link, which has no :disabled state; the
+   markup must also drop its href so Tab + Enter can't follow it. */
+.btn-clay:disabled, .btn-clay[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; transform: none; pointer-events: none; }
+
+/* Reduced motion: the lift and press stay put; colour still answers the pointer. */
+@media (prefers-reduced-motion: reduce) {
+  .btn-clay { transition: background 150ms, border-color 150ms, color 150ms; }
+  .btn-clay:hover, .btn-clay:active { transform: none; }
+}
+
+/* .btn-google: Google OAuth sign-in / sign-up */
+.btn-google {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 12px 28px; font-weight: 700; font-size: 0.95rem;
+  background: white; color: var(--color-ink-heading);
+  border: 2px solid var(--color-sky-200); border-radius: 16px;
+  box-shadow: 3px 3px 0 var(--color-sky-200);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, border-color 150ms;
+  text-decoration: none; cursor: pointer;
+}
+.btn-google:hover  { border-color: var(--color-primary); box-shadow: 4.5px 4.5px 0 var(--color-primary); transform: translate(-1.5px,-1.5px); }
+.btn-google:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--color-primary); }
+
+/* btn-lang — language picker grid button (pages/settings.jx). Clickable clay
+   button: base 2px offset shadow, hover lift 1px -> 3px, press 1.5px -> 0.5px. */
+/* .btn-lang: Language picker grid button (settings) */
+.btn-lang {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 10px 12px; font-size: 0.85rem; font-weight: 600;
+  background: white; color: var(--color-ink-muted);
+  border: 2.5px solid var(--color-line); border-radius: 12px;
+  box-shadow: 2px 2px 0 var(--color-line);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, border-color 150ms, background 150ms, color 150ms;
+  cursor: pointer;
+}
+.btn-lang:hover {
+  transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--color-amber-300);
+  border-color: var(--color-amber-300); background: var(--color-amber-50); color: var(--color-amber-700);
+}
+.btn-lang:active { transform: translate(1.5px, 1.5px); box-shadow: 0.5px 0.5px 0 var(--color-amber-300); border-color: var(--color-amber-300); }
+.btn-lang.active {
+  background: var(--color-amber-50); border-color: var(--color-amber-300); color: var(--color-amber-700);
+  box-shadow: 2px 2px 0 var(--color-amber-300);
+}
+.btn-lang.active:hover  { box-shadow: 3px 3px 0 var(--color-amber-300); }
+.btn-lang.active:active { box-shadow: 0.5px 0.5px 0 var(--color-amber-300); }
+
+/* audio-play-btn — square sky read-aloud speaker button. Global since 2026-08-07
+   (was learning-nav.css, map.html-only) because garden_grow.jx and
+   potion_workshop.jx need the identical button. Clay motion: base 2px shadow,
+   1px lift -> 3px, 1px press -> 1px. */
+/* .audio-play-btn: 44px square sky speaker — read-aloud */
+.audio-play-btn {
+  --ap-unit: 1px; /* base shadow 2 units, hover lift 1 -> shadow 3, press 1 -> shadow 1 */
+  width: 44px; height: 44px; background: var(--color-primary); color: white;
+  border: 2px solid var(--color-primary-dark); border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  box-shadow: calc(var(--ap-unit) * 2) calc(var(--ap-unit) * 2) 0 var(--color-primary-dark);
+  transition: transform 150ms, box-shadow 150ms;
+}
+.audio-play-btn:hover  {
+  transform: translate(calc(var(--ap-unit) * -1), calc(var(--ap-unit) * -1));
+  box-shadow: calc(var(--ap-unit) * 3) calc(var(--ap-unit) * 3) 0 var(--color-primary-dark);
+}
+.audio-play-btn:active {
+  transform: translate(var(--ap-unit), var(--ap-unit));
+  box-shadow: var(--ap-unit) var(--ap-unit) 0 var(--color-primary-dark);
+}
+/* .audio-play-btn-lg: 96px hero size of the read-aloud button; the same clay motion at twice the offsets */
+.audio-play-btn-lg { --ap-unit: 2px; width: 96px; height: 96px; border-radius: 28px; }
+@media (prefers-reduced-motion: reduce) {
+  .audio-play-btn { transition: none; transform: none !important; }
+}

@@ -1,0 +1,236 @@
+{#- The landing page's "see a lesson" section: real lesson questions (`demo_questions`, from
+    LANDING_DEMO_QUESTIONS in routes/base/_public.py) answered through the same <McOptions> buttons
+    the quiz uses, with the finish stage and its script. Its `lp-*` styles are in landing.css. -#}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/audio_button.jx" as AudioButton #}
+{#import "@components/mc_options.jx" as McOptions #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/button.jx" as Button #}
+{#def demo_questions #}
+{%- set art = url_for('static', filename='svg/') %}
+<section id="try-it" class="py-20 md:py-28 bg-white">
+  <div class="container mx-auto px-4">
+    <div class="text-center max-w-3xl mx-auto mb-12 reveal">
+      <SectionBadge>{{ t('index.demo_badge') }}</SectionBadge>
+      <h2 class="pub-h2 display-font font-extrabold text-ink-heading mb-4">{{ t('index.demo_title') }}</h2>
+      <p class="pub-lead text-ink-muted">{{ t('index.demo_intro') }}</p>
+    </div>
+
+    <div class="max-w-5xl mx-auto reveal delay-100">
+      <Card class="lp-demo" id="demo">
+        <div class="lp-demo-top">
+          <span class="lp-demo-count" id="demoCount">1 / {{ demo_questions | length }}</span>
+          <div class="lp-ticks" id="demoTicks" aria-hidden="true">
+            {%- for q in demo_questions %}<span class="lp-tick{% if loop.first %} is-current{% endif %}"></span>{% endfor %}
+          </div>
+        </div>
+
+        <div id="demoPlay">
+          <div class="grid md:grid-cols-5 gap-6 p-6 md:p-8">
+            <div class="md:col-span-2 lp-demo-picture" id="demoPicture" aria-hidden="true">
+              <img class="lp-pic" data-picture="sun" src="{{ art }}sun.svg" alt="" />
+              <img class="lp-pic hidden" data-picture="letters" src="{{ art }}letters.svg" alt="" />
+              <div class="lp-pic lp-pic-table flex hidden" data-picture="book_on_table">
+                <img class="lp-pic-book" src="{{ art }}book.svg" alt="" />
+                <img class="lp-pic-tabletop" src="{{ art }}table.svg" alt="" />
+              </div>
+            </div>
+            <div class="md:col-span-3" dir="ltr" lang="en">
+              <p class="lp-demo-prompt mb-3" id="demoPrompt">{{ demo_questions[0].question_prompt }}</p>
+              <div class="flex items-start gap-4 mb-6">
+                <AudioButton id="demoSpeak" label={{ t('learner.garden_grow.read_aloud') }} />
+                <p class="lp-h3 display-font font-bold text-ink-heading" id="demoQuestion">{{ demo_questions[0].question_text }}</p>
+              </div>
+              <div class="lp-demo-options" id="demoOptions"></div>
+            </div>
+          </div>
+
+          <div class="lp-demo-feedback" id="demoFeedback" aria-live="polite">
+            <span class="flex items-center gap-3">
+              <img class="lp-feedback-icon hidden" id="demoFeedbackIcon" src="{{ art }}star.svg" alt="" />
+              <span id="demoFeedbackText">{{ t('index.demo_idle') }}</span>
+            </span>
+            <span class="flex items-center gap-4">
+              <Button id="demoNext" class="hidden" icon_end="chevron-right">{{ t('index.demo_next') }}</Button>
+            </span>
+          </div>
+        </div>
+
+        <div class="lp-demo-done hidden" id="demoDone">
+          <div class="lp-done-stage" aria-hidden="true">
+            <div class="lp-done-rays"></div>
+            <svg class="lp-sparkle lp-sparkle-a" viewBox="0 0 24 24" fill="currentColor"><path d="{{ sparkle_d }}" /></svg>
+            <svg class="lp-sparkle lp-sparkle-b" viewBox="0 0 24 24" fill="currentColor"><path d="{{ sparkle_d }}" /></svg>
+            <svg class="lp-sparkle lp-sparkle-c" viewBox="0 0 24 24" fill="currentColor"><path d="{{ sparkle_d }}" /></svg>
+            <img class="lp-done-art" id="demoDoneArt" src="{{ art }}celebrate.svg" alt="" width="200" height="200" />
+            <svg class="lp-done-wave" viewBox="0 0 400 28" preserveAspectRatio="none">
+              <path d="M0 14 C40 0 60 0 100 12 C140 24 160 24 200 12 C240 0 260 0 300 12 C340 24 360 24 400 10 L400 28 L0 28 Z" />
+            </svg>
+          </div>
+          <div class="lp-done-body">
+            <h3 class="pub-h2 display-font font-extrabold text-ink-heading mt-2 mb-3">{{ t('index.demo_done_heading') }}</h3>
+            <p class="pub-lead text-ink-muted max-w-xl mx-auto mb-7" id="demoDoneText"></p>
+            <Button variant="sky" size="lg" id="demoAgain">{{ t('index.demo_play_again') }}</Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  </div>
+</section>
+<McOptions />
+<script>
+  (function () {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const track = (name, props) => window.analytics?.trackEvent?.(name, props || {});
+
+    // ── See-a-lesson demo ─────────────────────────────────────────────
+    // Real lesson questions (routes/base/_public.py LANDING_DEMO_QUESTIONS),
+    // answered through the same MCOptions buttons quiz.jx uses. XP mirrors
+    // the real lesson formula: 10 per first-try correct + 50 for finishing.
+    const DEMO = {{ demo_questions | tojson }};
+    const DEMO_T = {
+      idle: {{ t('index.demo_idle') | tojson }},
+      correct: {{ t('index.demo_correct') | tojson }},
+      wrong: {{ t('learner.garden_grow.try_again') | tojson }},
+      xp: {{ t('index.demo_xp') | tojson }},
+      done: {{ t('index.demo_done_text') | tojson }},
+    };
+    const fmt = (tpl, vals) => tpl.replace(/\{(\w+)\}/g, (m, k) => (k in vals ? vals[k] : m));
+    const $ = (id) => document.getElementById(id);
+    const demoCard = $("demo");
+    const optsEl = $("demoOptions");
+    const feedbackEl = $("demoFeedback");
+    const feedbackText = $("demoFeedbackText");
+    const feedbackIcon = $("demoFeedbackIcon");
+    const nextBtn = $("demoNext");
+    const tickEls = document.querySelectorAll("#demoTicks .lp-tick");
+    let qi = 0;
+    let firstTry = true;
+    let firstTryCorrect = 0;
+
+    function setFeedback(state, text) {
+      feedbackEl.classList.toggle("is-correct", state === "correct");
+      feedbackEl.classList.toggle("is-wrong", state === "wrong");
+      feedbackIcon.classList.toggle("hidden", state !== "correct");
+      feedbackText.textContent = text;
+    }
+
+    function renderQuestion(animate) {
+      const q = DEMO[qi];
+      firstTry = true;
+      $("demoPrompt").textContent = q.question_prompt;
+      $("demoQuestion").textContent = q.question_text;
+      $("demoCount").textContent = qi + 1 + " / " + DEMO.length;
+      document.querySelectorAll("#demoPicture [data-picture]").forEach(function (pic) {
+        pic.classList.toggle("hidden", pic.dataset.picture !== q.picture);
+      });
+      const picture = $("demoPicture");
+      picture.classList.remove("is-entering");
+      if (animate) {
+        void picture.offsetWidth;
+        picture.classList.add("is-entering");
+      }
+      tickEls.forEach(function (el, i) {
+        el.classList.toggle("is-current", i === qi);
+        el.classList.toggle("is-done", i < qi);
+      });
+      nextBtn.classList.add("hidden");
+      setFeedback("idle", DEMO_T.idle);
+      MCOptions.render(optsEl, q.options, onAnswer);
+    }
+
+    // Confetti flying out of `target`, positioned inside the demo card.
+    function confetti(target, count, reach) {
+      const cardBox = demoCard.getBoundingClientRect();
+      const box = target.getBoundingClientRect();
+      const x = box.left - cardBox.left + box.width / 2;
+      const y = box.top - cardBox.top + box.height / 2;
+      const colours = ["", "lp-confetti-sky", "lp-confetti-green", "lp-confetti-rose"];
+      for (let i = 0; i < count; i++) {
+        const bit = document.createElement("span");
+        bit.className = "lp-confetti " + colours[i % colours.length];
+        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+        const dist = reach * (0.5 + Math.random() * 0.5);
+        bit.style.left = x + "px";
+        bit.style.top = y + "px";
+        bit.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+        bit.style.setProperty("--dy", Math.sin(angle) * dist - 20 + "px");
+        bit.style.setProperty("--rot", Math.round(Math.random() * 540 - 270) + "deg");
+        demoCard.appendChild(bit);
+        bit.addEventListener("animationend", () => bit.remove());
+      }
+      return { x, y };
+    }
+
+    function burst(target) {
+      if (reduceMotion) return;
+      const { x } = confetti(target, 16, 120);
+      const cardBox = demoCard.getBoundingClientRect();
+      const box = target.getBoundingClientRect();
+      const pop = document.createElement("span");
+      pop.className = "lp-xp-pop";
+      pop.textContent = DEMO_T.xp;
+      pop.style.left = x - 30 + "px";
+      pop.style.top = box.top - cardBox.top - 16 + "px";
+      demoCard.appendChild(pop);
+      pop.addEventListener("animationend", () => pop.remove());
+    }
+
+    function onAnswer(value) {
+      const q = DEMO[qi];
+      const isCorrect = value === q.answer;
+      MCOptions.markResult(optsEl, isCorrect);
+      track("landing_demo_answered", { question: qi + 1, is_correct: isCorrect, first_try: firstTry });
+      if (isCorrect) {
+        if (firstTry) firstTryCorrect++;
+        setFeedback("correct", DEMO_T.correct);
+        tickEls[qi].classList.add("is-done");
+        burst(optsEl.querySelector(".mc-option.correct"));
+        nextBtn.classList.remove("hidden");
+        nextBtn.focus({ preventScroll: true });
+      } else {
+        firstTry = false;
+        setFeedback("wrong", DEMO_T.wrong);
+        optsEl.classList.remove("lp-shake");
+        void optsEl.offsetWidth;
+        optsEl.classList.add("lp-shake");
+      }
+    }
+    optsEl.addEventListener("animationend", () => optsEl.classList.remove("lp-shake"));
+
+    nextBtn.addEventListener("click", function () {
+      if (qi < DEMO.length - 1) {
+        qi++;
+        renderQuestion(true);
+        return;
+      }
+      const xp = firstTryCorrect * 10 + 50;
+      tickEls.forEach((el) => el.classList.remove("is-current"));
+      $("demoDoneText").textContent = fmt(DEMO_T.done, { correct: firstTryCorrect, total: DEMO.length, xp: xp });
+      $("demoPlay").classList.add("hidden");
+      $("demoDone").classList.remove("hidden");
+      if (!reduceMotion) setTimeout(() => confetti($("demoDoneArt"), 36, 260), 350);
+      track("landing_demo_completed", { first_try_correct: firstTryCorrect, total: DEMO.length });
+    });
+
+    $("demoAgain").addEventListener("click", function () {
+      qi = 0;
+      firstTryCorrect = 0;
+      $("demoDone").classList.add("hidden");
+      $("demoPlay").classList.remove("hidden");
+      renderQuestion(true);
+    });
+
+    $("demoSpeak").addEventListener("click", function () {
+      if (!("speechSynthesis" in window)) return;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(DEMO[qi].question_text.replace(/_{2,}/g, "blank"));
+      u.lang = "en-US";
+      u.rate = 0.85;
+      speechSynthesis.speak(u);
+      track("landing_demo_audio_played", { question: qi + 1 });
+    });
+
+    renderQuestion(false);
+  })();
+</script>

@@ -1,0 +1,80 @@
+# uv, pinned once for both stages below (bind-mounted, never COPYed into a layer).
+FROM ghcr.io/astral-sh/uv:0.12.13 AS uv
+
+# Build Tailwind CSS with the standalone CLI — no Node. scripts/tailwind.py pins
+# the Tailwind release; only the `css` dependency group (pytailwindcss) installs.
+FROM python:3.12-slim AS tailwind-builder
+WORKDIR /build
+COPY pyproject.toml uv.lock ./
+RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
+    uv sync --locked --only-group css --no-cache
+COPY tailwind.config.js .
+COPY scripts/tailwind.py scripts/
+COPY static/ static/
+COPY templates/ templates/
+# In tailwind.config.js `content`: holds the Icon helper's literal size classes.
+COPY helpers/clay_primitives.py helpers/
+RUN .venv/bin/python scripts/tailwind.py
+
+# Use official Python runtime as base image
+FROM python:3.12-slim
+
+# Commit SHA baked in at build time (deploy.yml passes --build-arg
+# GIT_SHA=$GITHUB_SHA); shown in the footer. Defaults to "dev" locally.
+ARG GIT_SHA=dev
+
+# Set environment variables. Keep the venv at /opt/venv, outside /app: the
+# `chown -R appuser /app` below would otherwise store a second full copy of it.
+ENV PYTHONUNBUFFERED=1 \
+    FLASK_APP=main \
+    GIT_SHA=${GIT_SHA} \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
+
+# Set work directory
+WORKDIR /app
+
+# pg_dump (weekly DB backups, see helpers/backup.py) — version-matched to
+# Neon's PostgreSQL 17 via the official PGDG apt repo. Debian's own repo ships
+# an older client; dumping a newer server with an older pg_dump isn't reliable.
+# No compiler or -dev headers: every dependency in uv.lock ships a prebuilt
+# wheel. curl only fetches the repo key, so it is purged in the same layer.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && . /etc/os-release \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /etc/apt/trusted.gpg.d/postgresql.asc \
+    && echo "deb https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends postgresql-client-17 \
+    && apt-get purge -y --auto-remove curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency manifests first for better caching
+COPY pyproject.toml uv.lock ./
+
+# Install Python dependencies — exact resolved versions from uv.lock, prod only
+# (test-only deps live in the pyproject.toml [dependency-groups] "dev" group).
+# uv is bind-mounted, not COPYed, and --no-cache is set, so neither the binary
+# nor its wheel cache ends up in a shipped layer. Needs BuildKit.
+RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
+    uv sync --locked --no-dev --no-cache
+
+# Create non-root user for security. Only /app itself is chowned; the code is
+# copied with --chown so no second owned copy of it lands in a layer.
+RUN useradd -m -u 1000 appuser && chown appuser:appuser /app
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+# Overwrite with freshly-built Tailwind CSS from builder stage
+COPY --chown=appuser:appuser --from=tailwind-builder /build/static/css/tailwind.css static/css/tailwind.css
+USER appuser
+
+# Expose port (GCP Cloud Run uses 8080, but we'll support both)
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=5)" || exit 1
+
+CMD ["/bin/sh", "/app/entrypoint.sh"]

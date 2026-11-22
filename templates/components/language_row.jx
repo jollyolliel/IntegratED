@@ -1,0 +1,27 @@
+{#- One language in the survey self-assessment: a checkbox (`.lang-check`) and its level radios,
+    named `language_level_<value>`. The page script enables the radios when the box is ticked.
+    `levels` is a list of values, or a {value: label} map to show them translated while the form
+    still submits the value. With `level` set (a saved answer), that level is checked and the
+    others are locked.
+    `class` goes on the row; every other attribute goes on the checkbox. `muted` greys the label
+    of a row with no levels (the "none of these" choice). -#}
+{#def value, name="languages", label=None, checked=False, levels=(), level=None, muted=False #}
+{%- set row = attrs.classes -%}
+{%- do attrs.remove_class(*row.split()) -%}
+<div class="lang-row {{ row }}">
+  <label class="flex items-center gap-3 cursor-pointer">
+    <input {{ attrs.render(type="checkbox", name=name, value=value, class="lang-check", checked=(true if checked else false)) }} />
+    <span class="font-bold {{ 'text-sky-400' if muted else 'text-sky-900' }}">{{ label or value }}</span>
+  </label>
+  {%- if levels %}
+  <div class="lang-level-group">
+    {%- for option in levels %}
+    <label class="lang-level-label">
+      <input type="radio" name="language_level_{{ value }}" value="{{ option }}"
+        {%- if level %} {{ 'checked' if option == level else 'disabled' }}{% endif %} />
+      {{ levels[option] if levels is mapping else option }}
+    </label>
+    {%- endfor %}
+  </div>
+  {%- endif %}
+</div>

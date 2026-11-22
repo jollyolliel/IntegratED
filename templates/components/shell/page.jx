@@ -1,0 +1,42 @@
+{#- The whole document for a page: <html lang dir>, the <head> (title, Baloo 2, <Theme>, a <link>
+    per `styles` sheet from static/css/pages/, then `head`), and a body with the header,
+    the page's content and the footer. The page writes its own <main>.
+    - `styles`: space-separated sheet names, e.g. "admin matching". Linked after <Theme>'s
+      tailwind.css so a page rule wins a specificity tie with a component class.
+    - `head`: extra head markup, built with {% set head %}...{% endset %} (a plain string is escaped).
+    - `nav` / `footer`: False drops the header / footer.
+    - `body_class` replaces the default body layout.
+    - `announcement`: the dashboard route's `pending_announcement`, for the header. Route values
+      reach only the page, so it has to be passed down. -#}
+{#import "@components/shell/theme.jx" as Theme #}
+{#import "@components/shell/header.jx" as Header #}
+{#import "@components/shell/footer.jx" as Footer #}
+{#def title, styles="", head="", nav=True, footer=True, body_class=None, announcement=None #}
+<!doctype html>
+<html lang="{{ ui_lang }}" dir="{{ ui_dir }}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet" />
+  <Theme />
+  {%- for name in styles.split() %}
+  {%- set name = clay_check("Page", "styles", name, style_partials, none) %}
+  {%- if name %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/' ~ name ~ '.css') }}" />
+  {%- endif %}
+  {%- endfor %}
+  {{ head }}
+</head>
+<body {{ attrs.render(class=body_class or "min-h-screen flex flex-col") }}>
+  {%- if nav %}
+  <Header announcement={{ announcement }} />
+  {%- endif %}
+  {{ content }}
+  {%- if footer %}
+  <Footer />
+  {%- endif %}
+</body>
+</html>

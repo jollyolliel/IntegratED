@@ -1,0 +1,349 @@
+{#- The learner / volunteer sign-up wizard: an invite code, then a role, then either a learner's
+    username and password or the volunteer's Google sign-up. The code step tells teachers they
+    need no sign-up. All of it is step 1 of the sign-up
+    journey; the script swaps in the two-step journey once the volunteer path is chosen. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/step_indicator.jx" as StepIndicator #}
+{#import "@components/google_button.jx" as GoogleButton #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/shell/main.jx" as Main #}
+<Page title={{ t('auth.join') ~ " - IntegratED" }} styles="auth">
+  <Main layout="centered" width="lg">
+
+    <StepIndicator current={{ 1 }} id="signup-steps" />
+    <StepIndicator current={{ 1 }} total={{ 2 }} id="signup-steps-volunteer" hidden />
+
+    <Card class="p-8 md:p-10">
+
+      <div id="step-code" class="space-y-6">
+        <div class="text-center">
+          <div class="w-16 h-16 bg-sky-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border-2 border-primary-light shadow-[2px_2px_0_var(--color-sky-200)]">
+            <Icon name="key" size="8" class="text-primary" />
+          </div>
+          <h1 class="display-font text-3xl font-extrabold text-sky-950 mb-1">{{ t('auth.enter_code_title') }}</h1>
+          <p class="text-sm text-ink-heading/65">{{ t('auth.enter_code_subtitle') }}</p>
+        </div>
+
+        <div>
+          <input type="text" id="invite_code" class="code-input" placeholder="A3BX7K" maxlength="6" autocomplete="off" inputmode="text" autocapitalize="characters" spellcheck="false" aria-label="{{ t('auth.invite_code') }}" />
+          <p id="codeError" class="mt-2 text-sm text-danger font-medium text-center" style="display:none;"></p>
+          <p class="mt-2 text-xs text-center text-ink-heading/55">{{ t('auth.invite_code_where') }}</p>
+        </div>
+
+        <Button onclick="verifyCode()" id="code-btn" class="w-full">
+          <span id="code-btn-text">{{ t('auth.continue') }}</span>
+          <Icon name="arrow-right" id="code-btn-arrow" />
+          <div id="code-spinner" class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+        </Button>
+
+        <p class="text-center text-sm text-ink-heading/65">
+          {{ t('auth.have_account') }}
+          <a href="{{ url_for('auth.login') }}" class="font-bold text-primary hover:text-primary-dark transition-colors">{{ t('nav.login') }}</a>
+        </p>
+
+        <Card tone="green" class="p-4">
+          <p class="flex items-center gap-2 font-bold text-sky-950 text-sm">
+            <Icon name="check-circle" size="5" class="text-accent" />
+            {{ t('auth.teacher_ready_title') }}
+          </p>
+          <p class="mt-1 text-sm text-ink-heading/70">{{ t('auth.teacher_ready_desc') }}</p>
+          <a href="{{ url_for('auth.login') }}" class="mt-2 inline-flex items-center gap-1 text-sm font-bold text-primary hover:text-primary-dark transition-colors">
+            {{ t('auth.go_to_sign_in') }}
+            <Icon name="arrow-right" />
+          </a>
+        </Card>
+      </div>
+
+      <div id="step-role" class="hidden space-y-6">
+        <Button variant="sky" flat onclick="goToCode()" icon="chevron-left">{{ t('auth.back') }}</Button>
+
+        <div class="text-center space-y-3">
+          <div class="school-pill mx-auto">
+            <Icon name="check" />
+            <span id="school-name"></span>
+          </div>
+          <h1 class="display-font text-2xl font-extrabold text-sky-950">{{ t('auth.join') }}</h1>
+          <p class="text-sm text-ink-heading/65">{{ t('auth.choose_role') }}</p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3">
+          <label class="role-card">
+            <input type="radio" name="user_type" value="learner" checked />
+            <div class="role-icon bg-green-50 border-2 border-emerald-200 shadow-[2px_2px_0_var(--color-emerald-200)]">
+              <Icon name="book-open" size="6" class="text-accent" />
+            </div>
+            <div>
+              <span class="block font-bold text-sky-900">{{ t('auth.learner_role') }}</span>
+              <span class="text-sm text-ink-heading/65">{{ t('auth.learner_role_desc') }}</span>
+            </div>
+          </label>
+
+          <label class="role-card">
+            <input type="radio" name="user_type" value="volunteer" />
+            <div class="role-icon bg-sky-50 border-2 border-primary-light shadow-[2px_2px_0_var(--color-sky-200)]">
+              <Icon name="user-plus" size="6" class="text-primary" />
+            </div>
+            <div>
+              <span class="block font-bold text-sky-900">{{ t('auth.volunteer_role') }}</span>
+              <span class="text-sm text-ink-heading/65">{{ t('auth.volunteer_role_desc') }}</span>
+            </div>
+          </label>
+        </div>
+
+        <Button onclick="handleRole()" class="w-full" icon_end="arrow-right">{{ t('auth.next') }}</Button>
+      </div>
+
+      <div id="step-learner" class="hidden space-y-5">
+        <Button variant="sky" flat onclick="goToRole()" icon="chevron-left">{{ t('auth.back') }}</Button>
+        <div>
+          <h2 class="display-font text-2xl font-extrabold text-sky-950 mb-1">{{ t('auth.learner_reg') }}</h2>
+          <p class="text-sm text-ink-heading/65">{{ t('auth.create_credentials') }}</p>
+        </div>
+        <div id="formError" class="text-danger text-sm font-medium text-center empty:hidden bg-rose-50 rounded-xl px-4 py-3 border border-rose-200" style="display:none;"></div>
+        <form id="registerForm" class="space-y-4">
+          <Field label={{ t('auth.username') }} for_id="username" error={{ t('auth.val_username_required') }} error_id="username-error">
+            <Input name="username" id="username" autocomplete="username" data-no-spaces aria-describedby="username-error" />
+          </Field>
+          <Field label={{ t('auth.password') }} for_id="password" error={{ t('auth.val_password') }} error_id="password-error">
+            <Input type="password" name="password" id="password" autocomplete="new-password" data-no-spaces aria-describedby="password-hint password-error" />
+            <p id="password-hint" class="mt-1 text-xs text-ink-heading/50">{{ t('auth.password_rules') }} {{ t('auth.password_spaces_hint') }}</p>
+          </Field>
+          <Field label={{ t('auth.confirm_password') }} for_id="confirm_password" error={{ t('auth.val_password_match') }} error_id="confirm-password-error">
+            <Input type="password" name="confirm_password" id="confirm_password" autocomplete="new-password" data-no-spaces aria-describedby="confirm-password-error" />
+          </Field>
+          <Button type="submit" id="register-btn" class="w-full">
+            <span id="btn-text">{{ t('auth.create_account') }}</span>
+            <div id="btn-spinner" class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          </Button>
+        </form>
+      </div>
+
+      <div id="step-volunteer" class="hidden space-y-6">
+        <Button variant="sky" flat onclick="goToRole()" icon="chevron-left">{{ t('auth.back') }}</Button>
+        <div class="text-center">
+          <div class="w-16 h-16 bg-sky-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border-2 border-primary-light shadow-[2px_2px_0_var(--color-sky-200)]">
+            <Icon name="user-plus" size="8" class="text-primary" />
+          </div>
+          <h2 class="display-font text-2xl font-extrabold text-sky-950 mb-2">{{ t('auth.volunteer_reg') }}</h2>
+          <p class="text-sm mb-4 text-ink-heading/65">{{ t('auth.volunteer_google_note') }}</p>
+        </div>
+        {%- with messages = get_flashed_messages(with_categories=true) %}
+          {%- for category, message in messages %}
+            <div class="text-danger text-sm font-medium text-center bg-rose-50 rounded-xl px-4 py-3 border border-rose-200">{{ message }}</div>
+          {%- endfor %}
+        {%- endwith %}
+        <form method="POST" action="{{ url_for('auth.start_volunteer_register') }}" class="space-y-4">
+          <input type="hidden" name="invite_code" id="volunteer_invite_code" />
+          <GoogleButton type="submit">{{ t('auth.sign_up_google') }}</GoogleButton>
+          <p class="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary">
+            <Icon name="building-library" size="4" />
+            {{ t('auth.school_account_note') }}
+          </p>
+        </form>
+      </div>
+
+    </Card>
+  </Main>
+
+  <script>
+    const _i18n = {
+      invite_code_required: {{ t('auth.val_invite_code_required')|tojson }},
+      invite_code_invalid: {{ t('auth.invite_code_invalid')|tojson }},
+      server_error: {{ t('auth.val_server_error')|tojson }},
+      network_error: {{ t('auth.val_network_error')|tojson }},
+    };
+
+    const validateUrl = "{{ url_for('auth.validate_invite') }}";
+    let validatedCode = "";
+
+    // --- Screens ---------------------------------------------------------
+    // Every screen here is the journey's Account step. A volunteer has no
+    // placement quiz, so the two-step journey replaces the three-step one on
+    // that path.
+    function showStep(id) {
+      ["step-code", "step-role", "step-learner", "step-volunteer"]
+        .forEach(s => document.getElementById(s).classList.add("hidden"));
+      document.getElementById(id).classList.remove("hidden");
+
+      const volunteer = id === "step-volunteer";
+      document.getElementById("signup-steps").hidden = volunteer;
+      document.getElementById("signup-steps-volunteer").hidden = !volunteer;
+    }
+
+    // --- Step 1: invite code ---------------------------------------------
+    const codeInput = document.getElementById("invite_code");
+    const codeError = document.getElementById("codeError");
+
+    function showCodeError(msg) {
+      codeError.textContent = msg;
+      codeError.style.display = "block";
+      codeInput.classList.add("input-error");
+    }
+    function clearCodeError() {
+      codeError.style.display = "none";
+      codeInput.classList.remove("input-error");
+    }
+
+    codeInput.addEventListener("input", () => {
+      codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      clearCodeError();
+    });
+    codeInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); verifyCode(); }
+    });
+
+    async function verifyCode() {
+      const code = codeInput.value.trim().toUpperCase();
+      clearCodeError();
+      if (!code) { showCodeError(_i18n.invite_code_required); return; }
+
+      const btn = document.getElementById("code-btn");
+      const text = document.getElementById("code-btn-text");
+      const arrow = document.getElementById("code-btn-arrow");
+      const spinner = document.getElementById("code-spinner");
+      btn.disabled = true;
+      text.classList.add("hidden");
+      arrow.classList.add("hidden");
+      spinner.classList.remove("hidden");
+
+      try {
+        const res = await fetch(validateUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invite_code: code }),
+        });
+        const data = await res.json();
+        if (res.ok && data.valid) {
+          validatedCode = data.code;
+          document.getElementById("school-name").textContent = data.school;
+          document.getElementById("volunteer_invite_code").value = data.code;
+          window.analytics?.trackEvent?.("cta_clicked", { action: "invite_code_verified" });
+          showStep("step-role");
+          // Honour ?role= deep-link by pre-selecting the radio
+          if (_preRole === "learner" || _preRole === "volunteer") {
+            const r = document.querySelector(`input[name="user_type"][value="${_preRole}"]`);
+            if (r) r.checked = true;
+          }
+        } else {
+          showCodeError(data.message || _i18n.invite_code_invalid);
+        }
+      } catch (err) {
+        window.analytics?.trackError?.(err, { flow: "register", step: "verify_code" });
+        showCodeError(_i18n.network_error);
+      } finally {
+        btn.disabled = false;
+        text.classList.remove("hidden");
+        arrow.classList.remove("hidden");
+        spinner.classList.add("hidden");
+      }
+    }
+
+    // --- Step 2: role selection ------------------------------------------
+    function handleRole() {
+      const type = document.querySelector('input[name="user_type"]:checked').value;
+      window.analytics?.trackEvent?.("cta_clicked", { action: "registration_role_chosen", selected_role: type });
+      if (type === "learner") {
+        showStep("step-learner");
+      } else {
+        showStep("step-volunteer");
+      }
+    }
+
+    function goToCode() { showStep("step-code"); }
+    function goToRole() { showStep("step-role"); }
+
+    const _urlParams = new URLSearchParams(window.location.search);
+    const _preRole = _urlParams.get('role');
+
+    const form = document.getElementById("registerForm");
+    const errorBox = document.getElementById("formError");
+
+    function strongPassword(pw) {
+      return pw.length >= 8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw);
+    }
+
+    // Typing again clears that field's red text; it comes back on the next submit if still wrong.
+    form.addEventListener("input", (e) => {
+      const id = e.target.id;
+      if (!id) return;
+      e.target.setAttribute("aria-invalid", "false");
+      document.getElementById(id.replace("_", "-") + "-error")?.classList.add("hidden");
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorBox.textContent = "";
+      errorBox.style.display = "none";
+
+      const invite_code = validatedCode;
+      const username = document.getElementById("username").value.trim();
+      // Whitespace around a password is never part of it; the server trims it the same way.
+      const password = document.getElementById("password").value.trim();
+      const confirm = document.getElementById("confirm_password").value.trim();
+
+      if (!invite_code) { window.showToast(_i18n.invite_code_required, "warning"); goToCode(); return; }
+      // Invalid input never leaves the browser: the red text under the field says what to fix.
+      const problems = [
+        ["username", !username],
+        ["password", !strongPassword(password)],
+        ["confirm_password", password !== confirm],
+      ].filter(([, bad]) => bad);
+      ["username", "password", "confirm_password"].forEach((id) => {
+        const bad = problems.some(([name]) => name === id);
+        document.getElementById(id).setAttribute("aria-invalid", String(bad));
+        document.getElementById(id.replace("_", "-") + "-error").classList.toggle("hidden", !bad);
+      });
+      if (problems.length) { document.getElementById(problems[0][0]).focus(); return; }
+
+      const btn = document.getElementById("register-btn");
+      const btnText = document.getElementById("btn-text");
+      const spinner = document.getElementById("btn-spinner");
+      btn.disabled = true;
+      btnText.classList.add("hidden");
+      spinner.classList.remove("hidden");
+
+      try {
+        const res = await window.analytics.trackedFetch("{{ url_for('auth.register') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password, invite_code }),
+        }, { flow: "register", step: "submit" });
+
+        if (res.redirected) { window.location.href = res.url; return; }
+
+        let data;
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          data = await res.json();
+        } else {
+          window.showToast(_i18n.server_error, "error");
+          return;
+        }
+
+        if (data.status === "error") {
+          window.showToast(data.message, "error");
+        } else if (data.redirect) {
+          window.location.href = data.redirect;
+        }
+      } catch (err) {
+        window.analytics?.trackError?.(err, { flow: "register", step: "submit" });
+        if (err.response) {
+          try {
+            const errData = await err.response.json();
+            window.showToast(errData.message || _i18n.server_error, "error");
+          } catch { window.showToast(_i18n.server_error, "error"); }
+        } else {
+          window.showToast(_i18n.network_error, "error");
+        }
+      } finally {
+        btn.disabled = false;
+        btnText.classList.remove("hidden");
+        spinner.classList.add("hidden");
+      }
+    });
+  </script>
+</Page>

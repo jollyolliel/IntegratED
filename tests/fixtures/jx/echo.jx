@@ -1,0 +1,2 @@
+{#def ui_lang #}
+<p>{{ ui_lang }}</p>

@@ -1,0 +1,15 @@
+{#- Where the user is in the sign-up journey: Account (the whole register page), About you (the
+    survey), then the placement Quiz — learners only, so a volunteer's journey is `total=2`. Each
+    step is a numbered dot with its name under it; done and current dots are filled. Styles live in
+    `static/css/components/misc.css`. -#}
+{#def current, total=3 #}
+<ol {{ attrs.render(class="step-indicator") }} aria-label="{{ t('auth.step_of', current=current, total=total) }}">
+  {%- for key in ["account", "about", "quiz"][:total] %}
+  {%- set step = loop.index %}
+  {%- set state = "done" if step < current else "current" if step == current else "upcoming" %}
+  <li class="step-item step-{{ state }}"{% if step == current %} aria-current="step"{% endif %}>
+    <span class="step-dot">{{ step }}</span>
+    <span class="step-name">{{ t('auth.steps.' ~ key) }}</span>
+  </li>
+  {%- endfor %}
+</ol>

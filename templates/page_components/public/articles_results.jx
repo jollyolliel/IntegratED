@@ -1,0 +1,45 @@
+{#- The News index's swap region on `pages/articles.jx`: the newest article as a featured
+    card (page 1 only; its hero image, else book art), the rest as a reading list, and the
+    pager. Its CSS lives in that page's head; the rows' in public.css. `routes/base/_public.py` renders it alone for an
+    `X-Fragment` request. -#}
+{#import "@components/base/icon.jx" as Icon #}
+{#import "@components/pagination.jx" as Pagination #}
+{#import "@page_components/public/article_row.jx" as ArticleRow #}
+{#def articles, page, page_count #}
+<div data-swap-region>
+<div class="article-index">
+  {%- set featured = articles[0] if page == 1 and articles else none %}
+  {%- set rest = articles[1:] if featured else articles %}
+  {%- if featured %}
+  <a href="{{ url_for('base.article_detail', id=featured.id) }}" class="article-card article-feature no-underline">
+    {%- if featured.hero_image %}
+    <div class="article-feature-stage article-feature-stage-photo"><img src="{{ url_for('base.article_image', filename=featured.hero_image) }}" alt="" /></div>
+    {%- else %}
+    <div class="article-feature-stage"><img src="{{ url_for('static', filename='svg/book.svg') }}" alt="" /></div>
+    {%- endif %}
+    <div class="article-feature-body">
+      <p class="article-feature-date">{{ featured.created_at.strftime('%B %d, %Y') }}</p>
+      <h2 class="article-feature-title display-font font-extrabold">{{ featured.title }}</h2>
+      <p class="article-feature-text">{{ featured.content_markdown | markdown | striptags | truncate(320) }}</p>
+      <span class="article-feature-go">{{ t('index.read_more') }}<Icon name="arrow-right" /></span>
+    </div>
+  </a>
+  {%- endif %}
+  {%- if rest or not featured %}
+  <ul class="article-list">
+    {%- for article in rest %}
+    <li>
+      <ArticleRow article={{ article }} />
+    </li>
+    {%- else %}
+    <li class="article-list-empty">
+      <img src="{{ url_for('static', filename='svg/book.svg') }}" alt="" class="w-20 mx-auto mb-4" />
+      <p class="text-ink-muted text-lg font-medium">{{ t('articles.no_articles') }}</p>
+    </li>
+    {%- endfor %}
+  </ul>
+  {%- endif %}
+</div>
+
+<Pagination endpoint="base.articles_list" page={{ page }} total_pages={{ page_count }} />
+</div>

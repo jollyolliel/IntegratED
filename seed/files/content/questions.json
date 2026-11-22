@@ -1,0 +1,981 @@
+[
+  {
+    "name": "Map Test",
+    "questions": [
+      {
+        "subject_name": "English",
+        "level": 1,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word cat.",
+        "options": [
+          "cat",
+          "sun",
+          "bag"
+        ],
+        "answer": "cat",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 1,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word dog.",
+        "options": [
+          "dog",
+          "cat",
+          "bee"
+        ],
+        "answer": "dog",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 1,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word sun.",
+        "options": [
+          "sun",
+          "sit",
+          "cup"
+        ],
+        "answer": "sun",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 1,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word book.",
+        "options": [
+          "bag",
+          "book",
+          "bed"
+        ],
+        "answer": "book",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 1,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word fish.",
+        "options": [
+          "fish",
+          "fan",
+          "fox"
+        ],
+        "answer": "fish",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 1,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word bird.",
+        "options": [
+          "bed",
+          "bus",
+          "bird"
+        ],
+        "answer": "bird",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 1,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word tree.",
+        "options": [
+          "tree",
+          "trip",
+          "tray"
+        ],
+        "answer": "tree",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 1,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word apple.",
+        "options": [
+          "ant",
+          "apple",
+          "arm"
+        ],
+        "answer": "apple",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 2,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word hat.",
+        "options": [
+          "hat",
+          "hot",
+          "hit"
+        ],
+        "answer": "hat",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 2,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word pen.",
+        "options": [
+          "pin",
+          "pen",
+          "pan"
+        ],
+        "answer": "pen",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 2,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word cup.",
+        "options": [
+          "cap",
+          "cup",
+          "cop"
+        ],
+        "answer": "cup",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 2,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word big.",
+        "options": [
+          "bag",
+          "bug",
+          "big"
+        ],
+        "answer": "big",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 2,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word red.",
+        "options": [
+          "red",
+          "rod",
+          "rid"
+        ],
+        "answer": "red",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 2,
+        "content_type": "multiple_choice",
+        "question_prompt": "Listen and choose",
+        "question_text": "Select the word map.",
+        "options": [
+          "mop",
+          "map",
+          "mat"
+        ],
+        "answer": "map",
+        "question_sound": true,
+        "audio_only": true
+      },
+      {
+        "subject_name": "English",
+        "level": 3,
+        "content_type": "multiple_choice",
+        "question_prompt": "Choose the greeting",
+        "question_text": "Which one do you say when you meet someone?",
+        "options": [
+          "Hello",
+          "Table",
+          "Blue"
+        ],
+        "answer": "Hello"
+      },
+      {
+        "subject_name": "English",
+        "level": 3,
+        "content_type": "multiple_choice",
+        "question_prompt": "Choose the colour",
+        "question_text": "Which word is a colour?",
+        "options": [
+          "green",
+          "chair",
+          "run"
+        ],
+        "answer": "green"
+      },
+      {
+        "subject_name": "English",
+        "level": 3,
+        "content_type": "multiple_choice",
+        "question_prompt": "Choose the number",
+        "question_text": "How many legs does a dog have?",
+        "options": [
+          "4",
+          "2",
+          "8"
+        ],
+        "answer": "4"
+      },
+      {
+        "subject_name": "English",
+        "level": 3,
+        "content_type": "multiple_choice",
+        "question_prompt": "Choose the opposite",
+        "question_text": "Which word means the opposite of big?",
+        "options": [
+          "small",
+          "tall",
+          "loud"
+        ],
+        "answer": "small"
+      },
+      {
+        "subject_name": "English",
+        "level": 3,
+        "content_type": "multiple_choice",
+        "question_prompt": "Choose the word",
+        "question_text": "I ___ a student.",
+        "options": [
+          "am",
+          "is",
+          "are"
+        ],
+        "answer": "am"
+      },
+      {
+        "subject_name": "English",
+        "level": 3,
+        "content_type": "multiple_choice",
+        "question_prompt": "Choose the day",
+        "question_text": "Which one is a day of the week?",
+        "options": [
+          "Monday",
+          "March",
+          "Morning"
+        ],
+        "answer": "Monday"
+      },
+      {
+        "subject_name": "English",
+        "level": 4,
+        "content_type": "multiple_choice",
+        "question_prompt": "Choose the verb",
+        "question_text": "She ___ to school every day.",
+        "options": [
+          "goes",
+          "go",
+          "going"
+        ],
+        "answer": "goes"
+      },
+      {
+        "subject_name": "English",
+        "level": 4,
+        "content_type": "multiple_choice",
+        "question_prompt": "Choose the plural",
+        "question_text": "I have two ___.",
+        "options": [
+          "books",
+          "book",
+          "bookes"
+        ],
+        "answer": "books"
+      },
+      {
+        "subject_name": "English",
+        "level": 4,
+        "content_type": "multiple_choice",
+        "question_prompt": "Choose the preposition",
+        "question_text": "The cat is ___ the box. (It is inside.)",
+        "options": [
+          "in",
+          "on",
+          "under"
+        ],
+        "answer": "in"
+      },
+      {
+        "subject_name": "English",
+        "level": 4,
+        "content_type": "multiple_choice",
+        "question_prompt": "Choose the word",
+        "question_text": "Which word is a question word?",
+        "options": [
+          "where",
+          "table",
+          "under"
+        ],
+        "answer": "where"
+      },
+      {
+        "subject_name": "English",
+        "level": 4,
+        "content_type": "multiple_choice",
+        "question_prompt": "Choose the word",
+        "question_text": "We ___ playing football now.",
+        "options": [
+          "are",
+          "is",
+          "am"
+        ],
+        "answer": "are"
+      },
+      {
+        "subject_name": "English",
+        "level": 4,
+        "content_type": "open_answer",
+        "question_prompt": "Type the missing word",
+        "question_text": "I would like two ___, please. (apple)",
+        "answer": "apples"
+      }
+    ]
+  },
+  {
+    "name": "English: First Steps",
+    "icon": "seedling",
+    "description": "Listen, look and tap: pictures, colours, numbers and first letters.",
+    "placement": {
+      "scale": "English",
+      "min_level": 1,
+      "max_level": 2
+    },
+    "topics": [
+      {
+        "title": "Look and listen",
+        "icon": "ear-listen",
+        "description": "Hear a word, tap its picture.",
+        "level": 1,
+        "overview_markdown": "### Look and listen\nHear a word, tap its picture..",
+        "lessons": [
+          {
+            "title": "Animals",
+            "icon": "paw",
+            "description": "Cat, dog, fish and more",
+            "game_type": null,
+            "overview_markdown": "### 🐾 Animals\nListen to each animal word and say it with your volunteer.\n\n🐱 cat · 🐶 dog · 🐟 fish · 🐦 bird",
+            "questions": [
+              {
+                "content_type": "vocabulary_audio",
+                "question_prompt": "Listen and say",
+                "question_text": "Tap each word to hear it. Say it after me.",
+                "word_bank": [
+                  "cat",
+                  "dog",
+                  "fish",
+                  "bird"
+                ]
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Listen and tap",
+                "question_text": "Tap the cat.",
+                "options": [
+                  "🐱",
+                  "🐶",
+                  "🐟"
+                ],
+                "answer": "🐱",
+                "question_sound": true
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Listen and tap",
+                "question_text": "Tap the fish.",
+                "options": [
+                  "🐦",
+                  "🐟",
+                  "🐶"
+                ],
+                "answer": "🐟",
+                "question_sound": true
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Listen and tap",
+                "question_text": "Tap the bird.",
+                "options": [
+                  "🐦",
+                  "🐱",
+                  "🐟"
+                ],
+                "answer": "🐦",
+                "question_sound": true
+              },
+              {
+                "content_type": "text_group",
+                "context_text": "🍎 🍎 🍎",
+                "questions": [
+                  {
+                    "content_type": "text_comprehension_multiple_choice",
+                    "question_prompt": "Look and count",
+                    "question_text": "How many apples?",
+                    "options": [
+                      "3",
+                      "2",
+                      "5"
+                    ],
+                    "answer": "3"
+                  },
+                  {
+                    "content_type": "text_comprehension_multiple_choice",
+                    "question_prompt": "Look and tap",
+                    "question_text": "What colour are the apples?",
+                    "options": [
+                      "🔴",
+                      "🟡",
+                      "🟣"
+                    ],
+                    "answer": "🔴"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Picture pairs",
+            "icon": "link",
+            "description": "Join each word to its picture",
+            "game_type": "match_up",
+            "overview_markdown": "### Picture pairs\nJoin each word to its picture.",
+            "questions": [
+              {
+                "content_type": "match",
+                "question_prompt": "Match the word and the picture",
+                "match_pairs": [
+                  {
+                    "left": "cat",
+                    "right": "🐱"
+                  },
+                  {
+                    "left": "dog",
+                    "right": "🐶"
+                  },
+                  {
+                    "left": "book",
+                    "right": "📖"
+                  },
+                  {
+                    "left": "sun",
+                    "right": "☀️"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Listen and find",
+            "icon": "magnifying-glass",
+            "description": "Catch the picture you hear",
+            "game_type": "word_storm",
+            "overview_markdown": "### Listen and find\nCatch the picture you hear.",
+            "questions": [
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Listen and find",
+                "question_text": "Tap the sun.",
+                "options": [
+                  "☀️",
+                  "🌙",
+                  "⭐"
+                ],
+                "answer": "☀️"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Listen and find",
+                "question_text": "Tap the moon.",
+                "options": [
+                  "☀️",
+                  "🌙",
+                  "⭐"
+                ],
+                "answer": "🌙"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Listen and find",
+                "question_text": "Tap the star.",
+                "options": [
+                  "⭐",
+                  "🌙",
+                  "☀️"
+                ],
+                "answer": "⭐"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Listen and find",
+                "question_text": "Tap the tree.",
+                "options": [
+                  "🌳",
+                  "🌸",
+                  "🍄"
+                ],
+                "answer": "🌳"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Listen and find",
+                "question_text": "Tap the flower.",
+                "options": [
+                  "🌳",
+                  "🌸",
+                  "🍄"
+                ],
+                "answer": "🌸"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Listen and find",
+                "question_text": "Tap the house.",
+                "options": [
+                  "🏠",
+                  "🚗",
+                  "🚲"
+                ],
+                "answer": "🏠"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Numbers and colours",
+        "icon": "palette",
+        "description": "Count, colour and fill the gaps.",
+        "level": 2,
+        "overview_markdown": "### Numbers and colours\nCount, colour and fill the gaps..",
+        "lessons": [
+          {
+            "title": "Number rocket",
+            "icon": "rocket",
+            "description": "Numbers, one to five",
+            "game_type": "rocket",
+            "overview_markdown": "### Number rocket\nNumbers, one to five.",
+            "questions": [
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Which number is 1?",
+                "question_text": "Which number is 1?",
+                "options": [
+                  "1",
+                  "4",
+                  "5"
+                ],
+                "answer": "1"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Which number is 2?",
+                "question_text": "Which number is 2?",
+                "options": [
+                  "2",
+                  "3",
+                  "5"
+                ],
+                "answer": "2"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Which number is 3?",
+                "question_text": "Which number is 3?",
+                "options": [
+                  "3",
+                  "1",
+                  "4"
+                ],
+                "answer": "3"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Which number is 4?",
+                "question_text": "Which number is 4?",
+                "options": [
+                  "2",
+                  "4",
+                  "5"
+                ],
+                "answer": "4"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Which number is 5?",
+                "question_text": "Which number is 5?",
+                "options": [
+                  "5",
+                  "2",
+                  "3"
+                ],
+                "answer": "5"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "What comes after 2?",
+                "question_text": "What comes after 2?",
+                "options": [
+                  "1",
+                  "3",
+                  "4"
+                ],
+                "answer": "3"
+              }
+            ]
+          },
+          {
+            "title": "Colour garden",
+            "icon": "seedling",
+            "description": "Grow flowers with colours",
+            "game_type": "garden_grow",
+            "overview_markdown": "### Colour garden\nGrow flowers with colours.",
+            "questions": [
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Pick the colour of the sky.",
+                "question_text": "Pick the colour of the sky.",
+                "options": [
+                  "blue",
+                  "red",
+                  "green"
+                ],
+                "answer": "blue"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Pick the colour of grass.",
+                "question_text": "Pick the colour of grass.",
+                "options": [
+                  "green",
+                  "pink",
+                  "black"
+                ],
+                "answer": "green"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Pick the colour of a banana.",
+                "question_text": "Pick the colour of a banana.",
+                "options": [
+                  "purple",
+                  "yellow",
+                  "blue"
+                ],
+                "answer": "yellow"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Pick the colour of a tomato.",
+                "question_text": "Pick the colour of a tomato.",
+                "options": [
+                  "red",
+                  "white",
+                  "green"
+                ],
+                "answer": "red"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Pick the colour of snow.",
+                "question_text": "Pick the colour of snow.",
+                "options": [
+                  "white",
+                  "orange",
+                  "brown"
+                ],
+                "answer": "white"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Pick the colour of the sun.",
+                "question_text": "Pick the colour of the sun.",
+                "options": [
+                  "yellow",
+                  "blue",
+                  "grey"
+                ],
+                "answer": "yellow"
+              }
+            ]
+          },
+          {
+            "title": "Number potions",
+            "icon": "flask",
+            "description": "Brew with numbers",
+            "game_type": "potion_workshop",
+            "overview_markdown": "### Number potions\nBrew with numbers.",
+            "questions": [
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Add the number of eyes you have.",
+                "question_text": "Add the number of eyes you have.",
+                "options": [
+                  "2",
+                  "4",
+                  "6"
+                ],
+                "answer": "2"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Add the number of days in a weekend.",
+                "question_text": "Add the number of days in a weekend.",
+                "options": [
+                  "2",
+                  "5",
+                  "7"
+                ],
+                "answer": "2"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Add the number of fingers on one hand.",
+                "question_text": "Add the number of fingers on one hand.",
+                "options": [
+                  "5",
+                  "10",
+                  "3"
+                ],
+                "answer": "5"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Add the number of wheels on a bicycle.",
+                "question_text": "Add the number of wheels on a bicycle.",
+                "options": [
+                  "2",
+                  "4",
+                  "3"
+                ],
+                "answer": "2"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Add the number of legs on a cat.",
+                "question_text": "Add the number of legs on a cat.",
+                "options": [
+                  "4",
+                  "2",
+                  "6"
+                ],
+                "answer": "4"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Add the number of sides on a triangle.",
+                "question_text": "Add the number of sides on a triangle.",
+                "options": [
+                  "3",
+                  "4",
+                  "5"
+                ],
+                "answer": "3"
+              }
+            ]
+          },
+          {
+            "title": "Fill the gaps",
+            "icon": "pencil",
+            "description": "Type and drag the missing parts",
+            "game_type": null,
+            "overview_markdown": "### Fill the gaps\nType and drag the missing parts.",
+            "questions": [
+              {
+                "content_type": "text_comprehension_drag_drop",
+                "question_prompt": "Put the numbers in order",
+                "question_text": "1, 2, 3, {input}, 5, 6, {input}, 8",
+                "fill_blank_options": [
+                  "4",
+                  "7"
+                ],
+                "word_bank": [
+                  "7",
+                  "2",
+                  "9",
+                  "4"
+                ],
+                "question_subtext": "Drag the missing numbers into the gaps."
+              },
+              {
+                "content_type": "text_comprehension_fill_blank",
+                "question_prompt": "Type the first letter",
+                "question_text": "{input}ig 🐷",
+                "fill_blank_options": [
+                  "p"
+                ],
+                "question_subtext": "What sound does pig start with?"
+              },
+              {
+                "content_type": "open_answer",
+                "question_prompt": "Type the letter",
+                "question_text": "Type the first letter of dog.",
+                "answer": "d"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "English: Everyday",
+    "icon": "comments",
+    "description": "Greetings, letters and simple sentences.",
+    "placement": {
+      "scale": "English",
+      "min_level": 3,
+      "max_level": 4
+    },
+    "topics": [
+      {
+        "title": "Greetings",
+        "icon": "hand",
+        "description": "Say hello and reply.",
+        "level": 3,
+        "overview_markdown": "### Greetings\nSay hello and reply..",
+        "lessons": [
+          {
+            "title": "Hello!",
+            "icon": "hand",
+            "description": "Greet people",
+            "game_type": null,
+            "overview_markdown": "### Hello!\nGreet people.",
+            "questions": [
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Choose the greeting",
+                "question_text": "You meet someone in the morning. What do you say?",
+                "options": [
+                  "Good night",
+                  "Good morning",
+                  "Goodbye",
+                  "See you later"
+                ],
+                "answer": "Good morning"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Choose the reply",
+                "question_text": "Someone says: How are you?",
+                "options": [
+                  "I am fine, thanks.",
+                  "It is a table.",
+                  "Blue."
+                ],
+                "answer": "I am fine, thanks."
+              },
+              {
+                "content_type": "text_comprehension_word_selection",
+                "question_prompt": "Find them all",
+                "question_text": "Tap every b.",
+                "word_selection_correct_words": [
+                  "b"
+                ],
+                "max_attempts": 3,
+                "context_text": "b   d   b   p   b   q   d"
+              },
+              {
+                "content_type": "text_comprehension_read_word",
+                "question_prompt": "Read it aloud",
+                "question_text": "sat",
+                "question_subtext": "Read it to your volunteer, then tap I read it.",
+                "options": [
+                  "I read it"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Letters and places",
+        "icon": "map-pin",
+        "description": "Vowels and prepositions.",
+        "level": 4,
+        "overview_markdown": "### Letters and places\nVowels and prepositions..",
+        "lessons": [
+          {
+            "title": "Letters and places",
+            "icon": "map-pin",
+            "description": "Vowels and where things are",
+            "game_type": null,
+            "overview_markdown": "### Letters and places\nVowels and where things are.",
+            "questions": [
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Find the vowel",
+                "question_text": "Which one is a vowel?",
+                "options": [
+                  "B",
+                  "C",
+                  "E",
+                  "G"
+                ],
+                "answer": "E"
+              },
+              {
+                "content_type": "multiple_choice",
+                "question_prompt": "Choose the preposition",
+                "question_text": "The book is ___ the table. (The book is touching the top of the table.)",
+                "options": [
+                  "in",
+                  "under",
+                  "on",
+                  "behind"
+                ],
+                "answer": "on"
+              },
+              {
+                "content_type": "text_comprehension_fill_blank",
+                "question_prompt": "Finish the sentence",
+                "question_text": "My name {input} Sam.",
+                "fill_blank_options": [
+                  "is"
+                ]
+              },
+              {
+                "content_type": "open_answer",
+                "question_prompt": "Type the missing word",
+                "question_text": "Finish the sentence: Hello, my ___ is Sam.",
+                "answer": "name"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

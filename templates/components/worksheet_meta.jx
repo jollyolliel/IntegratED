@@ -1,0 +1,10 @@
+{#- A worksheet's metadata as stacked label / value rows. `rows` is a list of {label, value}. -#}
+{#def rows #}
+<div {{ attrs.render(class="space-y-2.5") }}>
+  {%- for row in rows %}
+  <div>
+    <p class="meta-label">{{ row.label }}</p>
+    <p class="meta-value">{{ row.value }}</p>
+  </div>
+  {%- endfor %}
+</div>

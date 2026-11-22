@@ -1,0 +1,13 @@
+{#- A single metric: optional icon box, the value in display type, its label, an optional line
+    under it. The tone tracks what the number means (docs/ui-design/visual-language.md). A stat tile is a Card with
+    tighter padding, a thicker border and its text centred. -#}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#def label, value, tone=None, icon=None, sub=None #}
+{%- set tone = prop("StatTile", "tone", tone) -%}
+<Card tone={{ tone }} class="text-center px-4 py-[22px] border-[length:var(--clay-border-width)]" attrs={{ attrs }}>
+  {%- if icon %}<IconBox icon={{ icon }} tone={{ tone }} class="mx-auto mb-3" />{% endif %}
+  <div class="display-font text-3xl font-extrabold {{ look("StatTile", "tone", tone, "value") }}">{{ value }}</div>
+  <p class="text-xs text-ink-muted font-semibold mt-0.5">{{ label }}</p>
+  {%- if sub %}<p class="text-xs text-ink-faint mt-1">{{ sub }}</p>{% endif %}
+</Card>

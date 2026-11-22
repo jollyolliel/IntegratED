@@ -1,0 +1,17 @@
+id: no-restyle-button
+language: html
+severity: error
+message: |
+  A clay button owns its padding, text size and colour, radius, border, shadow and background — these utilities are not allowed on btn-clay.
+note: |
+  Compose it instead: btn-clay + one colour (btn-accent, btn-sky, btn-gray, btn-danger,
+  btn-rose, btn-amber) + optionally btn-flat (chip) or btn-large. Use margin here or gap
+  on the parent for space around it. Add a colour or size in
+  static/css/components/buttons.css only if the design explicitly calls for one.
+rule:
+  matches: class-value
+  # [the clay element's class, the banned utilities] — scripts/lint_jx.py reads the second for
+  # component tags, so keep exactly these two, in this order.
+  all:
+    - regex: '(?:^|[\s}])btn-clay(?:$|[\s{])'
+    - regex: '(?:^|[\s}])(?:[\w-]+:)*!?-?(?:p[xytblrse]?-\S+|text-(?:xs|sm|base|lg|xl|[2-9]xl|\[[^\]]+\]|(?:sky|green|emerald|amber|yellow|orange|rose|red|pink|purple|violet|indigo|blue|gray|slate|white|black)(?:-\d+)?)|rounded(?:-\S+)?|shadow(?:-\S+)?|border(?:-\S+)?|bg-\S+|h-\S+|\[--(?:btn|clay)-[\w-]+:[^\]]*\])(?:$|[\s{])'

@@ -1,0 +1,133 @@
+{#- One learner at the admin's school: profile and match status, headline stats, a password reset,
+    delete, then previews of their attendance and worksheets linking out to the full ledger. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/page_header.jx" as PageHeader #}
+{#import "@components/icon_box.jx" as IconBox #}
+{#import "@components/status_pill.jx" as StatusPill #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/input.jx" as Input #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def school, learner, attendance_records, attendance_total, assignments, assignment_total #}
+<Page title={{ (learner.name or learner.username) ~ " — " ~ school.name }}>
+  <Main>
+    <BackLink href={{ url_for('school_admin.people') }} label="People" />
+
+    <Card class="mb-6">
+      <PageHeader class="!mb-0" badge={{ t('school_admin.learner_detail.eyebrow') }}
+        title={{ learner.name or learner.username }} subtitle={{ "@" ~ learner.username ~ " · " ~ school.name }}>
+        {% fill lead %}<IconBox icon="user" size="xl" />{% endfill %}
+        {%- if learner.is_matched %}
+        <StatusPill status="matched">{{ t('school_admin.learner_detail.matched') }}</StatusPill>
+        {%- else %}
+        <StatusPill status="unmatched">{{ t('school_admin.learner_detail.unmatched') }}</StatusPill>
+        {%- endif %}
+      </PageHeader>
+    </Card>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+      <StatTile icon="book-open" label={{ t('school_admin.learner_detail.stat_hours_learned') }}
+        value={{ "%.1f" | format(learner.hours_learned or 0) }} />
+      <StatTile tone="green" icon="clipboard-document-check" label={{ t('school_admin.learner_detail.stat_sessions') }}
+        value={{ attendance_total }} />
+      <StatTile tone="amber" icon="check-badge" class="col-span-2 md:col-span-1"
+        label={{ t('school_admin.learner_detail.stat_worksheets') }} value={{ assignment_total }} />
+    </div>
+
+    <Card class="mb-6">
+      <h3 class="display-font text-lg font-bold text-sky-900 mb-4">{{ t('school_admin.learner_detail.reset_password') }}</h3>
+      <form action="{{ url_for('school_admin.set_learner_password', learner_id=learner.id) }}" method="POST" id="set-password-form" class="js-ajax-form flex flex-col sm:flex-row gap-3">
+        <Input type="password" name="password" placeholder={{ t('school_admin.new_password_placeholder') }} required minlength="6" data-no-spaces
+          class="flex-1" />
+        <Button type="submit" icon="key" class="flex-shrink-0">{{ t('school_admin.learner_detail.set_password') }}</Button>
+      </form>
+    </Card>
+
+    <div class="mb-8 flex justify-end">
+      <form action="{{ url_for('school_admin.delete_learner', learner_id=learner.id) }}" method="POST"
+            data-confirm="{{ t('confirm.delete_named', name=learner.username) }}">
+        <Button type="submit" variant="danger" icon="trash">{{ t('school_admin.learner_detail.delete_learner') }}</Button>
+      </form>
+    </div>
+
+    <div class="mb-3">
+      <SectionBadge>{{ t('school_admin.learner_detail.attendance_badge') }} ({{ attendance_total }})</SectionBadge>
+    </div>
+    {%- if attendance_records %}
+    <Table wrap_class="mb-2">
+      <thead>
+        <tr>
+          <th>{{ t('school_admin.learner_detail.col_date') }}</th>
+          <th>{{ t('school_admin.learner_detail.col_volunteer') }}</th>
+          <th>{{ t('school_admin.learner_detail.col_duration') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for r in attendance_records %}
+        <tr>
+          <td class="text-ink-faint">{{ r.date.strftime('%b %d, %Y') }}</td>
+          <td>{{ r.partner.name if r.partner else '—' }}</td>
+          <td><span class="font-bold text-sky-700">{{ "%.1f"|format(r.duration) }}</span></td>
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </Table>
+    {%- if attendance_total > attendance_records|length %}
+    <div class="text-end mb-8">
+      <Button variant="sky" flat href={{ url_for('school_admin.attendance', learner=learner.id) }}>
+        {{- t('school_admin.learner_detail.view_all', count=attendance_total) -}}
+      </Button>
+    </div>
+    {%- else %}
+    <div class="mb-8"></div>
+    {%- endif %}
+    {%- else %}
+    <p class="text-ink-faint italic text-sm mb-8">{{ t('school_admin.learner_detail.no_attendance') }}</p>
+    {%- endif %}
+
+    {#- Worksheets: the newest few; assignment_total names the whole count. #}
+    {%- if assignments %}
+    <div class="mb-3">
+      <SectionBadge>{{ t('school_admin.learner_detail.worksheets_badge') }} ({{ assignment_total }})</SectionBadge>
+    </div>
+    <Table>
+      <thead>
+        <tr>
+          <th>{{ t('school_admin.learner_detail.col_worksheet') }}</th>
+          <th>{{ t('school_admin.learner_detail.col_assigned') }}</th>
+          <th>{{ t('school_admin.learner_detail.col_status') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for a in assignments %}
+        <tr>
+          <td class="font-medium text-sky-900">{{ a.worksheet.title }}</td>
+          <td class="text-ink-faint">{{ a.assigned_at.strftime('%b %d, %Y') }}</td>
+          <td>
+            {%- if a.completed %}
+            <span class="inline-flex items-center gap-1.5 bg-green-50 text-accent-dark text-xs font-bold px-2.5 py-1 rounded-full border border-green-200">
+              <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>{{ t('school_admin.learner_detail.status_completed') }}
+            </span>
+            {%- else %}
+            <span class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">
+              <span class="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>{{ t('school_admin.learner_detail.status_pending') }}
+            </span>
+            {%- endif %}
+          </td>
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </Table>
+    {%- endif %}
+  </Main>
+
+  <script>
+    document.getElementById("set-password-form")?.addEventListener("ajaxform:success", (e) => {
+      e.target.reset();
+    });
+  </script>
+</Page>

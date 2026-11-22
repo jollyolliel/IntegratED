@@ -1,0 +1,293 @@
+{#- The DB console's landing page: row counts per table, the read-only SQL console and its
+    results, and the JSON import modal. `db_query` re-renders it with a result or an error. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/section_badge.jx" as SectionBadge #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/table.jx" as Table #}
+{#import "@components/base/textarea.jx" as Textarea #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/shell/main.jx" as Main #}
+{#def stats, db_size, all_tables, query_result=None, query_error=None, query_sql="" #}
+{%- set head %}
+  <style>
+    .modal-card { background: white; border-radius: 24px; border: 2px solid var(--color-sky-200); box-shadow: 6px 6px 0 var(--color-sky-100); }
+
+    .import-option { border: 2px solid var(--color-sky-100); border-radius: 14px; padding: 14px; cursor: pointer; transition: border-color 150ms, background 150ms; }
+    .import-option:has(input:checked) { border-color: var(--color-primary); background: var(--color-sky-50); }
+    .import-option:hover { border-color: var(--color-sky-300); }
+  </style>
+{%- endset %}
+<Page title="Database — Admin" styles="admin" head={{ head }}>
+  <Main width="7xl">
+    <div class="mb-6 flex items-end justify-between gap-4 flex-wrap">
+      <div>
+        <BackLink href={{ url_for('administrator.dashboard') }} label="Dashboard" />
+        <h1 class="display-font text-3xl font-extrabold text-sky-950 mt-1">Database</h1>
+        {%- if db_size %}
+        <p class="text-sm mt-1 text-ink-heading/60">Size: <span class="font-mono font-bold text-primary">{{ db_size }}</span></p>
+        {%- endif %}
+      </div>
+      <div class="flex gap-3 flex-wrap">
+        <Button href={{ url_for('administrator.db_export_full') }} icon="arrow-down-tray">Export Full DB</Button>
+        <Button variant="sky" icon="arrow-up-tray" onclick="document.getElementById('importModal').classList.remove('hidden')">Import</Button>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-8 mb-10">
+      <div>
+        <h2 class="display-font text-lg font-bold text-sky-900 mb-4">Tables</h2>
+        <Table>
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th class="text-right">Rows</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {%- for table, count in stats.items() %}
+            <tr>
+              <td>
+                <a href="{{ url_for('administrator.db_table', table_name=table) }}" class="font-mono text-xs text-primary hover:text-primary-dark font-bold">{{ table }}</a>
+              </td>
+              <td class="text-end font-semibold {% if count != '—' and count > 0 %}text-primary{% else %}text-ink-faint{% endif %}">{{ count }}</td>
+              <td class="text-end">
+                <div class="flex justify-end gap-3">
+                  <Button flat href={{ url_for('administrator.db_export_table', table_name=table) }}>Export</Button>
+                  <Button variant="sky" flat href={{ url_for('administrator.db_table', table_name=table) }}>Browse</Button>
+                </div>
+              </td>
+            </tr>
+            {%- endfor %}
+          </tbody>
+        </Table>
+      </div>
+
+      <div id="sqlPanel" class="min-w-0">
+        <h2 class="display-font text-lg font-bold text-sky-900 mb-4">SQL Query</h2>
+        <Card>
+          <form action="{{ url_for('administrator.db_query') }}" method="POST" class="space-y-3">
+            <Textarea name="sql" rows="6" class="font-mono" placeholder={{ t('administrator.db_query_placeholder') }}>{{ query_sql }}</Textarea>
+            <p class="text-xs text-ink-faint">Only SELECT statements. Results capped at 100 rows.</p>
+            <Button type="submit" variant="sky">Run Query</Button>
+          </form>
+
+          {%- if query_error %}
+          <div class="mt-4 p-3 rounded-xl text-red-700 text-sm font-mono bg-red-50 border-2 border-red-200">{{ query_error }}</div>
+          {%- endif %}
+        </Card>
+
+        {%- if query_result %}
+        <div id="queryResults" class="mt-6 min-w-0">
+        <div class="mb-4">
+          <SectionBadge>Results</SectionBadge>
+          <h2 class="display-font text-lg font-bold text-sky-900">Query Results ({{ query_result.rows|length }} row{{ 's' if query_result.rows|length != 1 }})</h2>
+        </div>
+        {%- if query_result.rows %}
+        <Table wrap_class="overflow-x-auto" class="font-mono text-xs min-w-max">
+          <thead>
+            <tr>
+              {%- for col in query_result.columns %}
+              <th>{{ col }}</th>
+              {%- endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {%- for row in query_result.rows %}
+            <tr>
+              {%- for cell in row %}
+              <td class="max-w-xs truncate" title="{{ cell }}">{{ cell if cell is not none else 'NULL' }}</td>
+              {%- endfor %}
+            </tr>
+            {%- endfor %}
+          </tbody>
+        </Table>
+        {%- else %}
+        <p class="text-ink-faint italic text-sm">Query returned 0 rows.</p>
+        {%- endif %}
+        </div>
+        {%- endif %}
+      </div>
+    </div>
+
+  </Main>
+
+  <div id="importModal" class="hidden fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+    <div class="modal-card p-6 max-w-lg w-full">
+      <h3 class="display-font text-xl font-bold text-sky-950 mb-4">Import Data</h3>
+
+      <div id="importStep1">
+        <p class="text-sm text-ink-muted mb-4">
+          Select a JSON file to import. Full DB export = JSON object; table export = JSON array.
+        </p>
+        <label class="block">
+          <span class="text-sm font-semibold text-primary-dark mb-1.5 block">JSON File</span>
+          <input type="file" id="importFile" accept=".json"
+                 class="block w-full text-sm text-ink-muted file:me-4 file:py-2 file:px-4 file:rounded-xl file:border-2 file:border-primary-light file:text-sm file:font-bold file:bg-sky-50 file:text-primary hover:file:bg-primary-soft cursor-pointer" />
+        </label>
+        <div id="importDetected" class="mt-3 p-3 rounded-xl text-sm text-sky-700 hidden bg-sky-50 border border-primary-light"></div>
+        <div id="importError" class="mt-3 p-3 rounded-xl text-red-700 text-sm hidden bg-red-50 border border-red-200"></div>
+        <div class="flex gap-3 mt-5">
+          <Button variant="sky" id="importNextBtn" disabled onclick="advanceImport()" icon_end="arrow-right">Next</Button>
+          <Button variant="gray" onclick="closeImport()">Cancel</Button>
+        </div>
+      </div>
+
+      <div id="importStep2" class="hidden">
+        <form id="importForm" action="{{ url_for('administrator.db_import') }}" method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="mode" id="importModeField" />
+          <input type="hidden" name="table_name" id="importTableField" />
+          <input type="file" name="file" id="importFileHidden" class="hidden" />
+
+          <div id="fullDbOptions" class="hidden">
+            <p class="text-sm font-bold text-sky-900 mb-4">Full Database Import — choose mode:</p>
+            <div class="space-y-3">
+              <label class="import-option flex items-start gap-3">
+                <input type="radio" name="dbMode" value="replace_all" class="mt-1 accent-sky-600" />
+                <div>
+                  <p class="font-bold text-sky-900 text-sm">Replace entire database</p>
+                  <p class="text-xs text-ink-muted mt-0.5">Delete ALL data from ALL tables, then import. <span class="text-red-500 font-semibold">Irreversible.</span></p>
+                </div>
+              </label>
+              <label class="import-option flex items-start gap-3">
+                <input type="radio" name="dbMode" value="merge_tables" class="mt-1 accent-sky-600" />
+                <div>
+                  <p class="font-bold text-sky-900 text-sm">Merge — replace matching tables only</p>
+                  <p class="text-xs text-ink-muted mt-0.5">For each table in the file: clear and reimport it. Tables not in file stay untouched.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div id="tableOptions" class="hidden">
+            <p class="text-sm font-bold text-sky-900 mb-1">Table Import — target table:</p>
+            <select id="tableSelect" onchange="document.getElementById('importTableField').value=this.value" class="w-full mb-4">
+              <button><selectedcontent></selectedcontent></button>
+              <option value="">— select table —</option>
+              {%- for table in all_tables %}
+              <option value="{{ table }}">{{ table }}</option>
+              {%- endfor %}
+            </select>
+            <p class="text-sm font-bold text-sky-900 mb-3">Mode:</p>
+            <div class="space-y-3">
+              <label class="import-option flex items-start gap-3">
+                <input type="radio" name="tableMode" value="replace_table" class="mt-1 accent-sky-600" />
+                <div>
+                  <p class="font-bold text-sky-900 text-sm">Replace table</p>
+                  <p class="text-xs text-ink-muted mt-0.5">Delete all rows in the table, then import. <span class="text-red-500 font-semibold">Irreversible.</span></p>
+                </div>
+              </label>
+              <label class="import-option flex items-start gap-3">
+                <input type="radio" name="tableMode" value="merge_rows" class="mt-1 accent-sky-600" />
+                <div>
+                  <p class="font-bold text-sky-900 text-sm">Merge rows</p>
+                  <p class="text-xs text-ink-muted mt-0.5">Update existing rows (by PK), insert new ones, keep rows not in file.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="flex gap-3 mt-5">
+            <Button variant="sky" id="importSubmitBtn" onclick="submitImport()">Import</Button>
+            <Button variant="gray" onclick="closeImport()">Cancel</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let importData = null;
+    let importType = null; // 'full' or 'table'
+
+    document.getElementById('importFile').addEventListener('change', function() {
+      const file = this.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          importData = JSON.parse(e.target.result);
+          const detectedEl = document.getElementById('importDetected');
+          const errorEl = document.getElementById('importError');
+          errorEl.classList.add('hidden');
+          if (Array.isArray(importData)) {
+            importType = 'table';
+            detectedEl.textContent = `Detected: table export — ${importData.length} rows`;
+            detectedEl.classList.remove('hidden');
+          } else if (typeof importData === 'object' && importData !== null) {
+            const tableKeys = Object.keys(importData);
+            const allArrays = tableKeys.every(k => Array.isArray(importData[k]));
+            if (allArrays) {
+              importType = 'full';
+              detectedEl.textContent = `Detected: full DB export — ${tableKeys.length} tables`;
+              detectedEl.classList.remove('hidden');
+            } else {
+              throw new Error('Unrecognised format');
+            }
+          } else {
+            throw new Error('Unrecognised format');
+          }
+          document.getElementById('importNextBtn').disabled = false;
+        } catch(err) {
+          importData = null;
+          importType = null;
+          document.getElementById('importNextBtn').disabled = true;
+          document.getElementById('importDetected').classList.add('hidden');
+          const errorEl = document.getElementById('importError');
+          errorEl.textContent = 'Invalid JSON or unrecognised format.';
+          errorEl.classList.remove('hidden');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    function advanceImport() {
+      if (!importData || !importType) return;
+      document.getElementById('importStep1').classList.add('hidden');
+      document.getElementById('importStep2').classList.remove('hidden');
+      if (importType === 'full') {
+        document.getElementById('fullDbOptions').classList.remove('hidden');
+        document.getElementById('tableOptions').classList.add('hidden');
+      } else {
+        document.getElementById('tableOptions').classList.remove('hidden');
+        document.getElementById('fullDbOptions').classList.add('hidden');
+      }
+    }
+
+    function submitImport() {
+      const form = document.getElementById('importForm');
+      if (importType === 'full') {
+        const mode = document.querySelector('input[name="dbMode"]:checked');
+        if (!mode) { alert({{ t('confirm.choose_mode')|tojson }}); return; }
+        document.getElementById('importModeField').value = mode.value;
+      } else {
+        const mode = document.querySelector('input[name="tableMode"]:checked');
+        const table = document.getElementById('tableSelect').value;
+        if (!mode) { alert({{ t('confirm.choose_mode')|tojson }}); return; }
+        if (!table) { alert({{ t('confirm.select_table')|tojson }}); return; }
+        document.getElementById('importModeField').value = mode.value;
+        document.getElementById('importTableField').value = table;
+      }
+
+      // Transfer the file to the hidden input by creating a DataTransfer
+      const origFile = document.getElementById('importFile').files[0];
+      const dt = new DataTransfer();
+      dt.items.add(origFile);
+      document.getElementById('importFileHidden').files = dt.files;
+      form.submit();
+    }
+
+    function closeImport() {
+      document.getElementById('importModal').classList.add('hidden');
+      document.getElementById('importStep1').classList.remove('hidden');
+      document.getElementById('importStep2').classList.add('hidden');
+      document.getElementById('importFile').value = '';
+      document.getElementById('importDetected').classList.add('hidden');
+      document.getElementById('importError').classList.add('hidden');
+      document.getElementById('importNextBtn').disabled = true;
+      importData = null;
+      importType = null;
+    }
+  </script>
+</Page>

@@ -1,0 +1,50 @@
+{#- Every donation on the platform (or one school's, `school_filter`): headline stats and the
+    per-school breakdown cover every matching donation, not just one page. The pager swaps only
+    the table. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/back_link.jx" as BackLink #}
+{#import "@components/stat_tile.jx" as StatTile #}
+{#import "@components/base/card.jx" as Card #}
+{#import "@components/base/progress_bar.jx" as ProgressBar #}
+{#import "@page_components/administrator/donations_results.jx" as DonationsResults #}
+{#import "@components/shell/main.jx" as Main #}
+{#def donations, total, donation_count, by_school, page, page_count, page_args, school_filter=None #}
+<Page title="Donations — Admin">
+  <Main>
+    <div class="mb-6">
+      <BackLink href={{ url_for('administrator.dashboard') }} label="Dashboard" />
+      <h1 class="display-font text-4xl font-extrabold text-sky-950 mt-1">{{ t('admin.donations.heading') }}</h1>
+      {%- if school_filter %}
+      <p class="text-sm mt-1 text-ink-heading/60">
+        {{ school_filter.name }} —
+        <a href="{{ url_for('administrator.donations') }}" class="text-primary underline">{{ t('admin.donations.all_donations') }}</a>
+      </p>
+      {%- endif %}
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+      <StatTile tone="green" label={{ t('admin.donations.stat_total_raised') }} value={{ "$%.2f" | format(total) }} />
+      <StatTile label={{ t('admin.donations.stat_donations') }} value={{ donation_count }} />
+      {%- if donation_count %}
+      <StatTile tone="amber" label={{ t('admin.donations.stat_average') }} value={{ "$%.2f" | format(total / donation_count) }} />
+      {%- endif %}
+    </div>
+
+    {%- if by_school %}
+    <Card tone="green" class="mb-8">
+      <h2 class="display-font text-lg font-bold text-green-900 mb-5">{{ t('admin.donations.by_school') }}</h2>
+      <div class="space-y-4">
+        {%- for school_name, amount in by_school %}
+        <div class="flex items-center gap-4">
+          <span class="text-sm font-medium text-sky-900 w-48 truncate flex-shrink-0">{{ school_name }}</span>
+          <ProgressBar tone="green" size="sm" value={{ (amount / total * 100) if total > 0 else 0 }} class="flex-1" />
+          <span class="text-accent-dark font-bold text-sm w-24 text-end flex-shrink-0">${{ "%.2f"|format(amount) }}</span>
+        </div>
+        {%- endfor %}
+      </div>
+    </Card>
+    {%- endif %}
+
+    <DonationsResults donations={{ donations }} page={{ page }} page_count={{ page_count }} page_args={{ page_args }} />
+  </Main>
+</Page>

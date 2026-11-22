@@ -1,0 +1,4 @@
+{#- "Back to X" above a detail page. The chevron mirrors in RTL. -#}
+{#import "@components/base/icon.jx" as Icon #}
+{#def href, label="" #}
+<a {{ attrs.render(class="back-link", href=href) }}><Icon name="chevron-left" />{% if content %}{{ content }}{% else %}{{ label }}{% endif %}</a>

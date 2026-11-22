@@ -1,0 +1,204 @@
+/* garden-grow game: page-specific styles, linked via <GamePage styles="game-garden-grow">.
+   Used by: pages/learner/learning/garden_grow.jx.
+
+   The page is a split: the question column ("play") and a living jungle
+   clearing ("stage"). Phones stack the scene on top; md+ puts the question on
+   the inline-start side and keeps the scene sticky beside it. */
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.gg-layout {
+  flex: 1; width: 100%; max-width: 1180px; margin-inline: auto;
+  padding: 12px 16px 32px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.gg-stage { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+/* Phones: the clearing comes first, the question under it (md+ puts them side by side). */
+.gg-stage { order: -1; }
+.gg-play  { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+@media (min-width: 768px) {
+  .gg-layout {
+    display: grid; align-items: start; gap: 28px 36px; padding-top: 20px;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, min(46%, 620px));
+    grid-template-areas: "play stage";
+  }
+  .gg-stage { grid-area: stage; position: sticky; top: 81px; order: 0; }
+  .gg-play  { grid-area: play; padding-top: 28px; max-width: 560px; justify-self: center; width: 100%; }
+}
+
+/* ── HUD above the scene: progress, streak, drop + fruit counters ──────── */
+.gg-hud { display: flex; flex-direction: column; gap: 7px; padding: 2px 4px 0; }
+.gg-hud-row { display: flex; align-items: center; gap: 8px; min-height: 30px; }
+.gg-hud-label { font-size: 0.72rem; font-weight: 800; color: var(--color-ink-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gg-streak {
+  margin-inline-start: auto; font-size: 0.78rem; font-weight: 800; color: var(--color-accent);
+  opacity: 0; transform: translateY(4px); transition: opacity 250ms ease-out, transform 250ms ease-out;
+  white-space: nowrap;
+}
+.gg-streak.on { opacity: 1; transform: none; }
+.gg-hud .game-stat-pill { padding: 3px 10px; }
+.gg-hud .progress-fill { background: linear-gradient(90deg, var(--color-accent), var(--color-green-400)); }
+
+/* ── The scene ─────────────────────────────────────────────────────────────
+   Every layer is a 600×600 SVG drawn with preserveAspectRatio="xMidYMax
+   slice", so the backdrop, the plants and the framing stay registered at any
+   panel shape: the ground is pinned to the bottom, the sides crop first.
+   Stacking (the scene is the only stacking context — .gg-world and the /live
+   wrappers are display:contents, so their SVGs interleave with the plants):
+     0 .gg-back  sky, hills, jungle wall, clearing floor   (/live session)
+     1 .gg-plants the learner's garden                     (JS)
+     2 .gg-front  framing fronds, vines, ferns              (/live session)
+     3 .gg-storm-veil   4 .gg-raincloud   5 raindrops, butterflies */
+.gg-scene {
+  position: relative; overflow: hidden; isolation: isolate;
+  border-radius: 24px; height: clamp(240px, 42vh, 380px);
+  background: var(--color-green-700);
+}
+@media (min-width: 768px) {
+  .gg-scene { height: auto; aspect-ratio: 4 / 5; max-height: calc(100dvh - 190px); min-height: 360px; }
+}
+.gg-world { display: contents; }
+.gg-back, .gg-front, .gg-plants {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none;
+}
+.gg-back   { z-index: 0; }
+.gg-plants { z-index: 1; overflow: hidden; }
+.gg-front  { z-index: 2; }
+
+/* Ambient life in the backdrop: CSS only (the session art carries no JS
+   hooks). Durations come from custom properties set on each shape. */
+.gg-world .gg-sway {
+  transform-box: view-box;
+  animation: ggFrondSway var(--gg-sway-d, 7s) ease-in-out infinite alternate;
+}
+@keyframes ggFrondSway { from { transform: rotate(-1.4deg); } to { transform: rotate(1.6deg); } }
+.gg-world .gg-drift {
+  animation: ggDrift var(--gg-drift-d, 60s) ease-in-out infinite alternate;
+}
+@keyframes ggDrift { from { transform: translateX(-24px); } to { transform: translateX(36px); } }
+.gg-world .gg-twinkle {
+  animation: ggTwinkle var(--gg-tw-d, 3s) ease-in-out var(--gg-tw-delay, 0s) infinite alternate;
+}
+@keyframes ggTwinkle { from { opacity: 1; } to { opacity: 0.25; } }
+.gg-world .gg-firefly {
+  animation: ggFirefly var(--gg-ff-d, 7s) ease-in-out var(--gg-ff-delay, 0s) infinite alternate;
+}
+@keyframes ggFirefly {
+  0%   { transform: translate(0, 0); opacity: 0.15; }
+  40%  { opacity: 1; }
+  100% { transform: translate(14px, -18px); opacity: 0.3; }
+}
+
+/* ── The plants ────────────────────────────────────────────────────────────
+   Each plant is drawn at full size with its base at its local 0,0 and grows
+   by CSS transforms alone. An SVG element's default transform-origin is the
+   0,0 of its own coordinate system, which is where every plant and every
+   part (leaf, frond, fruit) is attached — so scale() grows it from there. */
+.gg-plants .gg-grow { transition: transform 1.1s cubic-bezier(.34, 1.32, .64, 1); }
+.gg-plants .gg-part { transform: scale(0) rotate(-28deg); transition: transform 0.85s cubic-bezier(.34, 1.45, .64, 1) var(--d, 0s); }
+.gg-plants .gg-part.on { transform: none; }
+/* The bloom's bud gives way to its open flower at stage 3. */
+.gg-plants .gg-plot.is-ripe .gg-bud.on { transform: scale(0); }
+.gg-plants .gg-sway { animation: ggPlantSway var(--sw, 6s) ease-in-out var(--sw-d, 0s) infinite alternate; }
+@keyframes ggPlantSway { from { transform: rotate(-1.3deg); } to { transform: rotate(1.5deg); } }
+.gg-plot.is-empty .gg-mound { opacity: 0.9; }
+/* The plants take the backdrop's light: warmer at golden hour, dimmer by moonlight.
+   (`:not([hidden] *)` skips backdrops parked hidden in an open /live session.) */
+.gg-scene:has(#ggg-sky:not([hidden] *)) .gg-plants { filter: sepia(0.18) saturate(1.1); }
+.gg-scene:has(#ggn-sky:not([hidden] *)) .gg-plants { filter: brightness(0.6) saturate(0.8); }
+.gg-flying-packet svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+/* Plot pulse ring: shows where a seed is going. */
+.gg-target { opacity: 0; transform-box: fill-box; transform-origin: center; }
+.gg-plot.targeted .gg-target { opacity: 1; animation: ggTarget 1.2s ease-in-out infinite; }
+@keyframes ggTarget { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+/* ── Rainstorm ─────────────────────────────────────────────────────────── */
+.gg-storm-veil {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
+  background: linear-gradient(180deg, rgb(var(--color-ink-heading-rgb) / 0.5), rgb(var(--color-ink-heading-rgb) / 0.12));
+  transition: opacity 450ms ease-out;
+}
+.gg-scene.storm .gg-storm-veil { opacity: 1; }
+.gg-raincloud {
+  position: absolute; z-index: 4; inset-inline: -4%; top: -6px; width: 108%; height: 34%;
+  pointer-events: none; transform: translateY(-105%); transition: transform 600ms cubic-bezier(.2,.8,.2,1);
+}
+.gg-scene.storm .gg-raincloud { transform: translateY(0); }
+.gg-raindrop {
+  position: absolute; top: 18%; width: 3px; height: 14px; z-index: 5;
+  border-radius: 50% 50% 58% 58%; background: var(--color-sky-200); opacity: 0.9;
+  pointer-events: none;
+}
+
+/* ── Question card + answers ────────────────────────────────────────────── */
+.gg-question {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--color-surface); border-radius: 22px; padding: 14px 18px;
+  border: 2.5px solid var(--color-card-green-border); box-shadow: 4px 4px 0 var(--color-card-green-shadow);
+}
+.gg-step { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-accent); margin-bottom: 2px; }
+.gg-qtext { font-family: 'Baloo 2', system-ui, sans-serif; font-size: 1.35rem; font-weight: 700; line-height: 1.25; color: var(--color-ink-heading); }
+@media (min-width: 768px) { .gg-qtext { font-size: 1.6rem; } }
+
+.gg-answers { display: flex; flex-direction: column; gap: 12px; }
+/* Answer button = the shared clickable clay card (.quick-action-card owns the
+   border, shadow and press motion); this only lays out its inside. */
+.gg-answer {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  min-height: 64px; padding: 10px 18px; text-align: start;
+}
+.gg-answer-word { font-family: 'Baloo 2', system-ui, sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--color-ink-heading); line-height: 1.2; }
+.gg-letter { flex: 0 0 auto; width: 38px; height: 38px; }
+.gg-letter svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.gg-letter text { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 17px; fill: var(--color-surface); }
+.gg-letter-0 .gg-shape { fill: var(--color-sky-500); }
+.gg-letter-1 .gg-shape { fill: var(--color-amber-500); }
+.gg-letter-2 .gg-shape { fill: var(--color-rose-500); }
+.gg-letter-3 .gg-shape { fill: var(--color-violet-500); }
+.gg-letter-4 .gg-shape { fill: var(--color-emerald-500); }
+.gg-letter-5 .gg-shape { fill: var(--color-orange-500); }
+.gg-answer.is-correct { --qa-border: var(--color-emerald-400); --qa-hover: var(--color-emerald-400); background: var(--color-emerald-50); }
+.gg-answer.is-correct .gg-shape { fill: var(--color-accent); }
+.gg-answer.is-wrong { opacity: 0.4; }
+
+/* ── Spending the drop ──────────────────────────────────────────────────── */
+.gg-choice-banner {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--color-surface); border: 2.5px solid var(--color-sky-200); border-radius: 18px;
+  box-shadow: 4px 4px 0 var(--color-sky-100); padding: 12px 16px;
+}
+.gg-choice-banner svg { flex: 0 0 auto; width: 34px; height: 34px; color: var(--color-sky-500); }
+.gg-spend-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.gg-spend {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 2px; min-height: 168px; padding: 12px 8px 14px; text-align: center; width: 100%;
+}
+.gg-spend-icon { width: 76px; height: 84px; display: flex; align-items: flex-end; justify-content: center; }
+.gg-spend-icon svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.gg-action-label { display: block; font-weight: 800; font-size: 1rem; line-height: 1.2; color: var(--color-ink-heading); margin-top: 6px; }
+.gg-action-hint  { display: block; font-weight: 700; font-size: 0.72rem; line-height: 1.3; color: var(--color-ink-muted); }
+.gg-full-note { font-size: 0.8rem; font-weight: 700; color: var(--color-ink-muted); text-align: center; }
+@media (max-width: 380px) {
+  .gg-spend-row { gap: 8px; }
+  .gg-spend-icon { width: 60px; height: 70px; }
+  .gg-action-label { font-size: 0.9rem; }
+}
+/* Drops falling from the "make it rain" icon. */
+.gg-btn-drop { animation: ggBtnDrop 1.5s ease-in infinite; }
+.gg-btn-drop.d2 { animation-delay: 0.35s; }
+.gg-btn-drop.d3 { animation-delay: 0.7s; }
+@keyframes ggBtnDrop {
+  0%   { transform: translateY(-5px); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translateY(11px); opacity: 0; }
+}
+
+.gg-saved-note { font-size: 11px; font-weight: 700; color: var(--color-ink-faint); padding-inline: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gg-world .gg-sway, .gg-world .gg-drift, .gg-world .gg-twinkle, .gg-world .gg-firefly,
+  .gg-btn-drop, .gg-plot.targeted .gg-target, .gg-plants .gg-sway { animation: none; }
+  .gg-plants .gg-grow, .gg-plants .gg-part { transition: none; }
+  .gg-raincloud, .gg-streak { transition: none; }
+}

@@ -1,0 +1,945 @@
+{#- Lantern Sky (game_type word_storm): the answers are lanterns meandering over a night scene. The
+    right one rises into the sky and becomes a star; the stars join into a constellation that
+    turns into a bird when the lesson is done. No timer, no hearts: a wrong lantern dims and
+    drifts back, and the learner tries again. Score counts first-try answers only. -#}
+{#import "@components/shell/game_page.jx" as GamePage #}
+{#import "@components/audio_button.jx" as AudioButton #}
+{#import "@components/base/button.jx" as Button #}
+{#def lesson, already_completed=False #}
+{%- set head %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.getElementById('questionText'),{delimiters:[{left:'$',right:'$',display:false}]})"></script>
+{%- endset %}
+<GamePage title={{ t('learner.word_storm.title') ~ ' — ' ~ lesson.title ~ ' - IntegratED' }} lesson={{ lesson }} head={{ head }}
+  styles="game-word-storm">
+    <main class="ws-wrap" id="page-content">
+      <section class="ws-panel">
+        <div class="ws-head">
+          <div class="ws-title">
+            <span class="ws-title-icon" aria-hidden="true">
+              <svg width="20" height="24" viewBox="0 0 120 150"><use href="{{ url_for('static', filename='svg/games/word_storm/lanterns.svg') }}#lantern-a" class="ws-lantern-tone-a"/></svg>
+            </span>
+            <h1 class="display-font font-bold text-sm text-sky-700 uppercase tracking-widest">{{ t('learner.word_storm.title') }}</h1>
+          </div>
+          <div class="ws-progress">
+            <span id="progressLabel" class="text-xs font-bold text-ink-muted whitespace-nowrap font-mono">—</span>
+            <div class="progress-track flex-1"><div id="progressFill" class="progress-fill" style="width:0%"></div></div>
+            <span id="streakNote" class="ws-streak" hidden></span>
+          </div>
+        </div>
+
+        {% if already_completed %}
+        <div class="rounded-2xl px-4 py-2.5 text-sm font-semibold bg-amber-100 border-2 border-amber-300 text-amber-800">
+          {{ t('learner.word_storm.already_completed') }} {{ t('learner.word_storm.replay_no_xp') }}
+        </div>
+        {% endif %}
+
+        <div id="errorState" class="hidden py-8 text-center rounded-2xl p-6 bg-red-50 border-2 border-red-200">
+          <p class="text-danger font-bold mb-4">{{ t('learner.word_storm.load_failed') }}</p>
+          <Button variant="danger" onclick="location.reload()">{{ t('learner.word_storm.reload') }}</Button>
+        </div>
+
+        <div class="ws-question" id="questionCard">
+          <AudioButton id="speakerBtn" label={{ t('learner.word_storm.read_aloud') }} />
+          <div class="min-w-0">
+            <p id="questionPrompt" class="text-[11px] font-bold uppercase tracking-wider text-primary mb-0.5"></p>
+            <p id="questionText" class="ws-question-text display-font font-bold"></p>
+          </div>
+        </div>
+        <p class="ws-instruction">
+          <svg width="18" height="22" viewBox="0 0 120 150" aria-hidden="true"><use href="{{ url_for('static', filename='svg/games/word_storm/lanterns.svg') }}#lantern-d" class="ws-lantern-tone-d"/></svg>
+          {{ t('learner.word_storm.tap_lantern') }}
+        </p>
+      </section>
+
+      <div class="ws-frame">
+        <section class="ws-stage" id="wsStage" aria-label="{{ t('learner.word_storm.tap_lantern') }}">
+          <div class="ws-backdrop ws-lake" data-ws-motion="swirl" style="--ws-float:0.9;--ws-gust:1.1" aria-hidden="true">
+          <svg class="ws-lake-world" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="wsLakeSky9" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#16123F"/>
+                <stop offset=".28" stop-color="#2A2370"/>
+                <stop offset=".46" stop-color="#4C3A93"/>
+                <stop offset=".58" stop-color="#8A5AA8"/>
+                <stop offset=".66" stop-color="#E39AAE"/>
+                <stop offset=".72" stop-color="#F8C9A6"/>
+              </linearGradient>
+            </defs>
+            <rect width="1200" height="800" fill="url(#wsLakeSky9)"/>
+            <circle class="ws-lake-tw" style="animation-delay:3.3s" cx="392.1" cy="68.8" r="1.1" fill="#FFFFFF"/>
+          <circle cx="121.1" cy="237.3" r="2.4" fill="#FFFFFF" opacity="0.7"/>
+          <circle cx="503.4" cy="103.9" r="2.4" fill="#FEF3C7" opacity="0.85"/>
+          <circle class="ws-lake-tw" style="animation-delay:2.3s" cx="156.1" cy="97.1" r="2.4" fill="#FFFFFF"/>
+          <circle cx="478.1" cy="390.7" r="1.1" fill="#E0E7FF" opacity="0.7"/>
+          <circle cx="504.6" cy="220.9" r="2.4" fill="#FEF3C7" opacity="0.85"/>
+          <circle class="ws-lake-tw" style="animation-delay:0.4s" cx="223.3" cy="236.8" r="1.3" fill="#FEF3C7"/>
+          <circle cx="850.3" cy="230.1" r="2.4" fill="#FFFFFF" opacity="0.85"/>
+          <circle cx="514.6" cy="132.5" r="2.4" fill="#FEF3C7" opacity="0.55"/>
+          <circle class="ws-lake-tw" style="animation-delay:2.3s" cx="947.4" cy="282.6" r="1.3" fill="#FFFFFF"/>
+          <circle cx="629.7" cy="351.3" r="1.9" fill="#FEF3C7" opacity="0.55"/>
+          <circle cx="149.3" cy="173.1" r="1.6" fill="#FFFFFF" opacity="0.7"/>
+          <circle class="ws-lake-tw" style="animation-delay:3.2s" cx="56.3" cy="270.6" r="2.4" fill="#E0E7FF"/>
+          <circle cx="975.7" cy="142.6" r="1.6" fill="#E0E7FF" opacity="0.7"/>
+          <circle cx="91.1" cy="46.5" r="1.6" fill="#FEF3C7" opacity="0.55"/>
+          <circle class="ws-lake-tw" style="animation-delay:3.3s" cx="81.6" cy="283.6" r="2.4" fill="#E0E7FF"/>
+          <circle cx="345.8" cy="160.5" r="1.6" fill="#FFFFFF" opacity="0.7"/>
+          <circle cx="208.3" cy="55.7" r="1.1" fill="#FFFFFF" opacity="0.55"/>
+          <circle class="ws-lake-tw" style="animation-delay:0.7s" cx="881.3" cy="165.2" r="1.9" fill="#FFFFFF"/>
+          <circle cx="483.9" cy="118.4" r="1.3" fill="#FEF3C7" opacity="0.7"/>
+          <circle cx="843.5" cy="394.7" r="1.9" fill="#FFFFFF" opacity="0.55"/>
+          <circle class="ws-lake-tw" style="animation-delay:3.3s" cx="188.5" cy="266.8" r="1.1" fill="#FEF3C7"/>
+          <circle cx="225.2" cy="120" r="1.3" fill="#FEF3C7" opacity="0.85"/>
+          <circle cx="678.3" cy="381.7" r="2.4" fill="#E0E7FF" opacity="0.85"/>
+          <circle class="ws-lake-tw" style="animation-delay:1.6s" cx="73.7" cy="360.8" r="2.4" fill="#FEF3C7"/>
+          <circle cx="475.1" cy="197.8" r="1.9" fill="#FFFFFF" opacity="0.55"/>
+          <circle cx="529.9" cy="52.9" r="2.4" fill="#FFFFFF" opacity="0.85"/>
+          <circle class="ws-lake-tw" style="animation-delay:0.1s" cx="188.5" cy="49.6" r="1.6" fill="#E0E7FF"/>
+          <circle cx="1041.7" cy="249.5" r="1.3" fill="#E0E7FF" opacity="0.7"/>
+          <circle cx="720.7" cy="194.9" r="1.1" fill="#FEF3C7" opacity="0.7"/>
+          <circle class="ws-lake-tw" style="animation-delay:3.0s" cx="576.9" cy="131.6" r="1.3" fill="#FFFFFF"/>
+          <circle cx="883.6" cy="196.7" r="1.3" fill="#E0E7FF" opacity="0.85"/>
+          <circle cx="436.9" cy="279.1" r="1.1" fill="#E0E7FF" opacity="0.85"/>
+          <circle class="ws-lake-tw" style="animation-delay:1.5s" cx="1028.7" cy="281.5" r="1.6" fill="#E0E7FF"/>
+          <circle cx="207.1" cy="311.1" r="2.4" fill="#E0E7FF" opacity="0.7"/>
+          <circle cx="761" cy="249.2" r="1.3" fill="#FFFFFF" opacity="0.85"/>
+          <circle class="ws-lake-tw" style="animation-delay:2.9s" cx="957.9" cy="88" r="1.9" fill="#FEF3C7"/>
+          <circle cx="1177.7" cy="318.1" r="1.9" fill="#FEF3C7" opacity="0.85"/>
+          <circle cx="1138.7" cy="184.4" r="1.6" fill="#FEF3C7" opacity="0.55"/>
+          <circle class="ws-lake-tw" style="animation-delay:2.5s" cx="277.7" cy="86.7" r="1.3" fill="#FEF3C7"/>
+          <circle cx="1072.4" cy="337.8" r="1.9" fill="#E0E7FF" opacity="0.85"/>
+          <circle cx="110" cy="267.6" r="1.9" fill="#E0E7FF" opacity="0.7"/>
+          <circle class="ws-lake-tw" style="animation-delay:3.2s" cx="1059" cy="179.2" r="1.6" fill="#FFFFFF"/>
+          <circle cx="1156.6" cy="164.4" r="1.9" fill="#E0E7FF" opacity="0.85"/>
+          <circle cx="197.5" cy="397.3" r="1.1" fill="#FFFFFF" opacity="0.7"/>
+          <circle class="ws-lake-tw" style="animation-delay:2.6s" cx="961.7" cy="67" r="2.4" fill="#FEF3C7"/>
+          <circle cx="423.5" cy="224" r="1.3" fill="#FFFFFF" opacity="0.85"/>
+          <circle cx="776.6" cy="215.4" r="1.3" fill="#FEF3C7" opacity="0.55"/>
+          <circle class="ws-lake-tw" style="animation-delay:1.2s" cx="984.9" cy="92.3" r="1.6" fill="#FFFFFF"/>
+          <circle cx="293.8" cy="238.7" r="1.6" fill="#E0E7FF" opacity="0.55"/>
+          <circle cx="81.9" cy="298.6" r="1.9" fill="#E0E7FF" opacity="0.85"/>
+          <circle class="ws-lake-tw" style="animation-delay:2.1s" cx="506.3" cy="367.9" r="2.4" fill="#FFFFFF"/>
+          <circle cx="627.7" cy="17.3" r="1.9" fill="#FFFFFF" opacity="0.55"/>
+          <circle cx="213.4" cy="194.7" r="1.1" fill="#E0E7FF" opacity="0.85"/>
+          <circle class="ws-lake-tw" style="animation-delay:0.2s" cx="621.7" cy="226.6" r="1.1" fill="#E0E7FF"/>
+          <circle cx="235.7" cy="26.5" r="1.1" fill="#E0E7FF" opacity="0.55"/>
+          <circle cx="906.8" cy="365.9" r="1.9" fill="#FEF3C7" opacity="0.85"/>
+          <circle class="ws-lake-tw" style="animation-delay:2.0s" cx="725.2" cy="87.8" r="1.6" fill="#FEF3C7"/>
+          <circle cx="962.7" cy="208" r="1.3" fill="#E0E7FF" opacity="0.7"/>
+          <circle cx="1098.9" cy="358.2" r="1.3" fill="#FEF3C7" opacity="0.55"/>
+          <circle class="ws-lake-tw" style="animation-delay:0.3s" cx="473" cy="133.2" r="1.3" fill="#FEF3C7"/>
+          <circle cx="800" cy="315.7" r="1.3" fill="#E0E7FF" opacity="0.7"/>
+          <circle cx="178.7" cy="354.3" r="1.9" fill="#FFFFFF" opacity="0.55"/>
+          <circle class="ws-lake-tw" style="animation-delay:2.8s" cx="479.9" cy="200" r="1.3" fill="#FFFFFF"/>
+          <circle cx="1183" cy="167.5" r="1.9" fill="#FFFFFF" opacity="0.55"/>
+          <circle cx="862.1" cy="17.6" r="2.4" fill="#FEF3C7" opacity="0.55"/>
+          <circle class="ws-lake-tw" style="animation-delay:3.8s" cx="463.5" cy="211.8" r="1.6" fill="#E0E7FF"/>
+          <circle cx="143.2" cy="368.2" r="1.3" fill="#FFFFFF" opacity="0.7"/>
+          <circle cx="56.7" cy="313.8" r="1.6" fill="#FFFFFF" opacity="0.85"/>
+          <circle class="ws-lake-tw" style="animation-delay:3.7s" cx="976.4" cy="110.9" r="1.3" fill="#E0E7FF"/>
+          <path class="ws-lake-tw" style="animation-delay:0.2s" d="M683.3 222.9 Q684.1 226.3 687.5 227.1 Q684.1 227.9 683.3 231.4 Q682.5 227.9 679.1 227.1 Q682.5 226.3 683.3 222.9 Z" fill="#FEF3C7"/>
+          <path class="ws-lake-tw" style="animation-delay:3.8s" d="M822.1 137.7 Q822.9 141 826.3 141.8 Q822.9 142.6 822.1 146 Q821.3 142.6 817.9 141.8 Q821.3 141 822.1 137.7 Z" fill="#FEF3C7"/>
+          <path class="ws-lake-tw" style="animation-delay:3.4s" d="M758.6 254.3 Q759.4 257.7 762.8 258.5 Q759.4 259.3 758.6 262.7 Q757.8 259.3 754.4 258.5 Q757.8 257.7 758.6 254.3 Z" fill="#FEF3C7"/>
+          <path class="ws-lake-tw" style="animation-delay:1.4s" d="M88.6 272.3 Q89.4 276.7 93.7 277.5 Q89.4 278.3 88.6 282.6 Q87.8 278.3 83.5 277.5 Q87.8 276.7 88.6 272.3 Z" fill="#FEF3C7"/>
+          <path class="ws-lake-tw" style="animation-delay:0.5s" d="M662.6 292.6 Q663.4 296.5 667.3 297.3 Q663.4 298.1 662.6 301.9 Q661.8 298.1 657.9 297.3 Q661.8 296.5 662.6 292.6 Z" fill="#FEF3C7"/>
+            <circle cx="790" cy="452" r="128" fill="#FFE8C2" opacity=".08"/>
+            <circle cx="790" cy="452" r="82" fill="#FFE8C2" opacity=".14"/>
+            <circle cx="790" cy="452" r="48" fill="#FFF6E0"/>
+            <path d="M770 422 a30 30 0 0 1 44 -6 a40 40 0 0 0 -44 6 Z" fill="#FFFFFF" opacity=".6"/>
+            <g class="ws-lake-far" style="animation-delay:-0s;animation-duration:17.9s"><circle cx="250" cy="330" r="12.2" fill="#FDBA74" opacity=".18"/><rect x="245.3" y="323.9" width="9.4" height="12.2" rx="3.3" fill="#FDBA74"/><rect x="247.2" y="326.3" width="3.7" height="6.6" rx="1.9" fill="#FEF3C7" opacity=".8"/></g>
+          <g class="ws-lake-far" style="animation-delay:-2.3s;animation-duration:17.3s"><circle cx="330" cy="395" r="9.7" fill="#FDBA74" opacity=".18"/><rect x="326.3" y="390.1" width="7.5" height="9.7" rx="2.6" fill="#FDBA74"/><rect x="327.8" y="392" width="3" height="5.2" rx="1.5" fill="#FEF3C7" opacity=".8"/></g>
+          <g class="ws-lake-far" style="animation-delay:-4.6s;animation-duration:17.6s"><circle cx="930" cy="300" r="9.4" fill="#FDBA74" opacity=".18"/><rect x="926.4" y="295.3" width="7.2" height="9.4" rx="2.5" fill="#FDBA74"/><rect x="927.8" y="297.1" width="2.9" height="5.1" rx="1.4" fill="#FEF3C7" opacity=".8"/></g>
+          <g class="ws-lake-far" style="animation-delay:-6.9s;animation-duration:18.4s"><circle cx="1010" cy="365" r="10.9" fill="#FDBA74" opacity=".18"/><rect x="1005.8" y="359.5" width="8.4" height="10.9" rx="2.9" fill="#FDBA74"/><rect x="1007.5" y="361.6" width="3.4" height="5.9" rx="1.7" fill="#FEF3C7" opacity=".8"/></g>
+          <g class="ws-lake-far" style="animation-delay:-9.2s;animation-duration:18.3s"><circle cx="560" cy="250" r="13.5" fill="#FDBA74" opacity=".18"/><rect x="554.8" y="243.2" width="10.4" height="13.5" rx="3.6" fill="#FDBA74"/><rect x="556.9" y="245.8" width="4.2" height="7.3" rx="2.1" fill="#FEF3C7" opacity=".8"/></g>
+          <g class="ws-lake-far" style="animation-delay:-11.5s;animation-duration:17.4s"><circle cx="690" cy="345" r="12" fill="#FDBA74" opacity=".18"/><rect x="685.4" y="339" width="9.3" height="12" rx="3.2" fill="#FDBA74"/><rect x="687.2" y="341.3" width="3.7" height="6.5" rx="1.9" fill="#FEF3C7" opacity=".8"/></g>
+          <g class="ws-lake-far" style="animation-delay:-13.8s;animation-duration:16.1s"><circle cx="140" cy="420" r="11.1" fill="#FDBA74" opacity=".18"/><rect x="135.7" y="414.4" width="8.6" height="11.1" rx="3" fill="#FDBA74"/><rect x="137.4" y="416.6" width="3.4" height="6" rx="1.7" fill="#FEF3C7" opacity=".8"/></g>
+          <g class="ws-lake-far" style="animation-delay:-16.1s;animation-duration:16.1s"><circle cx="1080" cy="430" r="10.6" fill="#FDBA74" opacity=".18"/><rect x="1075.9" y="424.7" width="8.1" height="10.6" rx="2.8" fill="#FDBA74"/><rect x="1077.6" y="426.7" width="3.3" height="5.7" rx="1.6" fill="#FEF3C7" opacity=".8"/></g>
+            <path d="M0 492 L70 452 L120 470 L200 408 L262 446 L330 396 L420 462 L470 440 L540 480 L600 452 L655 486 L720 466 L800 500 L860 448 L930 420 L990 458 L1060 404 L1130 448 L1200 428 V560 H0 Z" fill="#9C8FD6"/>
+            <path d="M200 408 L262 446 L232 470 Z M330 396 L420 462 L360 470 Z M930 420 L990 458 L950 476 Z M1060 404 L1130 448 L1090 466 Z" fill="#8576C6"/>
+            <path d="M0 520 Q90 476 190 500 T390 494 Q470 470 560 504 T760 510 Q850 478 960 498 T1200 486 V580 H0 Z" fill="#6D5BB0"/>
+            <path d="M0 548 Q120 520 250 538 T520 536 Q650 520 780 540 T1040 534 Q1130 524 1200 532 V600 H0 Z" fill="#4E3F92"/>
+            <path d="M-17.8 566 L-10 528.9 L-2.2 566 Z M6.9 566 L11.7 543.1 L16.5 566 Z M23.3 566 L32.2 523.7 L41.1 566 Z M38.8 566 L47 526.7 L55.3 566 Z M60.4 566 L66.9 535.1 L73.4 566 Z M87 566 L92.9 537.8 L98.9 566 Z M106.4 566 L113.9 530.1 L121.5 566 Z M136.6 566 L142.3 539.1 L147.9 566 Z M160.7 566 L168.3 529.6 L175.9 566 Z M185.3 566 L191.3 537.5 L197.3 566 Z M205.8 566 L209.8 546.6 L213.9 566 Z M220.9 566 L225 546.2 L229.2 566 Z M244.5 566 L249.6 541.4 L254.8 566 Z M261.1 566 L265.4 545.8 L269.6 566 Z M283 566 L291.5 525.4 L300.1 566 Z M309.7 566 L315 540.7 L320.4 566 Z M326.6 566 L332 540.4 L337.4 566 Z M347.6 566 L352.2 543.9 L356.9 566 Z M367.1 566 L372.3 541.2 L377.5 566 Z M391.2 566 L400.3 522.7 L409.4 566 Z M416.8 566 L422 541.6 L427.1 566 Z M444.6 566 L450 540 L455.5 566 Z M464.9 566 L468.7 548 L472.5 566 Z M481.4 566 L487.8 535.7 L494.2 566 Z M503.9 566 L508.7 542.8 L513.6 566 Z M525.9 566 L529.7 547.9 L533.5 566 Z M542.7 566 L547 545.7 L551.2 566 Z M562.3 566 L566.3 546.9 L570.3 566 Z M574.4 566 L579.9 540.1 L585.3 566 Z M589.7 566 L596.7 532.8 L603.6 566 Z M610.1 566 L618 528.5 L625.9 566 Z M633.6 566 L641.3 529.4 L649 566 Z M662.2 566 L668.1 537.9 L674 566 Z M677.1 566 L686.3 522.4 L695.5 566 Z M694.1 566 L701.8 529.2 L709.5 566 Z M720.9 566 L724.9 546.9 L728.9 566 Z M742.3 566 L751 524.8 L759.6 566 Z M766 566 L773.8 528.9 L781.6 566 Z M795 566 L799.5 544.4 L804.1 566 Z M814.3 566 L820.8 534.9 L827.3 566 Z M838.7 566 L846.9 527.1 L855 566 Z M865.8 566 L872.8 532.8 L879.8 566 Z M892.2 566 L899.7 530.2 L907.2 566 Z M918.6 566 L923.6 542 L928.6 566 Z M932.8 566 L937.3 544.5 L941.8 566 Z M951.7 566 L956 545.3 L960.4 566 Z M975.3 566 L982.1 533.5 L988.9 566 Z M997.8 566 L1005 531.7 L1012.2 566 Z M1022.2 566 L1028.7 535.3 L1035.1 566 Z M1033.8 566 L1041.9 527.3 L1050.1 566 Z M1060.1 566 L1066.6 534.9 L1073.2 566 Z M1080.7 566 L1088.1 530.9 L1095.5 566 Z M1094.5 566 L1102.3 528.8 L1110.1 566 Z M1115.2 566 L1119.4 546.1 L1123.6 566 Z M1128.9 566 L1136.7 529 L1144.4 566 Z M1145.2 566 L1153 528.8 L1160.9 566 Z M1174.8 566 L1181.3 535.2 L1187.7 566 Z M1194 566 L1200.4 535.5 L1206.7 566 Z" fill="#3A2E7A"/>
+            <path d="M0 560 H1200 V575 H0 Z" fill="#3A2E7A"/>
+            <path d="M396 548 L420 530 L444 548 V566 H396 Z" fill="#2E2468"/>
+            <rect x="412" y="550" width="9" height="9" rx="1.5" fill="#FDBA74"/>
+            <circle cx="416" cy="554" r="16" fill="#FDBA74" opacity=".16"/>
+            <rect x="0" y="574" width="1200" height="226" fill="#2C2470"/>
+            <path d="M0 574 H1200 V600 Q1100 612 1000 600 T800 604 T600 598 T400 606 T200 598 T0 604 Z" fill="#3B2F82" opacity=".9"/>
+            <g class="ws-lake-shimmer" fill="#FFF0CF">
+              <rect x="752" y="590" width="76" height="4" rx="2" opacity=".75"/>
+              <rect x="764" y="606" width="54" height="4" rx="2" opacity=".6"/>
+              <rect x="744" y="622" width="64" height="3.5" rx="1.75" opacity=".5"/>
+              <rect x="776" y="640" width="38" height="3.5" rx="1.75" opacity=".42"/>
+              <rect x="758" y="660" width="30" height="3" rx="1.5" opacity=".32"/>
+              <rect x="786" y="684" width="22" height="3" rx="1.5" opacity=".22"/>
+            </g>
+            <g fill="#C7B8F0" opacity=".16">
+              <rect x="90" y="640" width="120" height="3" rx="1.5"/>
+              <rect x="300" y="700" width="160" height="3" rx="1.5"/>
+              <rect x="940" y="660" width="140" height="3" rx="1.5"/>
+              <rect x="560" y="730" width="110" height="3" rx="1.5"/>
+            </g>
+            <path d="M0 800 V722 Q140 690 300 716 Q380 730 430 800 Z" fill="#1F1854"/>
+            <path d="M1200 800 V708 Q1060 684 920 712 Q840 730 800 800 Z" fill="#1F1854"/>
+          </svg>
+          <svg class="ws-lake-frame ws-lake-frame-t" viewBox="0 0 320 260" preserveAspectRatio="xMinYMin meet" aria-hidden="true">
+            <g class="ws-lake-willow">
+            <path d="M-10 -10 Q120 40 320 18" stroke="#120D33" stroke-width="11" fill="none" stroke-linecap="round"/>
+          <path d="M60 22 Q130 50 180 96" stroke="#120D33" stroke-width="6" fill="none" stroke-linecap="round"/>
+          <path d="M1 -6.7 q0.3 96.9 0.8 193.8" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="-3.9" cy="8.9" rx="4.2" ry="10.8" fill="#1A1446" transform="rotate(-28.3 -3.9 8.9)"/>
+          <ellipse cx="6.1" cy="24.5" rx="4.9" ry="10" fill="#1A1446" transform="rotate(29.9 6.1 24.5)"/>
+          <ellipse cx="-3.8" cy="40.1" rx="5" ry="12.1" fill="#1A1446" transform="rotate(-19 -3.8 40.1)"/>
+          <ellipse cx="6.2" cy="55.8" rx="4.8" ry="11.4" fill="#1A1446" transform="rotate(28.8 6.2 55.8)"/>
+          <ellipse cx="-3.7" cy="71.4" rx="5.3" ry="10.6" fill="#1A1446" transform="rotate(-25.5 -3.7 71.4)"/>
+          <ellipse cx="6.4" cy="87" rx="4" ry="11.4" fill="#251D5E" transform="rotate(33.7 6.4 87)"/>
+          <ellipse cx="-3.6" cy="102.6" rx="4.7" ry="10.8" fill="#251D5E" transform="rotate(-31.1 -3.6 102.6)"/>
+          <ellipse cx="6.5" cy="118.3" rx="4.3" ry="11.7" fill="#251D5E" transform="rotate(21.4 6.5 118.3)"/>
+          <ellipse cx="-3.4" cy="133.9" rx="5.4" ry="10.4" fill="#1A1446" transform="rotate(-20.3 -3.4 133.9)"/>
+          <ellipse cx="6.6" cy="149.5" rx="5.3" ry="12.1" fill="#1A1446" transform="rotate(31.1 6.6 149.5)"/>
+          <ellipse cx="-3.3" cy="165.1" rx="4.7" ry="10.1" fill="#251D5E" transform="rotate(-21.7 -3.3 165.1)"/>
+          <ellipse cx="6.8" cy="180.8" rx="4.7" ry="10.9" fill="#1A1446" transform="rotate(18.1 6.8 180.8)"/>
+          <path d="M23 -0.7 q-2.3 51.8 -5.7 103.7" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="17.3" cy="15.5" rx="4" ry="12.3" fill="#251D5E" transform="rotate(-23.1 17.3 15.5)"/>
+          <ellipse cx="26.5" cy="31.7" rx="5.4" ry="12.1" fill="#1A1446" transform="rotate(31.4 26.5 31.7)"/>
+          <ellipse cx="15.6" cy="47.9" rx="4.6" ry="11.2" fill="#1A1446" transform="rotate(-32.4 15.6 47.9)"/>
+          <ellipse cx="24.7" cy="64.1" rx="4.5" ry="11.3" fill="#1A1446" transform="rotate(34 24.7 64.1)"/>
+          <ellipse cx="13.7" cy="80.3" rx="4.2" ry="12.5" fill="#1A1446" transform="rotate(-22.4 13.7 80.3)"/>
+          <ellipse cx="22.7" cy="96.5" rx="4.4" ry="10.8" fill="#251D5E" transform="rotate(22.6 22.7 96.5)"/>
+          <path d="M45 4.7 q-3.8 73.4 -9.4 146.7" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="39.2" cy="20.3" rx="5.3" ry="12.4" fill="#251D5E" transform="rotate(-24 39.2 20.3)"/>
+          <ellipse cx="48.3" cy="35.9" rx="5.4" ry="11.6" fill="#251D5E" transform="rotate(28.1 48.3 35.9)"/>
+          <ellipse cx="37.4" cy="51.5" rx="5.1" ry="11.4" fill="#1A1446" transform="rotate(-29.5 37.4 51.5)"/>
+          <ellipse cx="46.4" cy="67.1" rx="4.4" ry="10.1" fill="#251D5E" transform="rotate(30 46.4 67.1)"/>
+          <ellipse cx="35.4" cy="82.7" rx="4.7" ry="11" fill="#1A1446" transform="rotate(-32.8 35.4 82.7)"/>
+          <ellipse cx="44.4" cy="98.3" rx="5.5" ry="10.8" fill="#251D5E" transform="rotate(22.8 44.4 98.3)"/>
+          <ellipse cx="33.3" cy="113.9" rx="4.8" ry="11.2" fill="#1A1446" transform="rotate(-28.5 33.3 113.9)"/>
+          <ellipse cx="42.2" cy="129.5" rx="4.3" ry="12.7" fill="#1A1446" transform="rotate(20.7 42.2 129.5)"/>
+          <ellipse cx="31" cy="145.2" rx="5.4" ry="13" fill="#1A1446" transform="rotate(-26 31 145.2)"/>
+          <path d="M67 9.4 q-4.3 66.7 -10.6 133.4" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="61" cy="25.3" rx="4.5" ry="10.3" fill="#1A1446" transform="rotate(-21.1 61 25.3)"/>
+          <ellipse cx="69.9" cy="41.2" rx="4.9" ry="12.7" fill="#1A1446" transform="rotate(21.8 69.9 41.2)"/>
+          <ellipse cx="58.7" cy="57" rx="4.6" ry="11.6" fill="#1A1446" transform="rotate(-30 58.7 57)"/>
+          <ellipse cx="67.5" cy="72.9" rx="4.1" ry="10.8" fill="#1A1446" transform="rotate(24 67.5 72.9)"/>
+          <ellipse cx="56.2" cy="88.8" rx="4.8" ry="11.9" fill="#1A1446" transform="rotate(-33.5 56.2 88.8)"/>
+          <ellipse cx="64.8" cy="104.7" rx="4.4" ry="10.7" fill="#1A1446" transform="rotate(31.8 64.8 104.7)"/>
+          <ellipse cx="53.4" cy="120.5" rx="5.4" ry="12.5" fill="#1A1446" transform="rotate(-24.4 53.4 120.5)"/>
+          <ellipse cx="62" cy="136.4" rx="4" ry="12.1" fill="#1A1446" transform="rotate(32 62 136.4)"/>
+          <path d="M89 13.5 q-1.1 89.9 -2.6 179.9" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="83.8" cy="29.3" rx="4.6" ry="12.8" fill="#1A1446" transform="rotate(-27.4 83.8 29.3)"/>
+          <ellipse cx="93.6" cy="45.1" rx="5.5" ry="10.7" fill="#251D5E" transform="rotate(31.2 93.6 45.1)"/>
+          <ellipse cx="83.4" cy="60.9" rx="4.8" ry="12" fill="#1A1446" transform="rotate(-19.7 83.4 60.9)"/>
+          <ellipse cx="93.2" cy="76.6" rx="5" ry="12.3" fill="#251D5E" transform="rotate(33.1 93.2 76.6)"/>
+          <ellipse cx="83" cy="92.4" rx="4.1" ry="12.3" fill="#1A1446" transform="rotate(-25.3 83 92.4)"/>
+          <ellipse cx="92.7" cy="108.2" rx="5" ry="10.9" fill="#251D5E" transform="rotate(21.7 92.7 108.2)"/>
+          <ellipse cx="82.5" cy="124" rx="5" ry="12.1" fill="#1A1446" transform="rotate(-20 82.5 124)"/>
+          <ellipse cx="92.3" cy="139.7" rx="4.8" ry="11.7" fill="#1A1446" transform="rotate(19.8 92.3 139.7)"/>
+          <ellipse cx="82" cy="155.5" rx="4.9" ry="10" fill="#1A1446" transform="rotate(-24.2 82 155.5)"/>
+          <ellipse cx="91.7" cy="171.3" rx="5.4" ry="11.9" fill="#1A1446" transform="rotate(22.8 91.7 171.3)"/>
+          <ellipse cx="81.5" cy="187.1" rx="4.4" ry="10.7" fill="#1A1446" transform="rotate(-32.1 81.5 187.1)"/>
+          <path d="M111 17 q1.2 89.6 2.9 179.2" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="106.2" cy="32.7" rx="4.7" ry="12" fill="#1A1446" transform="rotate(-22.9 106.2 32.7)"/>
+          <ellipse cx="116.4" cy="48.4" rx="5" ry="12.8" fill="#1A1446" transform="rotate(24.7 116.4 48.4)"/>
+          <ellipse cx="106.7" cy="64.1" rx="4.5" ry="11.3" fill="#1A1446" transform="rotate(-21.6 106.7 64.1)"/>
+          <ellipse cx="116.9" cy="79.9" rx="5.2" ry="12.2" fill="#1A1446" transform="rotate(28.9 116.9 79.9)"/>
+          <ellipse cx="107.1" cy="95.6" rx="5.5" ry="10.9" fill="#1A1446" transform="rotate(-26.1 107.1 95.6)"/>
+          <ellipse cx="117.4" cy="111.3" rx="4.3" ry="12.3" fill="#1A1446" transform="rotate(31.1 117.4 111.3)"/>
+          <ellipse cx="107.6" cy="127" rx="4.7" ry="10.6" fill="#251D5E" transform="rotate(-22.7 107.6 127)"/>
+          <ellipse cx="117.9" cy="142.8" rx="5" ry="12.8" fill="#1A1446" transform="rotate(21.6 117.9 142.8)"/>
+          <ellipse cx="108.2" cy="158.5" rx="4.3" ry="12.9" fill="#1A1446" transform="rotate(-20.3 108.2 158.5)"/>
+          <ellipse cx="118.5" cy="174.2" rx="4.1" ry="11.2" fill="#1A1446" transform="rotate(20.3 118.5 174.2)"/>
+          <ellipse cx="108.8" cy="189.9" rx="5.1" ry="13" fill="#251D5E" transform="rotate(-32.4 108.8 189.9)"/>
+          <path d="M133 19.8 q-2.4 83.9 -6.1 167.9" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="127.6" cy="34.5" rx="5.1" ry="10.1" fill="#251D5E" transform="rotate(-21 127.6 34.5)"/>
+          <ellipse cx="137.1" cy="49.3" rx="4.6" ry="11" fill="#1A1446" transform="rotate(28.6 137.1 49.3)"/>
+          <ellipse cx="126.6" cy="64" rx="4.4" ry="11.1" fill="#1A1446" transform="rotate(-20.7 126.6 64)"/>
+          <ellipse cx="136.1" cy="78.7" rx="5.4" ry="10.6" fill="#1A1446" transform="rotate(33.3 136.1 78.7)"/>
+          <ellipse cx="125.6" cy="93.4" rx="5.2" ry="11.3" fill="#251D5E" transform="rotate(-23.7 125.6 93.4)"/>
+          <ellipse cx="135.1" cy="108.2" rx="4.6" ry="12.8" fill="#1A1446" transform="rotate(18.8 135.1 108.2)"/>
+          <ellipse cx="124.5" cy="122.9" rx="5.3" ry="10.1" fill="#1A1446" transform="rotate(-21.1 124.5 122.9)"/>
+          <ellipse cx="134" cy="137.6" rx="5.2" ry="10.1" fill="#251D5E" transform="rotate(24.6 134 137.6)"/>
+          <ellipse cx="123.4" cy="152.4" rx="5.4" ry="10.8" fill="#1A1446" transform="rotate(-18.6 123.4 152.4)"/>
+          <ellipse cx="132.8" cy="167.1" rx="4.5" ry="10.8" fill="#251D5E" transform="rotate(30 132.8 167.1)"/>
+          <ellipse cx="122.2" cy="181.8" rx="4.4" ry="12.1" fill="#251D5E" transform="rotate(-33.3 122.2 181.8)"/>
+          <path d="M155 22 q-3 48.7 -7.4 97.4" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="149" cy="37.2" rx="5.4" ry="11.9" fill="#251D5E" transform="rotate(-18.1 149 37.2)"/>
+          <ellipse cx="158" cy="52.4" rx="4.4" ry="11.4" fill="#1A1446" transform="rotate(33.1 158 52.4)"/>
+          <ellipse cx="146.9" cy="67.6" rx="4.6" ry="10.8" fill="#251D5E" transform="rotate(-33.3 146.9 67.6)"/>
+          <ellipse cx="155.7" cy="82.9" rx="5.4" ry="10.5" fill="#1A1446" transform="rotate(24.9 155.7 82.9)"/>
+          <ellipse cx="144.5" cy="98.1" rx="5.2" ry="12.3" fill="#251D5E" transform="rotate(-30.8 144.5 98.1)"/>
+          <ellipse cx="153.2" cy="113.3" rx="4.5" ry="11.1" fill="#1A1446" transform="rotate(27.7 153.2 113.3)"/>
+          <path d="M177 23.5 q-4.8 68.7 -12.1 137.3" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="170.9" cy="38.2" rx="4.4" ry="10.2" fill="#251D5E" transform="rotate(-21.2 170.9 38.2)"/>
+          <ellipse cx="179.8" cy="52.8" rx="4.5" ry="12.9" fill="#1A1446" transform="rotate(18.5 179.8 52.8)"/>
+          <ellipse cx="168.7" cy="67.4" rx="4.4" ry="10.3" fill="#251D5E" transform="rotate(-32.1 168.7 67.4)"/>
+          <ellipse cx="177.4" cy="82" rx="5.1" ry="11.3" fill="#1A1446" transform="rotate(19.5 177.4 82)"/>
+          <ellipse cx="166.2" cy="96.6" rx="4.9" ry="12" fill="#1A1446" transform="rotate(-21.7 166.2 96.6)"/>
+          <ellipse cx="174.8" cy="111.2" rx="5" ry="10.4" fill="#251D5E" transform="rotate(30 174.8 111.2)"/>
+          <ellipse cx="163.4" cy="125.8" rx="4.9" ry="11.1" fill="#1A1446" transform="rotate(-31.5 163.4 125.8)"/>
+          <ellipse cx="172" cy="140.4" rx="4.4" ry="10.7" fill="#1A1446" transform="rotate(29.8 172 140.4)"/>
+          <ellipse cx="160.5" cy="155" rx="4.9" ry="11" fill="#251D5E" transform="rotate(-20.5 160.5 155)"/>
+          <path d="M199 24.5 q3.9 47.4 9.8 94.8" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="195.3" cy="39.3" rx="5.2" ry="12" fill="#1A1446" transform="rotate(-26.1 195.3 39.3)"/>
+          <ellipse cx="206.6" cy="54.1" rx="4.7" ry="12.5" fill="#1A1446" transform="rotate(33.9 206.6 54.1)"/>
+          <ellipse cx="198.1" cy="68.9" rx="4.1" ry="10.9" fill="#251D5E" transform="rotate(-31.4 198.1 68.9)"/>
+          <ellipse cx="209.7" cy="83.7" rx="5.5" ry="11.7" fill="#1A1446" transform="rotate(19.9 209.7 83.7)"/>
+          <ellipse cx="201.3" cy="98.5" rx="5.3" ry="11.3" fill="#1A1446" transform="rotate(-32.9 201.3 98.5)"/>
+          <ellipse cx="213.1" cy="113.3" rx="5.4" ry="10.3" fill="#251D5E" transform="rotate(22.2 213.1 113.3)"/>
+          <path d="M221 24.7 q0.4 53.3 0.9 106.7" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="216.1" cy="39.1" rx="4.2" ry="10.6" fill="#1A1446" transform="rotate(-21.5 216.1 39.1)"/>
+          <ellipse cx="226.2" cy="53.6" rx="5" ry="10.6" fill="#1A1446" transform="rotate(22.1 226.2 53.6)"/>
+          <ellipse cx="216.3" cy="68" rx="5" ry="10.6" fill="#1A1446" transform="rotate(-18.2 216.3 68)"/>
+          <ellipse cx="226.4" cy="82.4" rx="5.2" ry="11.6" fill="#1A1446" transform="rotate(23 226.4 82.4)"/>
+          <ellipse cx="216.6" cy="96.8" rx="4.6" ry="11.7" fill="#1A1446" transform="rotate(-19 216.6 96.8)"/>
+          <ellipse cx="226.7" cy="111.2" rx="4.2" ry="12.1" fill="#1A1446" transform="rotate(28.2 226.7 111.2)"/>
+          <ellipse cx="216.8" cy="125.6" rx="4.5" ry="12.9" fill="#1A1446" transform="rotate(-24.6 216.8 125.6)"/>
+          <path d="M243 24.3 q-0.2 38.7 -0.4 77.3" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="237.9" cy="38.7" rx="5.3" ry="13" fill="#1A1446" transform="rotate(-23.7 237.9 38.7)"/>
+          <ellipse cx="247.9" cy="53" rx="5.1" ry="10.6" fill="#1A1446" transform="rotate(23.8 247.9 53)"/>
+          <ellipse cx="237.8" cy="67.3" rx="4.6" ry="12.5" fill="#251D5E" transform="rotate(-18.1 237.8 67.3)"/>
+          <ellipse cx="247.7" cy="81.6" rx="4.7" ry="10.5" fill="#251D5E" transform="rotate(24.5 247.7 81.6)"/>
+          <ellipse cx="237.6" cy="96" rx="5" ry="12.7" fill="#1A1446" transform="rotate(-18.2 237.6 96)"/>
+          <path d="M265 23.3 q0.4 27.8 0.9 55.5" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="260.2" cy="39.7" rx="4.2" ry="10.8" fill="#1A1446" transform="rotate(-23.9 260.2 39.7)"/>
+          <ellipse cx="270.5" cy="56" rx="4.2" ry="11.5" fill="#251D5E" transform="rotate(26.3 270.5 56)"/>
+          <ellipse cx="260.8" cy="72.3" rx="4.3" ry="10.4" fill="#251D5E" transform="rotate(-30.9 260.8 72.3)"/>
+          <path d="M287 21.7 q3.8 56.1 9.4 112.1" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="283.1" cy="36.8" rx="5.4" ry="11.2" fill="#1A1446" transform="rotate(-25.7 283.1 36.8)"/>
+          <ellipse cx="294.2" cy="52" rx="5.2" ry="10.5" fill="#251D5E" transform="rotate(32.5 294.2 52)"/>
+          <ellipse cx="285.4" cy="67.1" rx="4.6" ry="12.5" fill="#1A1446" transform="rotate(-30.6 285.4 67.1)"/>
+          <ellipse cx="296.6" cy="82.3" rx="4.3" ry="11.2" fill="#1A1446" transform="rotate(31.3 296.6 82.3)"/>
+          <ellipse cx="287.9" cy="97.4" rx="4.2" ry="10.7" fill="#1A1446" transform="rotate(-26.3 287.9 97.4)"/>
+          <ellipse cx="299.3" cy="112.6" rx="4.1" ry="11.7" fill="#251D5E" transform="rotate(29.6 299.3 112.6)"/>
+          <ellipse cx="290.8" cy="127.7" rx="5.3" ry="10.4" fill="#1A1446" transform="rotate(-30.1 290.8 127.7)"/>
+          <path d="M309 19.4 q-0.3 40.7 -0.8 81.5" stroke="#120D33" stroke-width="2" fill="none"/>
+          <ellipse cx="303.9" cy="34.5" rx="4.6" ry="11.7" fill="#1A1446" transform="rotate(-28 303.9 34.5)"/>
+          <ellipse cx="313.7" cy="49.6" rx="4.7" ry="11.3" fill="#251D5E" transform="rotate(24.8 313.7 49.6)"/>
+          <ellipse cx="303.6" cy="64.6" rx="4.7" ry="10.7" fill="#251D5E" transform="rotate(-18.4 303.6 64.6)"/>
+          <ellipse cx="313.4" cy="79.7" rx="4.7" ry="10.5" fill="#251D5E" transform="rotate(30.2 313.4 79.7)"/>
+          <ellipse cx="303.3" cy="94.8" rx="4.2" ry="11.3" fill="#1A1446" transform="rotate(-25.6 303.3 94.8)"/>
+            </g>
+          </svg>
+          <svg class="ws-lake-frame ws-lake-frame-l" viewBox="0 0 300 400" preserveAspectRatio="xMinYMax meet" aria-hidden="true">
+            <g class="ws-lake-sway">
+              <path d="M29 400 Q24 218.5 70 70 Q68 235 51 400 Z" fill="#1A1446"/>
+              <path d="M68 400 Q70.8 251.5 142 130 Q110.8 265 88 400 Z" fill="#241C5C"/>
+              <path d="M11 400 Q-0.4 262.5 8 150 Q35.6 275 29 400 Z" fill="#241C5C"/>
+              <path d="M110 400 Q119.1 220 136 100" stroke="#150F3A" stroke-width="4" fill="none" stroke-linecap="round"/><rect x="129" y="106" width="14" height="40" rx="7" fill="#3B2754" transform="rotate(4 136 126)"/>
+              <path d="M64 400 Q61.2 188.8 56 48" stroke="#150F3A" stroke-width="4" fill="none" stroke-linecap="round"/><rect x="49" y="54" width="14" height="40" rx="7" fill="#3B2754" transform="rotate(-1 56 74)"/>
+              <path d="M121 400 Q126 290 200 200 Q162 300 139 400 Z" fill="#1A1446"/>
+            </g>
+            <path d="M0 400 V318 Q70 292 150 316 Q220 338 270 400 Z" fill="#130E36"/>
+            <path d="M10 400 Q30 330 110 336 Q170 342 196 400 Z" fill="#1B1548"/>
+            <path d="M86 352 Q120 344 150 360" stroke="#3A3088" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+            <g class="ws-lake-fly" style="animation-delay:-0s"><circle cx="150" cy="250" r="8" fill="#FDE68A" opacity=".22"/><circle cx="150" cy="250" r="2.6" fill="#FEF9C3"/></g>
+          <g class="ws-lake-fly" style="animation-delay:-1.7s"><circle cx="196" cy="310" r="8" fill="#FDE68A" opacity=".22"/><circle cx="196" cy="310" r="2.6" fill="#FEF9C3"/></g>
+          <g class="ws-lake-fly" style="animation-delay:-3.4s"><circle cx="60" cy="210" r="8" fill="#FDE68A" opacity=".22"/><circle cx="60" cy="210" r="2.6" fill="#FEF9C3"/></g>
+          </svg>
+          <svg class="ws-lake-frame ws-lake-frame-r" viewBox="0 0 300 400" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">
+            <g class="ws-lake-sway ws-lake-sway-b">
+              <path d="M239 400 Q220 235 210 100 Q264 250 261 400 Z" fill="#1A1446"/>
+              <path d="M204 400 Q180 268 144 160 Q220 280 224 400 Z" fill="#241C5C"/>
+              <path d="M273 400 Q265.2 213 288 60 Q301.2 230 291 400 Z" fill="#241C5C"/>
+              <path d="M232 400 Q225 202 212 70" stroke="#150F3A" stroke-width="4" fill="none" stroke-linecap="round"/><rect x="205" y="76" width="14" height="40" rx="7" fill="#3B2754" transform="rotate(-2.8 212 96)"/>
+              <path d="M168 400 Q148 306.5 116 230 Q180 315 184 400 Z" fill="#1A1446"/>
+            </g>
+            <path d="M300 400 V306 Q220 288 140 318 Q90 338 60 400 Z" fill="#130E36"/>
+            <ellipse cx="96" cy="384" rx="70" ry="14" fill="#1B1548"/>
+            <path d="M96 384 L40 378 A70 14 0 0 1 82 370 Z" fill="#130E36"/>
+            <g transform="translate(118 362)">
+              <path d="M0 10 Q-16 -2 -12 -20 Q-2 -10 0 -2 Q2 -10 12 -20 Q16 -2 0 10 Z" fill="#F9A8D4"/>
+              <path d="M0 10 Q-6 -8 0 -26 Q6 -8 0 10 Z" fill="#FBCFE8"/>
+              <circle r="22" fill="#F9A8D4" opacity=".12"/>
+            </g>
+            <g class="ws-lake-fly ws-lake-fly-b" style="animation-delay:-0s"><circle cx="130" cy="230" r="8" fill="#FDE68A" opacity=".22"/><circle cx="130" cy="230" r="2.6" fill="#FEF9C3"/></g>
+          <g class="ws-lake-fly ws-lake-fly-b" style="animation-delay:-1.7s"><circle cx="60" cy="300" r="8" fill="#FDE68A" opacity=".22"/><circle cx="60" cy="300" r="2.6" fill="#FEF9C3"/></g>
+          <g class="ws-lake-fly ws-lake-fly-b" style="animation-delay:-3.4s"><circle cx="250" cy="180" r="8" fill="#FDE68A" opacity=".22"/><circle cx="250" cy="180" r="2.6" fill="#FEF9C3"/></g>
+          </svg>
+          </div>
+          <svg class="ws-sky" id="skyChart" viewBox="0 0 200 80" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <path class="ws-sky-figure" id="skyFigure" d="M12 62 Q30 66 48 66 Q70 72 92 74 Q116 75 134 70 Q152 65 164 58 L188 50 L170 43 Q160 42 150 46 Q166 26 178 10 Q150 22 128 42 Q112 22 96 6 Q92 30 84 46 Q62 46 40 52 Q26 56 12 62 Z"/>
+            <g id="skyLines"></g>
+            <g id="skyStars"></g>
+          </svg>
+          <canvas id="burstCanvas"></canvas>
+          <div class="ws-lanterns" id="lanternLayer" role="group" aria-label="{{ t('learner.word_storm.tap_lantern') }}"></div>
+          <p class="sr-only" id="skyStatus" aria-live="polite"></p>
+        </section>
+      </div>
+    </main>
+
+    <div class="game-hint-toast" id="tryAgain" role="status">{{ t('learner.word_storm.try_another') }}</div>
+
+<script>
+// ============================================================
+// Lantern Sky (word_storm). One question at a time; its options float as
+// four lanterns that meander inside the stage — never off it, so drifting
+// is not a hidden timer. A right lantern flies up and becomes the next star
+// of the constellation; a wrong one dims and drifts away, then wanders back.
+// ============================================================
+const lessonId = {{ lesson.id }};
+GameKit.init({ lessonId, game: 'word_storm' });
+const LANTERN_SPRITE = {{ url_for('static', filename='svg/games/word_storm/lanterns.svg') | tojson }};
+const T = {
+  questionOf: {{ t('learner.word_storm.question_of') | tojson }},
+  allDone:    {{ t('learner.word_storm.all_done') | tojson }},
+  streak:     {{ t('learner.word_storm.streak') | tojson }},
+  skyStatus:  {{ t('learner.word_storm.sky_status') | tojson }},
+  checkFailed: {{ t('learner.game.check_failed') | tojson }},
+};
+const LETTERS = ['A', 'B', 'C', 'D'];
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const stage = document.getElementById('wsStage');
+const layer = document.getElementById('lanternLayer');
+const sky = document.getElementById('skyChart');
+
+let questions = [];
+let qi = 0;
+let firstTry = true;
+let streak = 0;    // first-try corrects in a row, for the "2 in a row!" note
+let mode = 'loading'; // loading | question | busy | done
+let lanterns = [];
+
+document.getElementById('speakerBtn').addEventListener('click', () => GameKit.speakQuestion(questions[qi]));
+
+// ── Burst canvas (light particles + a soft ring where a star lands) ─────
+const canvas = document.getElementById('burstCanvas');
+const ctx = canvas.getContext('2d');
+let particles = [], rings = [], burstRaf = 0;
+function sizeCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = stage.clientWidth * dpr; canvas.height = stage.clientHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function spawnBurst(x, y, rgb, n) {
+  if (reduceMotion) n = Math.min(n, 8);
+  rings.push({ x, y, r: 6, maxR: 70, life: 1, rgb });
+  for (let i = 0; i < n; i++) {
+    const a = (Math.PI * 2 / n) * i + Math.random() * 0.5;
+    const s = 1.6 + Math.random() * 3.6;
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 0.6, r: 2 + Math.random() * 3.2,
+      life: 0.9 + Math.random() * 0.3, decay: 0.014 + Math.random() * 0.01, rgb });
+  }
+  if (!burstRaf) burstRaf = requestAnimationFrame(drawBurst);
+}
+function drawBurst() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  rings.forEach(s => {
+    s.r += (s.maxR - s.r) * 0.12; s.life -= 0.04;
+    if (s.life > 0) {
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${s.rgb},${(s.life * 0.7).toFixed(2)})`; ctx.lineWidth = 3.5 * s.life; ctx.stroke();
+    }
+  });
+  rings = rings.filter(s => s.life > 0);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy; p.vx *= 0.95; p.vy = p.vy * 0.95 + 0.04;
+    p.life -= p.decay; p.r *= 0.98;
+    if (p.life > 0) {
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.rgb},${p.life.toFixed(2)})`; ctx.fill();
+    }
+  });
+  particles = particles.filter(p => p.life > 0);
+  burstRaf = (particles.length || rings.length) ? requestAnimationFrame(drawBurst) : 0;
+}
+
+// ── Constellation: a bird, one star per question ────────────────────────
+// Outline of a bird gliding with both wings up, in the sky SVG's 200×80
+// units, in drawing order. PRIORITY says which points carry the shape best,
+// so a 3-question lesson still gets beak + both wingtips.
+const BIRD = [[12,62],[48,66],[92,74],[134,70],[164,58],[188,50],[170,43],[150,46],[178,10],[128,42],[96,6],[84,46],[40,52]];
+const PRIORITY = [5, 8, 10, 0, 2, 12, 4, 3, 6, 9, 11, 1, 7];
+function constellationPoints(n) {
+  if (n <= BIRD.length) return PRIORITY.slice(0, n).sort((a, b) => a - b).map(i => BIRD[i]);
+  const pts = BIRD.map(p => p.slice());
+  while (pts.length < n) {          // longer lessons: split the longest edge
+    let best = 0, bestLen = -1;
+    pts.forEach((p, i) => { const q = pts[(i + 1) % pts.length]; const d = Math.hypot(q[0] - p[0], q[1] - p[1]); if (d > bestLen) { bestLen = d; best = i; } });
+    const p = pts[best], q = pts[(best + 1) % pts.length];
+    pts.splice(best + 1, 0, [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]);
+  }
+  return pts;
+}
+const SVG_NS = 'http://www.w3.org/2000/svg';
+let starPts = [], lit = 0;
+function svgEl(tag, attrs) { const el = document.createElementNS(SVG_NS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; }
+function starPath(r) { return `M0 ${-r} Q${r*0.18} ${-r*0.18} ${r} 0 Q${r*0.18} ${r*0.18} 0 ${r} Q${-r*0.18} ${r*0.18} ${-r} 0 Q${-r*0.18} ${-r*0.18} 0 ${-r} Z`; }
+function buildSky(n) {
+  starPts = constellationPoints(n);
+  lit = 0;
+  const lines = document.getElementById('skyLines'), stars = document.getElementById('skyStars');
+  lines.innerHTML = ''; stars.innerHTML = '';
+  starPts.forEach(([x, y]) => stars.appendChild(svgEl('circle', { class: 'ws-sky-slot', cx: x, cy: y, r: 1.3 })));
+  gsap.set('#skyFigure', { opacity: 0 });
+  updateSkyStatus();
+}
+function updateSkyStatus() {
+  document.getElementById('skyStatus').textContent = T.skyStatus.replace('{lit}', lit).replace('{total}', starPts.length);
+}
+// Where a constellation point sits on the stage, in stage pixels.
+function skyPointOnStage([x, y]) {
+  const m = sky.getScreenCTM(), s = stage.getBoundingClientRect();
+  const pt = sky.createSVGPoint(); pt.x = x; pt.y = y;
+  const p = pt.matrixTransform(m);
+  return { x: p.x - s.left, y: p.y - s.top };
+}
+function drawLine(a, b, cls) {
+  const line = svgEl('line', { class: 'ws-sky-line' + (cls ? ' ' + cls : ''), x1: a[0], y1: a[1], x2: b[0], y2: b[1] });
+  document.getElementById('skyLines').appendChild(line);
+  if (reduceMotion) return;
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  line.style.strokeDasharray = cls ? '' : len; // the closing line stays dotted
+  if (!cls) gsap.fromTo(line, { strokeDashoffset: len }, { strokeDashoffset: 0, duration: 0.55, ease: 'power2.out' });
+  else gsap.from(line, { opacity: 0, duration: 0.6 });
+}
+function lightStar(gold) {
+  const [x, y] = starPts[lit];
+  const g = svgEl('g', { transform: `translate(${x} ${y})` });
+  g.appendChild(svgEl('circle', { class: 'ws-sky-glow', r: 5.5 }));
+  g.appendChild(svgEl('path', { class: 'ws-sky-star' + (gold ? ' is-gold' : ''), d: starPath(gold ? 3.6 : 2.9) }));
+  document.getElementById('skyStars').appendChild(g);
+  if (!reduceMotion) gsap.from(g.children, { scale: 0, transformOrigin: '50% 50%', duration: 0.6, ease: 'back.out(2.5)', stagger: 0.05 });
+  if (lit > 0) drawLine(starPts[lit - 1], starPts[lit]);
+  lit++;
+  updateSkyStatus();
+}
+
+// ── Lanterns ────────────────────────────────────────────────────────────
+function lanternWidth() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  return Math.round(Math.max(96, Math.min(148, w * 0.25, h * 0.2)));
+}
+function wordSize(word, lw) {
+  // An answer that is only emoji/symbols (no letters or digits) is drawn much bigger.
+  if (!/[\p{L}\p{N}]/u.test(String(word))) return Math.round(lw * 0.3 / Math.max(1, [...new Intl.Segmenter().segment(String(word).trim())].length * 0.6)) + 'px';
+  const base = lw * 0.17, len = String(word).length;
+  return Math.max(12, Math.min(base, base * 7 / Math.max(7, len))) + 'px';
+}
+// Where the lanterns wander: anywhere on the stage, kept fully inside it.
+function zone(b) {
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const minX = b.w / 2 + 4, minY = b.h / 2 + 4;
+  return { minX, maxX: Math.max(minX, W - b.w / 2 - 4), minY, maxY: Math.max(minY, H - b.h / 2 - 4) };
+}
+function makeLantern(word, i) {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'ws-lantern ws-lantern-tone-' + 'abcd'[i];
+  el.setAttribute('aria-label', LETTERS[i] + ': ' + word);
+  el.innerHTML = `<span class="ws-lantern-bob"><span class="ws-lantern-glow"></span>
+    <svg class="ws-lantern-art" viewBox="0 0 120 150" aria-hidden="true"><use href="${LANTERN_SPRITE}#lantern-${'abcd'[i]}"/></svg>
+    <span class="ws-lantern-word"></span><span class="ws-lantern-letter" aria-hidden="true">${LETTERS[i]}</span></span>`;
+  el.querySelector('.ws-lantern-word').textContent = word;
+  layer.appendChild(el);
+  const b = { el, word, bob: el.firstElementChild, x: 0, y: 0, w: 0, h: 0, heading: Math.random() * Math.PI * 2,
+    speed: 14 + Math.random() * 10, v: 0, held: false, kick: null, phase: Math.random() * 6.28, flying: false,
+    drag: 0.8 + Math.random() * 0.4, blend: 1 };
+  sizeLantern(b);
+  const hold = on => () => { b.held = on; };
+  el.addEventListener('pointerenter', hold(true)); el.addEventListener('pointerleave', hold(false));
+  el.addEventListener('focus', hold(true)); el.addEventListener('blur', hold(false));
+  el.addEventListener('click', () => onLantern(b));
+  return b;
+}
+function sizeLantern(b) {
+  const lw = lanternWidth();
+  b.w = lw; b.h = lw * 1.25 + 26;
+  b.el.style.setProperty('--lw', lw + 'px');
+  b.el.style.setProperty('--fs', wordSize(b.word, lw));
+  // A word never breaks across lines: if it still overflows the lantern, shrink it to fit.
+  const tag = b.el.querySelector('.ws-lantern-word');
+  const room = lw * 0.86;
+  if (tag.offsetWidth > room) {
+    b.el.style.setProperty('--fs', Math.max(11, parseFloat(getComputedStyle(tag).fontSize) * room / tag.offsetWidth) + 'px');
+  }
+}
+// Moved with the `translate` property at sub-pixel precision: composited, no layout per frame,
+// and slow drifts glide instead of stepping a whole pixel at a time.
+function placeLantern(b) {
+  b.el.style.translate = `${(b.x - b.w / 2).toFixed(2)}px ${(b.y - b.h / 2).toFixed(2)}px`;
+}
+
+// ── Scene motion ────────────────────────────────────────────────────────
+// The backdrop names how the wind brings lanterns in and takes them away (data-ws-motion) and
+// sets --ws-float (drift speed) and --ws-gust (wind strength). Read from the backdrop that is
+// showing, so a swapped scene takes effect without a reload.
+let motion = { kind: '', float: 1, gust: 1 };
+function readMotion() {
+  const el = [...stage.querySelectorAll('.ws-backdrop')].find(e => e.getClientRects().length);
+  if (!el) return;
+  const cs = getComputedStyle(el);
+  motion = {
+    kind: el.dataset.wsMotion || '',
+    float: parseFloat(cs.getPropertyValue('--ws-float')) || 1,
+    gust: parseFloat(cs.getPropertyValue('--ws-gust')) || 1,
+  };
+}
+// A gust on top of the breeze: more streaks, more lean, while lanterns blow in or out.
+const gustBoost = { v: 0 };
+function gust(peak, dur) {
+  gsap.killTweensOf(gustBoost);
+  gsap.timeline()
+    .to(gustBoost, { v: peak * motion.gust, duration: dur * 0.3, ease: 'sine.out' })
+    .to(gustBoost, { v: 0, duration: dur * 0.7, ease: 'sine.inOut' });
+}
+// Tween a 0→1 progress and place the lantern on path(t) each frame.
+function along(b, path, vars) {
+  const p = { t: 0 };
+  return gsap.to(p, Object.assign({ t: 1, onUpdate: () => { const [x, y] = path(p.t); b.x = x; b.y = y; placeLantern(b); } }, vars));
+}
+
+// Blowing in: each lantern starts off the left edge and settles at `to`.
+const ENTER = {
+  // Long glide: one long gust carries each lantern up in an arc; it leans into the wind and settles.
+  glide(b, i, to) {
+    const from = { x: -b.w * (0.7 + i * 0.35), y: to.y + 50 + Math.random() * 50 }, lift = 50 + Math.random() * 40;
+    gsap.set(b.bob, { rotation: 16 });
+    return gsap.timeline({ delay: i * 0.18 })
+      .add(along(b, t => [from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t - Math.sin(Math.PI * t) * lift],
+        { duration: 2.1 + i * 0.15, ease: 'power3.out' }))
+      .to(b.bob, { rotation: 0, duration: 1.6, ease: 'back.out(2.2)' }, 0.7);
+  },
+  // Sharp gust: the streaks arrive first, then the lanterns tumble in, overshoot and wobble still.
+  gust(b, i, to) {
+    const from = { x: -b.w * (0.9 + i * 0.3), y: to.y + (Math.random() - 0.5) * 40 };
+    gsap.set(b.bob, { rotation: 28 });
+    return gsap.timeline({ delay: 0.3 + i * 0.07 })
+      .add(along(b, t => [from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t], { duration: 1.05 + i * 0.08, ease: 'back.out(1.3)' }))
+      .to(b.bob, { rotation: 0, duration: 1.8, ease: 'elastic.out(1, 0.35)' }, 0.5);
+  },
+  // Eddy swirl: an eddy spins each lantern in on a widening-to-tight spiral that ends at its spot.
+  swirl(b, i, to) {
+    const r0 = stage.clientWidth * 0.55 + i * 40, a0 = Math.PI + (Math.random() - 0.5) * 0.5, turn = -Math.PI * 1.3;
+    gsap.set(b.bob, { rotation: -18 });
+    return gsap.timeline({ delay: i * 0.14 })
+      .add(along(b, t => {
+        const r = r0 * Math.pow(1 - t, 1.6), a = a0 + turn * t;
+        return [to.x + Math.cos(a) * r, to.y + Math.sin(a) * r * 0.5];
+      }, { duration: 2.2 + i * 0.12, ease: 'sine.out' }))
+      .to(b.bob, { rotation: 0, duration: 2, ease: 'sine.out' }, 0.4);
+  },
+  // The scene before the motion variants: a straight blow-in from the left.
+  ''(b, i, to) {
+    const from = { x: -b.w * (0.8 + i * 0.45), y: to.y + (Math.random() - 0.5) * 80 };
+    return along(b, t => [from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t], { duration: 1.5 + i * 0.12, delay: i * 0.1, ease: 'power2.out' });
+  },
+};
+const ENTER_GUST = { glide: [0.9, 2.4], gust: [1.4, 1.6], swirl: [0.8, 2.4], '': [0, 0] };
+
+// Blowing out: the lanterns that weren't the answer leave downwind. `k` is the order the wind
+// reaches them, left to right.
+const EXIT = {
+  glide(o, k) {
+    const sx = o.x, sy = o.y, ex = stage.clientWidth + o.w * 1.5, rise = 70 + Math.random() * 60;
+    return gsap.timeline({ delay: k * 0.12 })
+      .to(o.bob, { rotation: -6, duration: 0.25, ease: 'sine.out' })
+      .add(along(o, t => [sx + (ex - sx) * t, sy - Math.sin(t * Math.PI / 2) * rise], { duration: 1.6, ease: 'power2.in' }))
+      .to(o.bob, { rotation: 20, duration: 1.4, ease: 'power1.in' }, '<');
+  },
+  gust(o, k) {
+    const sx = o.x, sy = o.y, ex = stage.clientWidth + o.w * 1.5, dy = 20 + Math.random() * 40;
+    return gsap.timeline({ delay: k * 0.05 })
+      .add(along(o, t => [sx + (ex - sx) * t, sy - dy * t], { duration: 0.85, ease: 'power3.in' }))
+      .to(o.bob, { rotation: 32, duration: 0.7, ease: 'power2.in' }, 0);
+  },
+  swirl(o, k) {
+    const sx = o.x, sy = o.y, ex = stage.clientWidth * 0.9 + o.w, ey = -o.h * 1.5;
+    return gsap.timeline({ delay: k * 0.1 })
+      .add(along(o, t => [sx + (ex - sx) * Math.pow(t, 1.6) + Math.sin(t * Math.PI * 2) * 40 * (1 - t),
+                          sy + (ey - sy) * Math.pow(t, 1.4)], { duration: 1.8, ease: 'sine.in' }))
+      .to(o.bob, { rotation: 300, duration: 1.8, ease: 'sine.in' }, 0)
+      .to(o.bob, { scale: 0.7, duration: 1.8, ease: 'sine.in' }, 0);
+  },
+  ''(o, k) {
+    const sx = o.x, sy = o.y, ex = stage.clientWidth + o.w * 1.5, ey = o.y - 40 - Math.random() * 60;
+    return gsap.timeline({ delay: k * 0.08 })
+      .add(along(o, t => [sx + (ex - sx) * t, sy + (ey - sy) * t], { duration: 1.4, ease: 'power1.in' }))
+      .to(o.bob, { rotation: 18, duration: 1.2, ease: 'power1.in' }, 0);
+  },
+};
+const EXIT_GUST = { glide: [1.1, 2], gust: [1.6, 1.2], swirl: [0.9, 2], '': [0, 0] };
+
+function spawnLanterns(options) {
+  layer.innerHTML = '';
+  lanterns = options.map((word, i) => makeLantern(word, i));
+  // Land at random spots, each kept clear of the ones already chosen (best of a few
+  // tries if the stage is too small to fit them all comfortably).
+  const z = zone(lanterns[0]);
+  const spots = [];
+  lanterns.forEach(b => {
+    let best = null, bestGap = -1;
+    for (let n = 0; n < 40; n++) {
+      const p = { x: z.minX + Math.random() * (z.maxX - z.minX), y: z.minY + Math.random() * (z.maxY - z.minY) };
+      const gap = spots.length ? Math.min(...spots.map(s => Math.hypot(s.x - p.x, (s.y - p.y) * (b.w / b.h)))) : Infinity;
+      if (gap > bestGap) { best = p; bestGap = gap; }
+      if (gap >= b.w * 1.3) break;
+    }
+    spots.push(best);
+    b.x = best.x; b.y = best.y;
+    placeLantern(b);
+  });
+  if (!reduceMotion) {
+    // Blown in on the wind from the left, then let go (how depends on the scene's motion).
+    readMotion();
+    const enter = ENTER[motion.kind] || ENTER[''], [peak, dur] = ENTER_GUST[motion.kind] || [0, 0];
+    if (peak) gust(peak, dur);
+    lanterns.forEach((b, i) => {
+      const to = { x: b.x, y: b.y };
+      b.entering = true;                 // still tappable while it blows in
+      b.x = -b.w * 2; placeLantern(b);   // off stage until its tween starts
+      b.blend = 0;
+      b.enter = enter(b, i, to).eventCallback('onComplete', () => {
+        b.entering = false;
+        gsap.to(b, { blend: 1, duration: 2.5, ease: 'sine.inOut' });
+      });
+    });
+  }
+}
+
+// ── Wind ────────────────────────────────────────────────────────────────
+// A gusty breeze from the left: layered slow sines, so gusts build and fade.
+// It leans every lantern, pushes its drift (less near the far edge, so they
+// never pile up there) and draws faint streaks across the sky.
+let windT = 0, wind = 0, nextStreak = 0, nextMotionRead = 0;
+function windAt(t) { return Math.max(0, 0.5 + 0.5 * Math.sin(t * 0.29) * Math.sin(t * 0.131 + 1.3) + 0.15 * Math.sin(t * 0.83)); }
+const windLayer = document.createElement('div');
+windLayer.className = 'ws-wind';
+windLayer.setAttribute('aria-hidden', 'true');
+stage.insertBefore(windLayer, layer);
+function windStreak() {
+  const s = document.createElement('span');
+  s.className = 'ws-wind-streak';
+  const w = 80 + Math.random() * 120;
+  s.style.cssText = `top:${(8 + Math.random() * 74).toFixed(1)}%;width:${w.toFixed(0)}px;`;
+  windLayer.appendChild(s);
+  gsap.timeline({ onComplete: () => s.remove() })
+    .fromTo(s, { x: -w, opacity: 0 }, { x: stage.clientWidth + w, duration: 1.3 + Math.random() * 0.8, ease: 'none' })
+    .to(s, { opacity: 0.25 + wind * 0.4, duration: 0.4, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 0);
+}
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function angleTo(from, to) { return Math.atan2(Math.sin(to - from), Math.cos(to - from)); }
+let lastT = 0;
+function tick(now) {
+  const dt = Math.min(0.05, ((now - (lastT || now)) / 1000));
+  lastT = now;
+  if (!reduceMotion) {
+    windT += dt;
+    if (windT > nextMotionRead) { readMotion(); nextMotionRead = windT + 0.3; }
+    wind = Math.min(2, windAt(windT) * motion.gust + gustBoost.v);
+    if (windT > nextStreak && !document.hidden) {
+      if (wind > 0.45) windStreak();
+      nextStreak = windT + (gustBoost.v > 0.3 ? 0.1 + Math.random() * 0.15 : 0.5 + Math.random() * 0.9);
+    }
+  }
+  const live = lanterns.filter(b => !b.flying && !b.entering);
+  live.forEach(b => {
+    const z = zone(b);
+    if (!reduceMotion) {
+      // Meander: the heading wanders a little; near an edge it turns home.
+      b.heading += (Math.random() - 0.5) * 2.2 * dt;
+      const m = b.w * 0.35;
+      if (b.x < z.minX + m || b.x > z.maxX - m || b.y < z.minY + m * 0.6 || b.y > z.maxY - m * 0.6) {
+        const home = Math.atan2((z.minY + z.maxY) / 2 - b.y, (z.minX + z.maxX) / 2 - b.x);
+        b.heading += angleTo(b.heading, home) * Math.min(1, dt * 1.8);
+      }
+      // Avoid the others: steer away from any lantern that gets close, harder the closer it is.
+      live.forEach(o => {
+        if (o === b) return;
+        const dx = o.x - b.x, dy = (o.y - b.y) * (b.w / b.h), d = Math.hypot(dx, dy), reach = b.w * 2;
+        if (d < reach && d > 0.01) {
+          const away = Math.atan2(-dy, -dx);
+          b.heading += angleTo(b.heading, away) * Math.min(1, dt * 4 * (1 - d / reach));
+        }
+      });
+      const target = b.held ? 0 : b.speed * motion.float * clamp(stage.clientWidth / 700, 0.7, 1.3);
+      b.v += (target - b.v) * Math.min(1, dt * 2.5);
+      b.x += Math.cos(b.heading) * b.v * dt;
+      b.y += Math.sin(b.heading) * b.v * dt;
+      if (b.kick) {                    // a wrong tap nudges the lantern away
+        b.x += b.kick.vx * dt; b.y += b.kick.vy * dt;
+        b.kick.vx *= 1 - Math.min(1, dt * 1.6); b.kick.vy *= 1 - Math.min(1, dt * 1.6);
+        if (Math.hypot(b.kick.vx, b.kick.vy) < 2) b.kick = null;
+      }
+      // The wind pushes downwind, fading out over the last half of the stage.
+      const room = clamp((z.maxX - b.x) / ((z.maxX - z.minX) * 0.5), 0, 1);
+      b.x += wind * 22 * b.drag * room * dt;
+      b.phase += dt * (1 + wind * 0.8);
+      const lean = wind * 9 * b.drag + Math.sin(b.phase * 1.7) * (1.5 + wind * 3);
+      // `blend` fades the bob and lean in after a glide-in, so the hand-off from the entry tween is gentle.
+      const k = b.blend;
+      b.bob.style.transform = `translateY(${(Math.sin(b.phase * 1.4) * (4 + wind * 2) * k).toFixed(2)}px) rotate(${(lean * k).toFixed(2)}deg)`;
+    }
+  });
+  // Lanterns nudge each other apart instead of overlapping.
+  for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
+    const a = live[i], c = live[j];
+    const dx = c.x - a.x, dy = (c.y - a.y) * (a.w / a.h), d = Math.hypot(dx, dy), min = a.w * 1.04;
+    if (d < min && d > 0.01) {
+      const push = (min - d) / 2 * Math.min(1, dt * 8), nx = dx / d, ny = dy / d;
+      a.x -= nx * push; a.y -= ny * push; c.x += nx * push; c.y += ny * push;
+    }
+  }
+  live.forEach(b => { const z = zone(b); b.x = clamp(b.x, z.minX, z.maxX); b.y = clamp(b.y, z.minY, z.maxY); placeLantern(b); });
+  requestAnimationFrame(tick);
+}
+
+// ── Questions ───────────────────────────────────────────────────────────
+function optionsOf(q) {
+  return (q.options || []).slice(0, 4);
+}
+
+async function loadQuestions() {
+  // The lesson's deal: only questions with options, so every one has lanterns to float.
+  const data = await GameKit.questions();
+  questions = data ? data.questions : [];
+  if (!questions.length) { showError(); return; }
+  buildSky(questions.length);
+  renderQuestion();
+}
+function showError() {
+  document.getElementById('errorState').classList.remove('hidden');
+  document.getElementById('questionCard').style.display = 'none';
+}
+
+function renderQuestion() {
+  const q = questions[qi];
+  firstTry = true;
+  document.getElementById('questionPrompt').textContent =
+    (q.question_prompt && q.question_prompt !== q.question_text) ? q.question_prompt : '';
+  const textEl = document.getElementById('questionText');
+  textEl.textContent = q.question_text || q.question_prompt || '';
+  if (window.renderMathInElement) renderMathInElement(textEl, { delimiters: [{ left: '$', right: '$', display: false }] });
+  GameKit.progress({
+    label: T.questionOf.replace('{current}', qi + 1).replace('{total}', questions.length),
+    fraction: qi / questions.length,
+  });
+  spawnLanterns(GameKit.shuffle(optionsOf(q)));
+  layer.classList.remove('is-busy');
+  mode = 'question';
+}
+
+async function onLantern(b) {
+  if (mode !== 'question' || b.flying) return;
+  const q = questions[qi];
+  mode = 'busy';
+  GameKit.speak(b.word);
+  const isCorrect = await GameKit.check(q.id, b.word);
+  if (isCorrect === null) {
+    // The check never reached the server: not a wrong lantern, just ask again.
+    showHint(T.checkFailed);
+    mode = 'question';
+    return;
+  }
+  GameKit.track('game_answer', { question_id: q.id, is_correct: isCorrect, first_try: firstTry });
+
+  if (!isCorrect) {
+    firstTry = false;
+    streak = 0;
+    showStreak();
+    b.el.classList.add('is-tried');
+    // Drift away and dim, then wander back: it stays in the stage and stays tappable.
+    const away = Math.atan2(b.y - stage.clientHeight / 2, b.x - stage.clientWidth / 2);
+    if (!reduceMotion) {
+      b.kick = { vx: Math.cos(away) * 70, vy: Math.sin(away) * 70 + 20 };
+      // Web Animations, not GSAP: GSAP would fold the lantern's `translate` into its own transform and make it jump.
+      b.el.animate([{ rotate: '0deg' }, { rotate: '7deg' }], { duration: 80, iterations: 6, direction: 'alternate', easing: 'ease-in-out' });
+    }
+    showHint();
+    mode = 'question';
+    return;
+  }
+
+  if (firstTry) { streak++; } else { streak = 0; }
+  showStreak();
+  layer.classList.add('is-busy');
+  riseToStar(b, firstTry);
+}
+
+function riseToStar(b, gold) {
+  lanterns.forEach(o => { if (o.enter) o.enter.kill(); o.entering = false; });
+  b.flying = true;
+  b.el.classList.add('is-right');
+  // The others are blown away downwind; the right one rises into the sky.
+  readMotion();
+  const exit = EXIT[motion.kind] || EXIT[''], [peak, dur] = EXIT_GUST[motion.kind] || [0, 0];
+  if (peak && !reduceMotion) gust(peak, dur);
+  lanterns.filter(o => o !== b).sort((p, q) => p.x - q.x).forEach((o, k) => {
+    o.flying = true;
+    if (reduceMotion) { gsap.to(o.el, { opacity: 0, duration: 0.2 }); return; }
+    exit(o, k);
+  });
+  const target = skyPointOnStage(starPts[lit]);
+  const done = () => {
+    spawnBurst(target.x, target.y, gold ? '253,230,138' : '255,255,255', 26);
+    lightStar(gold);
+    b.el.remove();
+    gsap.delayedCall(reduceMotion ? 0.4 : 0.9, nextQuestion);
+  };
+  if (reduceMotion) { gsap.to(b.el, { opacity: 0, duration: 0.25, onComplete: done }); return; }
+  const from = { x: b.x, y: b.y };
+  gsap.timeline({ onComplete: done })
+    .to(b.bob, { scale: 1.08, duration: 0.18, ease: 'power2.out' })
+    .to(from, {
+      x: target.x, y: target.y, duration: 1.1, ease: 'power2.inOut',
+      onUpdate: () => { b.x = from.x; b.y = from.y; placeLantern(b); },
+    }, '>')
+    .to(b.bob, { scale: 0.18, duration: 1.1, ease: 'power2.in' }, '<')
+    .to(b.el, { opacity: 0.2, duration: 1.1, ease: 'power2.in' }, '<');
+}
+
+function nextQuestion() {
+  qi++;
+  if (qi >= questions.length) { finishGame(); return; }
+  renderQuestion();
+  GameKit.speakQuestion(questions[qi]);
+}
+
+function showStreak() {
+  const el = document.getElementById('streakNote');
+  if (streak >= 2) {
+    el.textContent = T.streak.replace('{n}', streak);
+    el.hidden = false;
+    if (!reduceMotion) gsap.fromTo(el, { y: 6, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'back.out(2)' });
+  } else el.hidden = true;
+}
+function showHint(text) {
+  const hint = document.getElementById('tryAgain');
+  if (!hint.dataset.text) hint.dataset.text = hint.textContent;
+  hint.textContent = text || hint.dataset.text;
+  gsap.killTweensOf(hint);
+  gsap.fromTo(hint, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.25, onComplete: () => gsap.to(hint, { opacity: 0, delay: 1.3 }) });
+}
+
+// ── Finish: the last line closes the bird and it lights up ──────────────
+async function finishGame() {
+  mode = 'done';
+  layer.innerHTML = '';
+  lanterns = [];
+  GameKit.progress({ label: T.allDone, fraction: 1 });
+  if (starPts.length > 2) drawLine(starPts[starPts.length - 1], starPts[0], 'ws-sky-line-closing');
+  gsap.to('#skyFigure', { opacity: 0.22, duration: reduceMotion ? 0.2 : 1.4, delay: 0.4, ease: 'sine.inOut' });
+  if (!reduceMotion) {
+    gsap.to('#skyStars g', { scale: 1.5, transformOrigin: '50% 50%', duration: 0.35, yoyo: true, repeat: 1, stagger: 0.08, delay: 0.3 });
+    starPts.forEach((p, i) => gsap.delayedCall(0.3 + i * 0.08, () => { const s = skyPointOnStage(p); spawnBurst(s.x, s.y, '253,230,138', 10); }));
+    gsap.to(sky, { y: -6, duration: 2.2, yoyo: true, repeat: -1, ease: 'sine.inOut', delay: 1.6 });
+  }
+
+  await GameKit.finish({}, { after: 2400 });
+}
+
+// ── Start ───────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  sizeCanvas();
+  lanterns.forEach(b => { if (!b.flying) sizeLantern(b); });
+});
+// Words are measured to fit their lantern; measure again once Baloo 2 has loaded.
+if (document.fonts) document.fonts.ready.then(() => lanterns.forEach(b => { if (!b.flying) sizeLantern(b); }));
+sizeCanvas();
+requestAnimationFrame(tick);
+loadQuestions();
+</script>
+</GamePage>

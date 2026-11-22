@@ -1,0 +1,10 @@
+id: logical-properties
+language: html
+severity: warning
+message: |
+  Physical left/right utility — it will not flip for Arabic, Farsi, Pashto and Rohingya (RTL).
+note: |
+  Use the logical form — ms-/me-, ps-/pe-, start-/end-, text-start/text-end, rounded-s/-e, border-s/-e — or an explicit rtl:/ltr: pair.
+rule:
+  matches: class-value
+  regex: '(?:^|[\s}])(?:[\w-]+:)*!?-?(?:m[lr]-|p[lr]-|left-|right-|border-[lr]\b|rounded-(?:[lr]|tl|tr|bl|br)\b|text-(?:left|right)\b)'

@@ -1,0 +1,12 @@
+id: no-arbitrary-color
+language: html
+severity: error
+message: |
+  Raw colour in a Tailwind arbitrary value — use a theme colour or a component variant.
+note: |
+  bg-primary, text-ink-muted, border-card-sky-border (roles in tailwind.config.js), or a
+  named variant class next to its base in static/css/components/. Arbitrary
+  [--clay-*:…] / [--qa-*:…] recolours are how brand colours drift.
+rule:
+  matches: class-value
+  regex: '\[[^\]\s]*(?:#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\()'
