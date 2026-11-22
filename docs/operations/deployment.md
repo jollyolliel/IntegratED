@@ -108,5 +108,5 @@ its one feature instead of breaking boot — keep new integrations that way.
 
 In production, logs are JSON lines with a `severity` field; anything printed
 plainly lands as `DEFAULT` and escapes error alerts. Read them with
-`gcloud run services logs read integrated --region=europe-west1` or in Cloud
+`gcloud run services logs read integrated --region=<GCP_REGION>` or in Cloud
 Logging.

@@ -17,9 +17,9 @@ up" page, error handlers): [../backend/request-lifecycle.md](../backend/request-
 
 | | |
 |---|---|
-| Host | Google Cloud Run, service `integrated`, region `europe-west1`, project `gen-lang-client-0738887160`; scales to zero |
-| Image | `europe-west1-docker.pkg.dev/gen-lang-client-0738887160/integrated-docker/integrated`, tagged with the commit SHA |
-| Database | Neon PostgreSQL 17 (project `IntegratED`, aws-eu-central-1), scales to zero |
-| Files | GCS bucket named by `GCS_BUCKET_NAME` (`integrated-worksheets`): `worksheets/` (PDFs), `content/` (full `questions.json`, manifest and markdown sheets), `audio/`, `backups/` |
+| Host | Google Cloud Run, service `integrated`, region and project from the `GCP_REGION` / `GCP_PROJECT_ID` repo variables; scales to zero |
+| Image | `<GCP_REGION>-docker.pkg.dev/<GCP_PROJECT_ID>/<ARTIFACT_REPO>/integrated`, tagged with the commit SHA |
+| Database | Neon PostgreSQL 17, scales to zero |
+| Files | GCS bucket named by `GCS_BUCKET_NAME`: `worksheets/` (PDFs), `content/` (full `questions.json`, manifest and markdown sheets), `audio/`, `backups/` |
 | Secrets | Secret Manager, mounted with `--set-secrets` |
 | Other services | Google OAuth, Stripe, PostHog (EU), Gemini (AI Studio), ElevenLabs |

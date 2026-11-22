@@ -20,7 +20,7 @@ idle compute.
   first step of `flask release` in the `integrated-release` Cloud Run Job
   (ADR 0015). Any failed step fails the job and stops the deploy; the old
   revision keeps serving. Its logs:
-  `gcloud run jobs executions list --job integrated-release --region europe-west1`.
+  `gcloud run jobs executions list --job integrated-release --region <GCP_REGION>`.
 - The old revision serves while the job runs, so a migration must work with
   the code before it: add a column before code uses it, drop one only in a
   later deploy, once no running code reads it. A column waiting for that drop

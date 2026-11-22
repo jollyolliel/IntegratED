@@ -52,7 +52,7 @@ print(json.dumps({
 """
 
 
-def _boot_production(tmp_path, bucket: str = "integrated-worksheets") -> dict:
+def _boot_production(tmp_path, bucket: str = "example-bucket") -> dict:
     env = {
         key: value
         for key, value in os.environ.items()
