@@ -3,6 +3,7 @@ from typing import Any
 
 from flask import abort, flash, jsonify, redirect, request, url_for
 from sqlalchemy import case, func
+from werkzeug.exceptions import Forbidden
 
 from extensions import db
 from helpers import teacher_ops
@@ -324,7 +325,7 @@ def teacher_update_attendance():
             notes=payload.get("notes") or "",
         )["record"]
     except (LookupError, PermissionError):
-        abort(403)
+        raise Forbidden() from None
     except ValueError as exc:
         message = refusal_message(exc)
         if wants_json():

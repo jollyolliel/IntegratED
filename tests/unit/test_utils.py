@@ -268,3 +268,17 @@ def test_a_plain_request_does_not_want_json(app):
 
     with app.test_request_context():
         assert wants_json() is False
+
+
+# ── logging ──────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("plain", "plain"), ("a\nb", "a\\nb"), ("a\r\nFAKE 200", "a\\r\\nFAKE 200"), (404, "404"), (None, "None")],
+)
+def test_one_line_keeps_a_logged_value_on_its_own_line(value, expected):
+    """A value from a request or a file must not start a forged log line of its own."""
+    from helpers.utils import one_line
+
+    assert one_line(value) == expected

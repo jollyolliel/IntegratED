@@ -11,6 +11,7 @@ from typing import TypedDict
 from flask import abort, flash, jsonify, redirect, request, url_for
 from sqlalchemy import func
 from sqlalchemy.orm import contains_eager, selectinload
+from werkzeug.exceptions import Forbidden, NotFound
 
 from extensions import db
 from helpers import teacher_ops
@@ -157,9 +158,9 @@ def _owned_assignments(teacher, ids: list[int]) -> list[WorksheetAssignment]:
     try:
         return teacher_ops.owned_assignments(teacher, ids)
     except LookupError:
-        abort(404)
+        raise NotFound() from None
     except PermissionError:
-        abort(403)
+        raise Forbidden() from None
 
 
 @teacher_bp.route("/worksheet-assignments/print")
@@ -213,9 +214,9 @@ def teacher_complete_assignments():
     try:
         assignments = teacher_ops.complete_assignments(teacher, ids)
     except LookupError:
-        abort(404)
+        raise NotFound() from None
     except PermissionError:
-        abort(403)
+        raise Forbidden() from None
     capture_event(
         str(teacher.id),
         "worksheet_completion_set",

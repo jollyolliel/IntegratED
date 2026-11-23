@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from extensions import db
 from helpers.problems import ProblemsError
+from helpers.utils import one_line
 from helpers.worksheet_library import (
     MAX_TAG_LENGTH,
     MAX_TAGS,
@@ -118,7 +119,13 @@ def _fields(entry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _read_markdown(path: str) -> str | None:
+def _read_markdown(directory: str, name: str) -> str | None:
+    """The text of `name` in `directory`, or None when it isn't there or would lie outside it."""
+    # `_check_entry` already refuses anything but a bare filename; this guards the read itself.
+    root = os.path.realpath(directory)
+    path = os.path.realpath(os.path.join(root, name))
+    if not path.startswith(root + os.sep):
+        return None
     try:
         with open(path, encoding="utf-8") as f:
             return f.read()
@@ -180,9 +187,10 @@ def sync_worksheet_manifest(storage: "Bucket", directory: str) -> ManifestSync:
         is_pdf = name.lower().endswith(".pdf")
         fields = _fields(entry)
         if not is_pdf:
-            content = _read_markdown(os.path.join(directory, name))
+            content = _read_markdown(directory, name)
             if content is None:
-                logger.warning("Worksheet manifest: skipped %s — the file isn't in the content folder's worksheets/.", name)
+                logger.warning("Worksheet manifest: skipped %s — the file isn't in the content folder's worksheets/.",
+                               one_line(name))
                 result.skipped.append(name)
                 continue
             fields["content"] = content
@@ -190,7 +198,7 @@ def sync_worksheet_manifest(storage: "Bucket", directory: str) -> ManifestSync:
         row = db.session.scalar(db.select(Worksheet).filter_by(filepath=key))
         if row is None:
             if is_pdf and not storage.exists(key):
-                logger.warning("Worksheet manifest: skipped %s — not in worksheet storage yet.", name)
+                logger.warning("Worksheet manifest: skipped %s — not in worksheet storage yet.", one_line(name))
                 result.skipped.append(name)
                 continue
             db.session.add(Worksheet(filepath=key, file_type="pdf" if is_pdf else "md", **fields))

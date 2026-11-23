@@ -12,6 +12,7 @@ left alone.
 import json
 import logging
 import os
+import re
 import time
 from typing import Any
 
@@ -24,6 +25,7 @@ from helpers.ai.provider import (
     ToolCall,
     ToolSpec,
 )
+from helpers.utils import one_line
 from settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -42,6 +44,9 @@ _MIN_ATTEMPT_SECONDS = 1.0
 
 DEFAULT_MODEL = "gemini-3.7-flash"
 DEFAULT_FALLBACK_MODEL = "gemini-3.6-flash"
+
+#: What a Gemini model id looks like (`gemini-3.7-flash`, `gemini-2.5-flash-lite-preview-06-17`).
+_MODEL_ID = re.compile(r"[a-z0-9]+(?:[.-][a-z0-9]+)*")
 
 # JSON Schema keywords Gemini's function-declaration schema does not accept.
 _SCHEMA_DROP = {"additionalProperties", "$schema", "default", "examples"}
@@ -252,6 +257,10 @@ class GeminiProvider(LLMProvider):
         Returns:
             dict[str, Any]: The parsed JSON response body.
         """
+        # The model comes from the environment and lands in the request path: anything but a plain
+        # model id could point the request, API key and all, at another endpoint.
+        if not _MODEL_ID.fullmatch(model):
+            raise ProviderError(f"Not a Gemini model id: {model!r}")
         url = f"{API_ROOT}/{model}:generateContent"
         # Key goes in a header, not the query string — a URL with the key in it
         # lands in access logs and error messages.
@@ -340,7 +349,7 @@ class GeminiProvider(LLMProvider):
                 raise
             logger.warning(
                 "Assistant primary model %s failed (%s) — trying %s",
-                self.model, primary_error, self.fallback_model,
+                one_line(self.model), one_line(primary_error), one_line(self.fallback_model),
             )
             data = self._post(self.fallback_model, payload, budget_end)
             self.last_model_used = self.fallback_model

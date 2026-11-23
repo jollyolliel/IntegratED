@@ -10,9 +10,29 @@ queries:
   - uses: security-and-quality
 
 # The default threat model only treats remote input (HTTP requests) as tainted. `local` adds
-# command-line arguments, environment variables, files and stdin — the inputs of scripts/ and
-# commands.py, which the remote model never looks at.
+# command-line arguments, environment variables, files and stdin — the inputs of commands.py and
+# of the content folder the app syncs from, which the remote model never looks at.
 threat-models: local
+
+# Queries dropped because every alert they raised here was a false positive, with what still covers
+# the risk:
+query-filters:
+  # Read the `if TYPE_CHECKING:` imports that type hints need as real import cycles. A real cycle
+  # fails the import of `main` that every test run starts with.
+  - exclude:
+      id: py/cyclic-import
+  - exclude:
+      id: py/unsafe-cyclic-import
+  # Reports a module-level latch written under `global` and read on the next call as unused.
+  - exclude:
+      id: py/unused-global-variable
+  # Security Lab audit queries: every `except …: continue` and every MD5 call, whatever it is for.
+  # py/empty-except still flags a bare `pass`, and py/weak-sensitive-data-hashing (in the suite
+  # above) still flags MD5/SHA-1 on passwords and other sensitive data.
+  - exclude:
+      id: githubsecuritylab/insufficient-logging
+  - exclude:
+      id: githubsecuritylab/weak-cryptographic-algorithm
 
 packs:
   python:
@@ -33,3 +53,9 @@ paths-ignore:
   - node_modules
   - static/css/tailwind.css
   - "**/__pycache__"
+  # Code that never ships in the image or runs on the server: developer scripts, agent tooling and
+  # skills, and the test suite (deliberate fixture passwords and paths, probes that look like bugs).
+  # ruff and ty still lint all three in CI.
+  - scripts
+  - .claude
+  - tests

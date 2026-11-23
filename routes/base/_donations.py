@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 
 import stripe
@@ -12,6 +13,8 @@ from helpers.render import render_template
 from models import Donation, School
 from routes.base import base_bp
 from settings import get_settings
+
+logger = logging.getLogger(__name__)
 
 #: Donation sizes with their own impact line (`donations.success_impact_<n>`); less is `_default`.
 IMPACT_TIERS = (500, 250, 100, 50, 25)
@@ -185,7 +188,9 @@ def donation_success():
                 "session_id": session_id,
             })
         except stripe.StripeError:
-            pass
+            # The thank-you page still renders, just without the amount; the webhook records the
+            # donation either way.
+            logger.warning("Donation success page could not read its Stripe session", exc_info=True)
     return render_template(
         "@pages/donation_success.jx", school=school, amount=amount, tier=impact_tier(amount) if amount else None
     )

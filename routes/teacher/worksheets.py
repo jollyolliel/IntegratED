@@ -8,6 +8,7 @@ from flask import (
     request,
     url_for,
 )
+from werkzeug.exceptions import Forbidden, NotFound
 from werkzeug.utils import secure_filename
 
 from extensions import db
@@ -247,9 +248,9 @@ def teacher_complete_assignment(assignment_id):
     try:
         result = teacher_ops.set_assignment_completion(teacher, assignment_id, completed)
     except LookupError:
-        abort(404)
+        raise NotFound() from None
     except PermissionError:
-        abort(403)
+        raise Forbidden() from None
 
     assignment = result["assignment"]
     capture_event(

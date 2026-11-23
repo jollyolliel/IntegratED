@@ -1,4 +1,5 @@
 from flask import abort, jsonify, request
+from werkzeug.exceptions import Forbidden, NotFound
 
 from helpers.ai import staging
 from helpers.analytics import capture_event
@@ -26,9 +27,9 @@ def _change_action(change_id, action):
     try:
         return action(current_user, change_id), None
     except PermissionError:
-        abort(403)
+        raise Forbidden() from None
     except LookupError:
-        abort(404)
+        raise NotFound() from None
     except ValueError as exc:
         return None, (jsonify(success=False, message=refusal_message(exc),
                               changes=_changes_payload(current_user)), 400)

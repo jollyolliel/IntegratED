@@ -74,8 +74,7 @@ def reset_module_caches():
 
     audio_cache.reset()
     i18n._translations_cache.clear()
-    assert loop._classification_logged.__defaults__ is not None
-    loop._classification_logged.__defaults__[0]["done"] = False
+    loop._classification_logged.cache_clear()
 
 
 @pytest.fixture(scope="session")

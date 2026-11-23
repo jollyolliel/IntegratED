@@ -1,4 +1,5 @@
 from flask import abort, flash, jsonify, redirect, request, url_for
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from helpers import teacher_ops
 from helpers.analytics import capture_event
@@ -15,11 +16,11 @@ def teacher_unmatch_pair(learner_id):
     try:
         result = teacher_ops.unmatch_pair(teacher, learner_id)
     except PermissionError:
-        abort(403)
+        raise Forbidden() from None
     except (LookupError, ValueError):
         # "no such learner" and "not matched with anyone" are both 404 here —
         # there is no pair at this URL either way.
-        abort(404)
+        raise NotFound() from None
 
     volunteer = result["volunteer"]
     volunteer_id = volunteer.id
@@ -59,14 +60,14 @@ def teacher_manual_match():
     try:
         result = teacher_ops.match_pair(teacher, learner_id, volunteer_id)
     except (LookupError, PermissionError):
-        abort(403)
+        raise Forbidden() from None
     except ValueError as exc:
         # Capacity is the teacher's decision — refuse rather than silently
         # evicting a learner the volunteer already has.
         message = refusal_message(exc)
         if wants_json():
             return jsonify(success=False, message=message), 400
-        abort(400, description=message)
+        raise BadRequest(description=message) from None
 
     _learner, volunteer = result["learner"], result["volunteer"]
 
@@ -158,12 +159,12 @@ def teacher_set_volunteer_capacity(volunteer_id):
             teacher, volunteer_id, request.form.get("capacity", type=int)
         )
     except (LookupError, PermissionError):
-        abort(403)
+        raise Forbidden() from None
     except ValueError as exc:
         message = refusal_message(exc)
         if wants_json():
             return jsonify(success=False, message=message), 400
-        abort(400, description=message)
+        raise BadRequest(description=message) from None
 
     volunteer = result["volunteer"]
     capacity = result["capacity"]

@@ -63,7 +63,8 @@ def audio_filename(text: str, voice_id: str | None = None) -> str:
         str: `<md5 of "text:voice_id">.mp3`.
     """
     voice = voice_id or get_settings().eleven_voice_id
-    return hashlib.md5(f"{text}:{voice}".encode()).hexdigest() + ".mp3"
+    # A cache name, not a security hash. Changing it would orphan every generated file in the bucket.
+    return hashlib.md5(f"{text}:{voice}".encode(), usedforsecurity=False).hexdigest() + ".mp3"
 
 
 def audio_key(filename: str) -> str:
