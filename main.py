@@ -7,7 +7,6 @@ import dotenv
 dotenv.load_dotenv(override=False)
 
 from pathlib import Path
-from typing import Any
 
 import stripe
 from flask import Flask, abort, jsonify, make_response, request
@@ -26,6 +25,7 @@ from helpers.utils import (
     inject_site_settings,
     inject_version,
     is_cross_site_write,
+    one_line,
     render_markdown,
     safe_local_path,
     same_site_referrer_path,
@@ -33,12 +33,6 @@ from helpers.utils import (
 from models import User
 from settings import Settings
 
-# Module-level binding so `global google` inside create_app() (and `from main
-# import google` in routes/auth/_oauth.py) resolve to a real symbol. Only
-# meaningfully set once create_app() runs `oauth.register(...)` — it needs the
-# app to exist first, so this can't be built at import time. `Any` because
-# Authlib's `OAuth.register()` is untyped — there is no real type to give it.
-google: Any = None
 
 def sqlalchemy_database_url(url: str) -> str:
     """Name the psycopg2 driver on a bare Postgres URL; return any other URL as-is."""
@@ -141,11 +135,9 @@ def create_app(config_class=None):
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     
-    # Initialize OAuth with app directly
+    # Initialize OAuth with app directly; routes/auth/_oauth.py fetches the client by name.
     oauth.init_app(app)
-    
-    global google
-    google = oauth.register(
+    oauth.register(
         name="google",
         client_id=settings.google_client_id,
         client_secret=settings.google_client_secret,
@@ -291,7 +283,8 @@ def create_app(config_class=None):
             db.session.rollback()
         except Exception as rollback_error:  # noqa: BLE001 - rolling back a session already broken by a DB outage can fail its own unpredictable ways; this handler must never itself raise
             app.logger.debug("Rollback in handle_db_unavailable failed: %s", rollback_error)
-        app.logger.warning(f"DB unavailable (cold start / waking) on {request.method} {request.path}: {e}")
+        app.logger.warning("DB unavailable (cold start / waking) on %s %s: %s",
+                           request.method, one_line(request.path), one_line(e))
 
         # JSON for API / AJAX callers so they can retry; HTML page for browsers.
         if request.path.startswith('/api/') or request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -327,9 +320,9 @@ def create_app(config_class=None):
             status_code = 500
 
         if status_code >= 500:
-            app.logger.error(f"Unhandled Exception on {request.method} {request.path}: {e}")
+            app.logger.error("Unhandled Exception on %s %s: %s", request.method, one_line(request.path), one_line(e))
         elif status_code >= 400:
-            app.logger.warning(f"HTTP {status_code} on {request.method} {request.path}")
+            app.logger.warning("HTTP %s on %s %s", status_code, request.method, one_line(request.path))
 
         if isinstance(e, HTTPException) and status_code < 500:
             log_warning(
@@ -371,7 +364,7 @@ def create_app(config_class=None):
         try:
             return render_template("@pages/error.jx", error_code=status_code, error_message=error_message), status_code
         except Exception:
-            app.logger.exception(f"error page render failed on {request.method} {request.path}")
+            app.logger.exception("error page render failed on %s %s", request.method, one_line(request.path))
             return (
                 (f"<!doctype html><html><head><title>{status_code} Error</title></head>"
                 f"<body style=\"font-family:sans-serif;text-align:center;padding:4rem 1rem;\">"
@@ -400,12 +393,18 @@ if __name__ == "__main__":
     # Tailwind v3's --watch exits the moment its stdin closes, so it gets a pipe
     # held open by this process: the watcher lives exactly as long as the server.
     # Keep the Popen referenced — collecting it closes the pipe and stops the watch.
+    tailwind_watcher = None
     if development and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
         import subprocess
         import sys
 
-        watcher = Path(__file__).resolve().parent / "scripts" / "tailwind.py"
+        watch_script = Path(__file__).resolve().parent / "scripts" / "tailwind.py"
         tailwind_watcher = subprocess.Popen(
-            [sys.executable, str(watcher), "--watch"], stdin=subprocess.PIPE
+            [sys.executable, str(watch_script), "--watch"], stdin=subprocess.PIPE
         )
-    app.run(debug=development)
+    try:
+        app.run(debug=development)
+    finally:
+        # Closing its stdin is what stops the watch; exiting would do the same, this says so.
+        if tailwind_watcher is not None and tailwind_watcher.stdin is not None:
+            tailwind_watcher.stdin.close()

@@ -82,10 +82,12 @@ class Matchable(Protocol):
     """Anything the matcher can score: a Learner or Volunteer row, or a `MatchEntity`-shaped object."""
 
     @property
-    def id(self) -> int: ...
+    def id(self) -> int:
+        """The person's user id."""
 
     @property
-    def survey_data(self) -> Any: ...
+    def survey_data(self) -> Any:
+        """Their raw survey answers (untrusted authored JSON)."""
 
 
 class MatchEntity(TypedDict):

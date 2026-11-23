@@ -75,3 +75,46 @@ def test_a_server_error_still_retries_while_time_remains(clock, monkeypatch):
 
     assert reply.text == "hello"
     assert provider.last_model_used == "primary"
+
+
+@pytest.mark.parametrize("model", ["../files", "gemini?alt=x", "a/b", "gemini#x", "", "Gemini 2"])
+def test_a_model_name_that_is_not_a_plain_model_id_is_never_sent(clock, monkeypatch, model):
+    """`ASSISTANT_MODEL` lands in the request path: anything but a model id could point the
+    request (and the API key header) at another endpoint."""
+
+    from helpers.ai import gemini
+    from helpers.ai.provider import ProviderError
+
+    posted = []
+    monkeypatch.setattr(gemini.requests, "post", lambda url, **kwargs: posted.append(url))
+    provider = gemini.GeminiProvider(model=model or "x")
+    provider.model, provider.fallback_model = model, ""
+
+    with pytest.raises(ProviderError):
+        provider.complete(system="s", messages=[{"role": "user", "content": "hi"}], tools=[])
+
+    assert posted == []
+
+
+def test_a_dotted_model_id_is_sent(clock, monkeypatch):
+    from helpers.ai import gemini
+
+    class _Reply:
+        status_code = 200
+        text = ""
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [{"text": "ok"}]}}]}
+
+    posted = []
+
+    def post(url, **kwargs):
+        posted.append(url)
+        return _Reply()
+
+    monkeypatch.setattr(gemini.requests, "post", post)
+    provider = gemini.GeminiProvider(model="gemini-2.5-flash-lite", fallback_model=None)
+
+    provider.complete(system="s", messages=[{"role": "user", "content": "hi"}], tools=[])
+
+    assert posted == [f"{gemini.API_ROOT}/gemini-2.5-flash-lite:generateContent"]

@@ -65,11 +65,17 @@ off (it rejects uploads from a workflow while default setup is on). The config
 runs `security-and-quality` (a superset of the default and
 `security-extended` suites), the `local` threat model (CLI arguments,
 environment variables and files count as untrusted, which is what reaches
-`scripts/` and `commands.py`), and the GitHub Security Lab community packs.
+`commands.py` and the content-folder sync), and the GitHub Security Lab
+community packs. It skips `scripts/`, `.claude/` and `tests/`: none of them
+ships in the image or runs on the server, and ruff and ty still lint them.
 Findings land under the repository's *Security → Code scanning*. How to report
 a vulnerability: `SECURITY.md`.
 
 ## Workflow hygiene
+
+Every `uses:` is pinned to a full commit SHA with the version in a trailing
+comment (`@<sha> # v7.0.1`), so a moved tag cannot change what runs;
+Dependabot bumps the SHA and the comment together.
 
 Untrusted text (commit messages, PR labels and titles) is read through
 environment variables inside scripts, never interpolated as `${{ }}` into a

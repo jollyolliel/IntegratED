@@ -16,6 +16,7 @@ __all__ = [
     "inject_version",
     "is_cross_site_write",
     "normalize_subject_bucket",
+    "one_line",
     "render_markdown",
     "safe_local_path",
     "same_site_referrer_path",
@@ -24,6 +25,12 @@ __all__ = [
     "wants_fragment",
     "wants_json",
 ]
+
+def one_line(value: object) -> str:
+    """`value` as text fit for one log line: a CR or LF in a request path, a file or an exception
+    message is written out as `\\r`/`\\n` instead of starting a forged line of its own."""
+    return str(value).replace("\r", "\\r").replace("\n", "\\n")
+
 
 # A same-page quick-action route (regenerate code, delete row, set password, ...) branches on
 # wants_json() at the very end: `jsonify(success=bool, message=str, ...)` when true,

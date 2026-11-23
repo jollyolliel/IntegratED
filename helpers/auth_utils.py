@@ -222,6 +222,7 @@ def limit_to_type(user_type: str) -> Any:
         return redirect(url_for("auth.login"))
     if current_user.user_type != user_type:
         abort(403)
+    return None
 
 
 def get_or_create_invite_code(school: School) -> str:

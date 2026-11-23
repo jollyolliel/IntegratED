@@ -11,11 +11,12 @@ no translation keys: it is a developer tool.
 
 import secrets
 from collections.abc import Mapping
+from typing import Any
 
 from flask import abort, current_app, flash, redirect, request, session, url_for
 from flask.typing import ResponseReturnValue
 
-from extensions import db
+from extensions import db, oauth
 from helpers.analytics import capture_event, capture_exception
 from helpers.auth_utils import (
     dashboard_url,
@@ -30,9 +31,14 @@ from routes.auth import auth_bp
 from settings import get_settings
 
 
+def _google() -> Any:
+    """The Google OAuth client `create_app` registered (Authlib's clients are untyped)."""
+    return oauth.create_client("google")
+
+
 @auth_bp.route("/login/google")
 def login_google():
-    """Kick off Google OAuth (`google` imported inline to dodge a circular import), or open the
+    """Kick off Google OAuth (the client `create_app` registers on `oauth`), or open the
     dev stand-in on a local development server. `?real=1` (the dev page's "Sign in with real
     Google" button) skips the stand-in when Google credentials are configured."""
     if is_local_dev_request():
@@ -41,9 +47,8 @@ def login_google():
         if not _google_configured():
             flash("No Google credentials are set (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET in .env).", "error")
             return redirect(url_for("auth.dev_google_sign_in"))
-    from main import google
     redirect_uri = url_for("auth.authorize", _external=True)
-    return google.authorize_redirect(redirect_uri)
+    return _google().authorize_redirect(redirect_uri)
 
 
 @auth_bp.route("/authorize")
@@ -52,8 +57,7 @@ def authorize():
     if not _google_configured():
         abort(404)
     try:
-        from main import google
-        token = google.authorize_access_token()
+        token = _google().authorize_access_token()
         return _sign_in_with_google_account(token.get("userinfo", {}))
     except Exception as e:
         current_app.logger.exception("OAuth Authorization Error")

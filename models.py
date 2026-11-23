@@ -831,7 +831,7 @@ class FeatureAnnouncement(db.Model):
 # keeps working unchanged across the codebase — the content hierarchy lives
 # in models_learning.py, split out from the user/school/donations/CMS models
 # above it. See docs/learning/content.md.
-from models_learning import (  # noqa: F401
+from models_learning import (
     LearningSession,
     Lesson,
     MapQuestion,
@@ -839,6 +839,36 @@ from models_learning import (  # noqa: F401
     Subject,
     Topic,
 )
+
+# Lists the re-exports above, so linters and CodeQL read them as this module's API, not unused.
+__all__ = [
+    "ASSISTANT_CHANGE_STATUSES",
+    "Administrator",
+    "Article",
+    "AssistantChange",
+    "AssistantConversation",
+    "AssistantMessage",
+    "Attendance",
+    "Donation",
+    "FeatureAnnouncement",
+    "Learner",
+    "LearningSession",
+    "Lesson",
+    "MapQuestion",
+    "Question",
+    "School",
+    "SchoolAdmin",
+    "SiteContent",
+    "Subject",
+    "Teacher",
+    "TeamMember",
+    "Topic",
+    "User",
+    "Volunteer",
+    "Worksheet",
+    "WorksheetAssignment",
+    "attendance_hours",
+]
 
 
 @event.listens_for(db.session, "after_commit")

@@ -87,6 +87,18 @@ def test_state_params_leave_state_alone_when_absent(client, db_session):
     assert learner.completed_map_test is False
 
 
+@pytest.mark.parametrize("user_type", ["learner", "school_admin", "administrator"])
+def test_a_created_account_has_no_shared_password(client, db_session, user_type):
+    """Created accounts sign in through this route; a password everyone knows would also
+    open them at the ordinary login form."""
+    from models import User
+
+    client.get("/dev/login-as", query_string={"type": user_type})
+
+    user = db_session.get(User, int(_session_user_id(client)))
+    assert not user.check_password("password")
+
+
 def test_bad_state_value_is_a_400(client, db_session):
     learner = make_learner(db_session, make_school(db_session))
 

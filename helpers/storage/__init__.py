@@ -26,20 +26,42 @@ __all__ = ["AUDIO_PREFIX", "IMAGE_PREFIX", "WORKSHEET_PREFIX", "Bucket", "GCSBuc
 class Bucket(Protocol):
     """What the app asks of its bucket: a folder in development, the GCS bucket in production."""
 
+    # A docstring, not `...`, is each body: CodeQL reads a bare `...` as a statement with no effect.
+
     # Any key
-    def exists(self, key: str, /) -> bool: ...
-    def read_text(self, key: str, /) -> str: ...
-    def read_bytes(self, key: str, /) -> bytes: ...
-    def write(self, key: str, data: bytes, mimetype: str, /) -> None: ...
-    def send(self, key: str, mimetype: str, /) -> Response: ...
-    def delete(self, key: str, /) -> None: ...
-    def download_prefix(self, prefix: str, destination: str, /) -> None: ...
+    def exists(self, key: str, /) -> bool:
+        """Whether anything is stored under `key`."""
+
+    def read_text(self, key: str, /) -> str:
+        """The UTF-8 text stored under `key`."""
+
+    def read_bytes(self, key: str, /) -> bytes:
+        """The bytes stored under `key`."""
+
+    def write(self, key: str, data: bytes, mimetype: str, /) -> None:
+        """Store `data` under `key` as `mimetype`, replacing what was there."""
+
+    def send(self, key: str, mimetype: str, /) -> Response:
+        """What is stored under `key`, as a Flask response served as `mimetype`."""
+
+    def delete(self, key: str, /) -> None:
+        """Remove what is stored under `key`."""
+
+    def download_prefix(self, prefix: str, destination: str, /) -> None:
+        """Copy every key under `prefix` into the local folder `destination`."""
 
     # Worksheet uploads, under WORKSHEET_PREFIX
-    def key_for(self, filename: str, /) -> str: ...
-    def is_safe_path(self, key: str, /) -> bool: ...
-    def prefers_inline_storage(self, ext: str, /) -> bool: ...
-    def save_upload(self, werkzeug_file: FileStorage, filename: str, /) -> str: ...
+    def key_for(self, filename: str, /) -> str:
+        """The key a worksheet file is stored under."""
+
+    def is_safe_path(self, key: str, /) -> bool:
+        """Whether `key` stays inside the worksheets prefix."""
+
+    def prefers_inline_storage(self, ext: str, /) -> bool:
+        """Whether a worksheet with extension `ext` is better kept in its database row."""
+
+    def save_upload(self, werkzeug_file: FileStorage, filename: str, /) -> str:
+        """Save a worksheet file and return its key."""
 
 
 def get_bucket() -> Bucket:

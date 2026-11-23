@@ -15,11 +15,10 @@ from extensions import db
 
 __all__ = ["get_pending_announcement", "sync_announcements"]
 from helpers.analytics import capture_event
+from helpers.utils import one_line
 from models import FeatureAnnouncement
 
 logger = logging.getLogger(__name__)
-
-SOURCE_FILENAME = "announcements.json"
 
 
 def sync_announcements(source_path: str) -> list[str]:
@@ -53,7 +52,7 @@ def sync_announcements(source_path: str) -> list[str]:
 
     if inserted:
         db.session.commit()
-        logger.info("Feature announcements inserted: %s", ", ".join(inserted))
+        logger.info("Feature announcements inserted: %s", one_line(", ".join(inserted)))
     return inserted
 
 

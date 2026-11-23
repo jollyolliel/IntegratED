@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -16,6 +17,18 @@ _seen_mtimes: dict[str, int] | None = None
 _TRANSLATIONS_DIR = os.path.join(os.path.dirname(__file__), "..", "translations")
 
 __all__ = ["get_current_lang", "get_ui_direction", "i18n_context_processor", "make_translator"]
+
+
+#: A bare `{name}` placeholder. Nothing else in a translation is read as one: translations are files
+#: people edit, and `str.format` would let `{name.__class__}` reach into the values passed in.
+_PLACEHOLDER = re.compile(r"\{(\w+)\}")
+
+
+def _fill_placeholders(text: str, values: dict[str, Any]) -> str:
+    """`text` with each `{name}` that `values` has replaced; any other brace is left as written."""
+    return _PLACEHOLDER.sub(
+        lambda match: str(values[match.group(1)]) if match.group(1) in values else match.group(0), text
+    )
 
 
 def _load_json(lang: str) -> dict | None:
@@ -143,21 +156,18 @@ def make_translator(lang: str) -> Callable[..., str]:
 
     Returns:
         Callable[..., str]: Translator function; falls back to English, then
-            the raw key, and format()s `{placeholder}`s from kwargs.
+            the raw key, and fills bare `{placeholder}`s from kwargs.
     """
     translations = _get_translations(lang)
     en_fallback = _load_json("en") or {}
 
     def t(key: str, **kwargs: Any) -> str:
-        """Resolve `key` to a translated, format()-substituted string."""
+        """Resolve `key` to a translated string with its placeholders filled."""
         value = _resolve(translations, key)
         if value is None:
             value = _resolve(en_fallback, key) or key
         if kwargs:
-            try:
-                return value.format(**kwargs)
-            except (KeyError, IndexError):
-                return value
+            return _fill_placeholders(value, kwargs)
         return value
 
     return t

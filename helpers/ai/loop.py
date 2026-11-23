@@ -10,6 +10,7 @@ tool-calling rounds. A stuck run ends with an apology, never with a pinned
 thread.
 """
 
+import functools
 import logging
 import time
 from collections.abc import Generator
@@ -133,18 +134,11 @@ def transcript_for(conversation: AssistantConversation) -> list[dict[str, Any]]:
     return messages
 
 
-def _classification_logged(flag: dict[str, bool] = {"done": False}) -> None:  # noqa: B006 - deliberate: the shared mutable default IS the one-shot latch, and tests/conftest.py resets it via __defaults__
-    """Log the FK-graph scope classification exactly once per process.
-
-    Args:
-        flag (dict[str, bool]): Mutable default used as a one-shot latch across calls.
-
-    Returns:
-        None
-    """
-    if not flag["done"]:
-        scope.log_classification()
-        flag["done"] = True
+@functools.cache
+def _classification_logged() -> None:
+    """Log the FK-graph scope classification exactly once per process (the cache is the latch;
+    tests/conftest.py clears it between tests)."""
+    scope.log_classification()
 
 
 def run_turn(teacher_id: int, conversation_id: int, user_text: str, lang: str = "en") -> Generator[dict[str, Any], None, None]:

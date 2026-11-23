@@ -10,8 +10,8 @@ queries:
   - uses: security-and-quality
 
 # The default threat model only treats remote input (HTTP requests) as tainted. `local` adds
-# command-line arguments, environment variables, files and stdin — the inputs of scripts/ and
-# commands.py, which the remote model never looks at.
+# command-line arguments, environment variables, files and stdin — the inputs of commands.py and
+# of the content folder the app syncs from, which the remote model never looks at.
 threat-models: local
 
 packs:
@@ -33,3 +33,9 @@ paths-ignore:
   - node_modules
   - static/css/tailwind.css
   - "**/__pycache__"
+  # Code that never ships in the image or runs on the server: developer scripts, agent tooling and
+  # skills, and the test suite (deliberate fixture passwords and paths, probes that look like bugs).
+  # ruff and ty still lint all three in CI.
+  - scripts
+  - .claude
+  - tests

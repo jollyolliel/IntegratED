@@ -28,8 +28,6 @@ from helpers.utils import safe_local_path
 from models import Administrator, Learner, School, SchoolAdmin, Teacher, User, Volunteer
 from routes.base import base_bp
 
-DEV_PASSWORD = "password"
-
 MODELS: dict[str, type[User]] = {
     "learner": Learner,
     "volunteer": Volunteer,
@@ -59,8 +57,10 @@ def _school_teacher(school: School) -> Teacher | None:
 
 def _create(user_type: str) -> User:
     """A ready-to-use user of `user_type`: onboarding done, attached to the dev school (and its
-    first teacher, for learners/volunteers). Password-based roles get `DEV_PASSWORD`."""
+    first teacher, for learners/volunteers). Password-based roles get a random password nobody is
+    told: they sign in through this route, and a shared one would also open them at the login form."""
     tag = secrets.token_hex(3)
+    password = secrets.token_urlsafe(16)
     name = f"Dev {user_type.replace('_', ' ').title()} {tag}"
     user: User
     if user_type == "learner":
@@ -71,7 +71,7 @@ def _create(user_type: str) -> User:
             teacher_id=teacher.id if teacher else None,
             completed_survey=True, completed_map_test=True,
         )
-        learner.set_password(DEV_PASSWORD)
+        learner.set_password(password)
         user = learner
     elif user_type in ("volunteer", "teacher"):
         school = _dev_school()
@@ -90,11 +90,11 @@ def _create(user_type: str) -> User:
             select(School).where(~School.school_admin.has()).order_by(School.id)
         ).first() or _new_school()
         school_admin = SchoolAdmin(username=f"dev-schooladmin-{tag}", name=name, school_id=school.id)
-        school_admin.set_password(DEV_PASSWORD)
+        school_admin.set_password(password)
         user = school_admin
     else:
         admin = Administrator(username=f"dev-admin-{tag}", name=name)
-        admin.set_password(DEV_PASSWORD)
+        admin.set_password(password)
         user = admin
     db.session.add(user)
     db.session.commit()

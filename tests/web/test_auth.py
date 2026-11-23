@@ -1,7 +1,7 @@
 """Sign-in, registration, invite codes, and the Google OAuth account link.
 
 `/authorize` is the largest untested block in the app. Nothing here contacts
-Google: `main.google.authorize_access_token` is replaced with a function that
+Google: `routes.auth._oauth._google` is replaced with a client whose `authorize_access_token`
 returns whatever token payload the test wants.
 """
 
@@ -497,7 +497,7 @@ def test_starting_volunteer_registration_stashes_the_invite(client, db_session, 
 def google_token(monkeypatch):
     """Drive `/authorize` with whatever Google would have returned."""
 
-    import main
+    from routes.auth import _oauth
 
     holder = {"token": {}}
 
@@ -513,7 +513,8 @@ def google_token(monkeypatch):
 
             return redirect("https://accounts.google.test/o/oauth2/auth")
 
-    monkeypatch.setattr(main, "google", _FakeGoogle())
+    fake = _FakeGoogle()
+    monkeypatch.setattr(_oauth, "_google", lambda: fake)
 
     class _SetUser:
         def __call__(self, email=None, name="Sam Google", sub="sub-123"):

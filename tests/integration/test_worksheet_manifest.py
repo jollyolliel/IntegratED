@@ -96,6 +96,20 @@ def test_a_pdf_not_in_storage_yet_is_skipped_with_a_warning(db_session, shipped,
 # ── markdown ─────────────────────────────────────────────────────────────────
 
 
+def test_a_markdown_file_is_never_read_from_outside_the_worksheets_folder(tmp_path):
+    """The manifest check already refuses a path; this is the read's own guard behind it."""
+    from helpers.worksheet_manifest import _read_markdown
+
+    worksheets = tmp_path / "worksheets"
+    worksheets.mkdir()
+    (tmp_path / "secret.md").write_text("secret", encoding="utf-8")
+    (worksheets / "inside.md").write_text("inside", encoding="utf-8")
+
+    assert _read_markdown(str(worksheets), "../secret.md") is None
+    assert _read_markdown(str(worksheets), str(tmp_path / "secret.md")) is None
+    assert _read_markdown(str(worksheets), "inside.md") == "inside"
+
+
 def test_a_markdown_entry_stores_the_shipped_file_inline(db_session, shipped, storage):
     directory = shipped([_entry(file="greetings.md", title="Greetings")], greetings__md="# Hello\n")
 

@@ -24,19 +24,18 @@ already sits behind that role's gate — an ungated or multi-role file (e.g.
 `routes/base/_settings.py`, `routes/auth/_login.py`) must keep the base
 `current_user`.
 """
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 from flask_login import current_user as _current_user
 
-if TYPE_CHECKING:
-    from models import Administrator, Learner, SchoolAdmin, Teacher, User, Volunteer
+from models import Administrator, Learner, SchoolAdmin, Teacher, User, Volunteer
 
-current_user = cast("User", _current_user)
-current_learner = cast("Learner", _current_user)
-current_volunteer = cast("Volunteer", _current_user)
-current_teacher = cast("Teacher", _current_user)
-current_administrator = cast("Administrator", _current_user)
-current_school_admin = cast("SchoolAdmin", _current_user)
+current_user = cast(User, _current_user)
+current_learner = cast(Learner, _current_user)
+current_volunteer = cast(Volunteer, _current_user)
+current_teacher = cast(Teacher, _current_user)
+current_administrator = cast(Administrator, _current_user)
+current_school_admin = cast(SchoolAdmin, _current_user)
 
 __all__ = [
     "current_administrator",

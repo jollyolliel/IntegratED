@@ -102,6 +102,36 @@ def test_a_placeholder_with_no_value_leaves_the_string_intact(monkeypatch):
     assert i18n.make_translator("en")("greet.hi", other="x") == "Hello {name}"
 
 
+def test_a_placeholder_with_no_value_does_not_stop_the_others_filling(monkeypatch):
+    """A translator who translated one placeholder's name still gets the rest filled in."""
+
+    from helpers import i18n
+
+    monkeypatch.setitem(i18n._translations_cache, "en", {"greet": {"hi": "{école}: {name}"}})
+
+    assert i18n.make_translator("en")("greet.hi", name="Ada") == "{école}: Ada"
+
+
+@pytest.mark.parametrize("text", ["{name.__class__}", "{name[0]}", "{name!r}", "{name:>9}", "{0}", "{ name }"])
+def test_only_bare_named_placeholders_are_filled(monkeypatch, text):
+    """A translation is a file people edit: it must not reach attributes, items or conversions
+    of the values passed in, the way `str.format` would."""
+
+    from helpers import i18n
+
+    monkeypatch.setitem(i18n._translations_cache, "en", {"greet": {"hi": text}})
+
+    assert i18n.make_translator("en")("greet.hi", name="Ada") == text
+
+
+def test_a_stray_brace_in_a_translation_does_not_raise(monkeypatch):
+    from helpers import i18n
+
+    monkeypatch.setitem(i18n._translations_cache, "en", {"greet": {"hi": "{ {name} }"}})
+
+    assert i18n.make_translator("en")("greet.hi", name="Ada") == "{ Ada }"
+
+
 def test_a_missing_translation_falls_back_to_english(monkeypatch):
     from helpers import i18n
 

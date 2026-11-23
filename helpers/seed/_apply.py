@@ -20,7 +20,7 @@ from helpers.seed._config import (
 
 if TYPE_CHECKING:
     from helpers.storage import Bucket
-    from models import School, Teacher, User
+    from models import School, User
 
 __all__ = [
     "SeedCounts",
@@ -126,7 +126,7 @@ def _store_hero(name: str, files_dir: str, storage: Bucket) -> str:
     extension = sniff_image(data)
     if extension is None:
         raise SeedError(f"{name} is not a PNG, JPEG, WebP or GIF")
-    stored = f"{hashlib.md5(data).hexdigest()}.{extension}"
+    stored = f"{hashlib.md5(data, usedforsecurity=False).hexdigest()}.{extension}"
     storage.write(image_key(stored), data, IMAGE_TYPES[extension])
     return stored
 
