@@ -67,7 +67,9 @@ runs `security-and-quality` (a superset of the default and
 environment variables and files count as untrusted, which is what reaches
 `commands.py` and the content-folder sync), and the GitHub Security Lab
 community packs. It skips `scripts/`, `.claude/` and `tests/`: none of them
-ships in the image or runs on the server, and ruff and ty still lint them.
+ships in the image or runs on the server, and ruff and ty still lint them. Five
+queries whose every alert here was a false positive are excluded in
+`query-filters`, each with the reason and what still covers the risk.
 Findings land under the repository's *Security → Code scanning*. How to report
 a vulnerability: `SECURITY.md`.
 
