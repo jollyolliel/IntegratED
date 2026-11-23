@@ -42,9 +42,9 @@ dev = [
     "pytest-cov",
     "pytest-xdist",
     "coverage",
-    "ruff>=0.17.1",
-    "ty>=0.0.88",
-    "ast-grep-cli>=0.51.0",
+    "ruff>=0.17.6",
+    "ty>=0.0.107",
+    "ast-grep-cli>=0.51.3",
     "pyyaml>=6.0.3",
     # Reference only: tests/unit/test_assignment.py checks helpers/assignment.py
     # against scipy's solver. Production matching never imports it.
