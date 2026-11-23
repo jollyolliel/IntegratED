@@ -69,3 +69,39 @@ def test_manual_matching_respects_capacity(client, db_session, authenticated_tea
 
     assert first.status_code in {200, 302, 303}
     assert second.status_code == 400
+
+
+def test_an_unexpected_capacity_error_does_not_leak_its_text(
+    client, db_session, authenticated_teacher, capacity_group, monkeypatch
+):
+    from helpers import teacher_ops
+
+    def explode(*_args, **_kwargs):
+        raise ValueError("internal detail")
+
+    monkeypatch.setattr(teacher_ops, "set_volunteer_capacity", explode)
+    _, volunteer = capacity_group
+
+    response = client.post(
+        f"/teacher/volunteers/{volunteer.id}/capacity",
+        data={"capacity": 3},
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    )
+
+    assert response.status_code == 400
+    assert "internal detail" not in response.json["message"]
+
+
+def test_a_capacity_refusal_still_explains_itself(client, db_session, authenticated_teacher, capacity_group):
+    from helpers.teacher_ops import MAX_VOLUNTEER_CAPACITY
+
+    _, volunteer = capacity_group
+
+    response = client.post(
+        f"/teacher/volunteers/{volunteer.id}/capacity",
+        data={"capacity": 99},
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    )
+
+    assert response.status_code == 400
+    assert str(MAX_VOLUNTEER_CAPACITY) in response.json["message"]

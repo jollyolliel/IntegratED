@@ -8,8 +8,14 @@ from extensions import db
 from helpers import teacher_ops
 from helpers.analytics import capture_event
 from helpers.current_user import current_teacher as current_user
+from helpers.refusal import refusal_message
 from helpers.render import render_template
-from helpers.utils import day_bounds, wants_fragment, wants_json
+from helpers.utils import (
+    day_bounds,
+    same_site_referrer_path,
+    wants_fragment,
+    wants_json,
+)
 from models import Attendance, Learner
 from routes.teacher import teacher_bp
 from routes.teacher.dashboard import _learner_sort_key, _volunteer_sort_key
@@ -320,11 +326,11 @@ def teacher_update_attendance():
     except (LookupError, PermissionError):
         abort(403)
     except ValueError as exc:
-        message = str(exc)
+        message = refusal_message(exc)
         if wants_json():
             return jsonify(success=False, message=message), 400
         flash(message, "error")
-        return redirect(request.referrer or url_for("teacher.teacher_attendance_history"))
+        return redirect(same_site_referrer_path() or url_for("teacher.teacher_attendance_history"))
 
     capture_event(
         str(teacher.id),
@@ -348,7 +354,7 @@ def teacher_update_attendance():
                 "notes": record.notes or "",
             },
         )
-    return redirect(request.referrer or url_for("teacher.teacher_attendance_history"))
+    return redirect(same_site_referrer_path() or url_for("teacher.teacher_attendance_history"))
 
 
 @teacher_bp.route("/attendance/log", methods=["POST"])
@@ -389,7 +395,7 @@ def teacher_log_attendance():
     except (LookupError, PermissionError):
         return jsonify({"status": "error", "message": "Not your learner or volunteer."}), 403
     except ValueError as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
+        return jsonify({"status": "error", "message": refusal_message(exc)}), 400
 
     capture_event(
         str(teacher.id),

@@ -40,7 +40,7 @@ usually needs one file, not the folder.
 - Prefer the simpler route when it gets the same result.
 - Python through `uv`: `uv run -m pytest`, `uv run main.py`, `uv sync`,
   `uv add <pkg>`. Never bare `uv run pytest` — it drops the repo from
-  `sys.path` and every import fails. Without uv, `.venv/Scripts/python.exe`.
+  `sys.path` and every import fails.
 - Touched `.py` files → `uv run ruff check .` and `uv run ty check`, as CI
   does. Fix what the diff introduced; pre-existing findings elsewhere aren't
   yours unless asked.
@@ -53,14 +53,11 @@ usually needs one file, not the folder.
 - A change that makes a sentence in `docs/` or `.claude/rules/` false → fix
   that sentence in the same response. Adding new doc prose is a judgment call:
   `docs/README.md` says what belongs.
-- Several agents may share this working tree at once, so `git status`/`git diff`
-  include their edits. Never `git stash`, `checkout --`, `reset` or `clean` —
-  they destroy their changes.
-- Hook output on stderr (Stop checks, Impeccable design pass, lint) is blocking
-  feedback. For each finding, check whether it points at a file or line you
-  edited this session: if so, fix it in the same turn. If it points only at
-  files you did not edit, it is another agent's in-progress work — ignore it,
-  and mention it only if it blocks you. When unsure whether a finding is yours
+- Hook output on stderr (Stop checks, lint) is blocking feedback. For each
+  finding, check whether it points at a file or line you edited this session:
+  if so, fix it in the same turn. If it points only at files you did not edit,
+  it is someone else's in-progress work — ignore it, and mention it only if it
+  blocks you. When unsure whether a finding is yours
   (you edited that file, but not that line), treat it as yours and fix it.
 - Batch independent tool calls into one message; serialize only when a call
   needs a prior result.
@@ -77,13 +74,12 @@ Green pytest is not proof. Before finishing:
    else `uv run main.py` in the background.
    - Route/API/logic → the tests that cover it (the full suite only for
      broad changes) + `curl` the endpoint and check the response/redirect.
-   - Anything a user sees or clicks → Claude in Chrome on that page, as each
+   - Anything a user sees or clicks → that page in a real browser, as each
      role that sees it: `/dev/login-as?type=<user_type>&next=/path` (`next` is the full path with
      the role prefix, e.g. `/learner/map`, never `/map`). Set first-run state with
      `&survey=0|1` and `&map_test=0|1|deferred` (learner). Click
      through the flow; check the console for errors.
    - Copy or style tweak → load the one page it's on.
-   Never Playwright or headless browser simulation.
 3. **Report what you exercised and how** — "tests pass" alone is not a report.
 
 ## Issue tracker

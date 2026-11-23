@@ -24,6 +24,7 @@ from sqlalchemy import select
 
 from extensions import db
 from helpers.auth_utils import dashboard_url, is_local_dev_request, sign_in
+from helpers.utils import safe_local_path
 from models import Administrator, Learner, School, SchoolAdmin, Teacher, User, Volunteer
 from routes.base import base_bp
 
@@ -166,8 +167,4 @@ def dev_login_as():
     _apply_state(user)
     sign_in(user)
 
-    next_path = request.args.get("next", "")
-    # "/\host" is a protocol-relative URL to browsers, same as "//host".
-    if next_path.startswith("/") and not next_path.startswith(("//", "/\\")):
-        return redirect(next_path)
-    return redirect(dashboard_url(user))
+    return redirect(safe_local_path(request.args.get("next")) or dashboard_url(user))

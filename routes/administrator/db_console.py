@@ -1,16 +1,23 @@
 """Raw-SQL admin console — ad-hoc query runner, table browser, and JSON
 export/import. Isolated in its own module so an AI editing the CMS or
-people routes doesn't need to load the injection-guard code alongside them."""
+people routes doesn't need to load the injection-guard code alongside them.
+
+Every statement except the ad-hoc query is built with SQLAlchemy Core
+against a lightweight `table()` whose columns are read from the live DB:
+a table or column name from a URL or request body is looked up there first
+(unknown → 404 / 400) and is then quoted by the dialect's compiler, never
+pasted into a SQL string. Columns are untyped (`NullType`), so values pass
+to the driver exactly as `text()` bind parameters would — no ORM coercion."""
 
 import json
 import os
-import re
 from datetime import datetime
-from typing import cast
+from typing import Any, cast
 
 from flask import (
     Response,
     abort,
+    current_app,
     flash,
     jsonify,
     redirect,
@@ -18,9 +25,12 @@ from flask import (
     url_for,
 )
 from flask_login import login_required
+from sqlalchemy import and_, column, delete, func, insert, select, table, text, update
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy import text
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.exc import DataError, IntegrityError
+from sqlalchemy.sql.expression import TableClause
 
 from extensions import db
 from helpers.render import render_template
@@ -29,10 +39,35 @@ from routes.administrator import admin_required, administrator_bp
 
 # ===================== DB Stats =====================
 
+def _strip_sql_comments(sql):
+    """`sql` with `/* block */` and `-- line` comments removed, in one linear
+    pass (a regex over `/* … */` rescans the rest of the string from every
+    `/*`, which is quadratic on a hostile input). An unterminated block
+    comment swallows the rest of the string, as the database would. It does
+    not understand string literals — a `'--'` inside quotes is treated as a
+    comment start, which can only make the guard below refuse more."""
+    out = []
+    i, n = 0, len(sql)
+    while i < n:
+        if sql.startswith("/*", i):
+            end = sql.find("*/", i + 2)
+            if end == -1:
+                break
+            out.append(" ")
+            i = end + 2
+        elif sql.startswith("--", i):
+            end = sql.find("\n", i + 2)
+            if end == -1:
+                break
+            i = end
+        else:
+            out.append(sql[i])
+            i += 1
+    return "".join(out)
+
 def _safe_is_select(sql):
-    """Gate for the admin ad-hoc SQL console (`db_query` below) — the only
-    thing standing between an admin-authenticated request and an arbitrary
-    write/DDL statement run directly against prod.
+    """First gate for the admin ad-hoc SQL console (`db_query` below); the
+    second is the read-only connection `_run_read_only` runs it on.
 
     Allows exactly one thing: a single statement whose first token is
     `SELECT`. Strips `/* block */` and `-- line` comments first so a
@@ -40,31 +75,49 @@ def _safe_is_select(sql):
     that isn't a single optional trailing terminator — this blocks
     statement-stacking (`SELECT 1; DROP TABLE users`). It is a prefix check,
     not a parser: it does not understand CTEs (`WITH ... SELECT` is
-    rejected), multi-statement batching via other DB-specific separators, or
-    whether the SELECT reads something sensitive. It only decides
-    read-vs-write; it does not scope *which* rows or tables a SELECT may
-    touch, and it does not apply to `db_table`, `db_update_row`,
-    `db_delete_row`, or `db_add_row` below, which build their own
-    parameterized SQL against an admin-chosen table directly and are not
-    routed through this guard."""
-    clean = re.sub(r'/\*.*?\*/', '', sql, flags=re.DOTALL)
-    clean = re.sub(r'--[^\n]*', '', clean)
-    clean = clean.strip()
+    rejected), and a `SELECT` can still call a function that writes — which
+    is what the read-only connection is for. It only decides read-vs-write;
+    it does not scope *which* rows or tables a SELECT may touch."""
+    clean = _strip_sql_comments(sql).strip()
     if ';' in clean.rstrip(';'):
         return False
     return clean.upper().startswith('SELECT')
+
+def _run_read_only(sql):
+    """Run the admin's SELECT on its own connection that the database itself
+    holds read-only — Postgres `SET TRANSACTION READ ONLY` (plus a statement
+    timeout), SQLite `PRAGMA query_only` — and always roll back. Returns
+    (column names, up to 100 rows)."""
+    with db.engine.connect() as conn:
+        dialect = conn.dialect.name
+        if dialect == "postgresql":
+            conn.execute(text("SET TRANSACTION READ ONLY"))
+            conn.execute(text("SET LOCAL statement_timeout = '15s'"))
+        elif dialect == "sqlite":
+            conn.exec_driver_sql("PRAGMA query_only = ON")
+        try:
+            # The console's whole job is running SQL an administrator typed: `_safe_is_select`
+            # and the read-only transaction above are its guards, not parameterisation.
+            res = conn.execute(text(sql))
+            return list(res.keys()), [list(row) for row in res.fetchmany(100)]
+        finally:
+            conn.rollback()
+            if dialect == "sqlite":
+                conn.exec_driver_sql("PRAGMA query_only = OFF")
 
 def _build_db_stats():
     """Row count per table for the `/db` landing page. A table that fails to
     count (e.g. locked, or a dialect-specific quirk) shows "—" instead."""
     all_tables = _get_all_table_names()
     stats = {}
-    for table in all_tables:
+    for name in all_tables:
         try:
-            count = db.session.execute(text(f'SELECT COUNT(*) FROM "{table}"')).scalar()
-            stats[table] = count
+            stats[name] = db.session.execute(
+                select(func.count()).select_from(table(name))
+            ).scalar()
         except Exception:  # noqa: BLE001 - per-table best-effort count against an arbitrary/unmodeled table; failure surface is dialect- and table-specific, must not 500 the whole stats page
-            stats[table] = "—"
+            db.session.rollback()
+            stats[name] = "—"
     return stats, all_tables
 
 @administrator_bp.route("/db")
@@ -90,11 +143,12 @@ def db_stats():
 @login_required
 @admin_required
 def db_query():
-    """Run an admin-typed SQL string and show up to 100 rows. Safety is
-    entirely `_safe_is_select`'s job (see its docstring for exactly what it
-    does and doesn't block) — this handler trusts that gate completely and
-    otherwise just executes the raw string via `text()`. Any DB error (bad
-    syntax, missing table) is shown as `query_error`."""
+    """Run an admin-typed SQL string and show up to 100 rows. Two guards:
+    `_safe_is_select` refuses anything that isn't one SELECT, and
+    `_run_read_only` runs what passes on a read-only connection, so a write
+    the prefix check misses fails in the database. Any DB error (bad syntax,
+    missing table, a refused write) is shown as `query_error` — an admin
+    debugging SQL needs the database's own words."""
     sql = request.form.get("sql", "").strip()
     columns = []
     rows = []
@@ -104,9 +158,7 @@ def db_query():
         query_error = "Only SELECT statements are allowed. No semicolons mid-statement."
     else:
         try:
-            res = db.session.execute(text(sql))
-            columns = list(res.keys())
-            rows = [list(row) for row in res.fetchmany(100)]
+            columns, rows = _run_read_only(sql)
         except Exception as e:  # noqa: BLE001 - admin console runs arbitrary ad-hoc SQL; any DB error must be shown as query_error, not raised
             query_error = str(e)
 
@@ -143,6 +195,51 @@ def _get_db_size():
         pass
     return None
 
+# ===================== Identifiers and errors =====================
+
+class _UnknownColumn(ValueError):
+    """A request body named a column the table doesn't have."""
+
+def _table(table_name):
+    """`table_name` as a Core table with every column the live DB gives it,
+    or None when the DB has no such table."""
+    inspector = sa_inspect(db.engine)
+    if table_name not in inspector.get_table_names():
+        return None
+    return table(table_name, *(column(c["name"]) for c in inspector.get_columns(table_name)))
+
+def _col(tbl: TableClause, name):
+    """The table's own column called `name`; `_UnknownColumn` for anything else."""
+    if not isinstance(name, str) or name not in tbl.c:
+        raise _UnknownColumn(name)
+    return tbl.c[name]
+
+def _values(tbl: TableClause, row: dict[str, Any], *, blank_is_null=False):
+    """`{column: value}` for a request-body row, every key checked against the table."""
+    return {_col(tbl, k): (None if blank_is_null and v == "" else v) for k, v in row.items()}
+
+def _pk_clause(tbl: TableClause, pk_cols, pk_values: dict[str, Any]):
+    """`WHERE pk1 = :a AND pk2 = :b` — the body must name exactly the table's
+    primary-key columns, so an edit or delete addresses one row and never a
+    set of rows picked by some other column."""
+    if not pk_cols or set(pk_values) != set(pk_cols):
+        raise _UnknownColumn(None)
+    return and_(*(_col(tbl, k) == v for k, v in pk_values.items()))
+
+def _db_error_message(exc):
+    """What the admin sees when a write fails. The driver's own text names
+    constraints, SQL and the driver itself, so it goes to the server log
+    and the response carries a fixed line per kind of failure."""
+    if isinstance(exc, _UnknownColumn):
+        return "That names a column this table doesn't have, or not exactly its primary key."
+    current_app.logger.warning("DB console write refused by the database", exc_info=exc)
+    if isinstance(exc, IntegrityError):
+        return ("The database refused it: a required value is missing, a value is already "
+                "taken, or a referenced row doesn't exist.")
+    if isinstance(exc, DataError):
+        return "A value doesn't fit its column's type."
+    return "The database refused it. The server log has the details."
+
 # ===================== DB Table Browser =====================
 
 _DB_PAGE_SIZE = 50
@@ -177,8 +274,7 @@ def _parse_focus(cols_info):
     """The `?focus_col=&focus_val=` pair a foreign-key link carries, as
     (column, value coerced to the column's Python type), or None when absent,
     naming no real column, or not coercible — a bad link just shows the whole
-    table. The column name is checked against the table's own columns, which
-    is what makes it safe to quote into SQL."""
+    table."""
     col = request.args.get("focus_col", "")
     raw = request.args.get("focus_val")
     by_name = {c["name"]: c for c in cols_info}
@@ -199,34 +295,34 @@ def _parse_focus(cols_info):
 @admin_required
 def db_table(table_name):
     """Paginated raw dump of one table, any table the DB has — `table_name`
-    is only checked against `_get_all_table_names()`/`_get_table_meta`, not
-    against a fixed allowlist, so this (and its sibling update/delete/add-row
-    routes) reaches every table including ones with no app-level model."""
+    is only checked against the live DB's own table list, not against a
+    fixed allowlist, so this (and its sibling update/delete/add-row routes)
+    reaches every table including ones with no app-level model."""
     cols_info, pk_cols = _get_table_meta(table_name)
-    if cols_info is None:
+    tbl = _table(table_name)
+    if cols_info is None or tbl is None:
         abort(404)
 
     try:
-        total = db.session.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar_one()
+        total = db.session.execute(select(func.count()).select_from(tbl)).scalar_one()
     except Exception as e:  # noqa: BLE001 - reads an admin-chosen table with no fixed schema; error surface is dialect- and table-specific, shown to the admin rather than raised
-        flash(f"Error reading table: {e}", "error")
+        db.session.rollback()
+        flash(f"Error reading table: {_db_error_message(e)}", "error")
         return redirect(url_for("administrator.db_stats"))
 
     # Single-column primary keys give a stable order, so pages don't shuffle
     # and a focused row's page can be computed.
-    order = f' ORDER BY "{pk_cols[0]}"' if len(pk_cols) == 1 else ""
+    pk = tbl.c[pk_cols[0]] if len(pk_cols) == 1 else None
     focus = _parse_focus(cols_info)
     focus_page = None
-    if focus and order and "page" not in request.args:
+    if focus and pk is not None and "page" not in request.args:
         try:
-            pk = pk_cols[0]
             target = db.session.execute(
-                text(f'SELECT "{pk}" FROM "{table_name}" WHERE "{focus[0]}" = :v{order} LIMIT 1'),
-                {"v": focus[1]},
+                select(pk).where(tbl.c[focus[0]] == focus[1]).order_by(pk).limit(1)
             ).scalar()
             if target is not None:
                 before = db.session.execute(
-                    text(f'SELECT COUNT(*) FROM "{table_name}" WHERE "{pk}" < :t'), {"t": target}
+                    select(func.count()).select_from(tbl).where(pk < target)
                 ).scalar_one()
                 focus_page = before // _DB_PAGE_SIZE + 1
         except Exception:  # noqa: BLE001 - best-effort page lookup on an arbitrary table; failure just means no jump
@@ -237,15 +333,16 @@ def db_table(table_name):
         page = min(focus_page, total_pages)
     offset = (page - 1) * _DB_PAGE_SIZE
 
+    query = select(tbl)
+    if pk is not None:
+        query = query.order_by(pk)
     try:
-        result = db.session.execute(
-            text(f'SELECT * FROM "{table_name}"{order} LIMIT :lim OFFSET :off'),
-            {"lim": _DB_PAGE_SIZE, "off": offset},
-        )
+        result = db.session.execute(query.limit(_DB_PAGE_SIZE).offset(offset))
         col_names = list(result.keys())
         rows = [list(row) for row in result.fetchall()]
     except Exception as e:  # noqa: BLE001 - reads an admin-chosen table with no fixed schema; error surface is dialect- and table-specific, shown to the admin rather than raised
-        flash(f"Error reading table: {e}", "error")
+        db.session.rollback()
+        flash(f"Error reading table: {_db_error_message(e)}", "error")
         return redirect(url_for("administrator.db_stats"))
 
     ctx = {
@@ -273,36 +370,32 @@ def db_update_row(table_name):
     validator/hook a model would normally run (password hashing, cascades,
     `is_matched` sync, etc.) — this writes columns directly. An empty-string
     value is coerced to `NULL`, since the table editor UI has no other way
-    to express "clear this field"."""
+    to express "clear this field". `pk` must name exactly the table's
+    primary-key columns and `updates` only its own columns (else 400)."""
     _, pk_cols = _get_table_meta(table_name)
-    if pk_cols is None:
+    tbl = _table(table_name)
+    if pk_cols is None or tbl is None:
         return jsonify({"error": "Table not found"}), 404
 
-    data = request.get_json()
-    pk_values = data.get("pk") if data else None
-    updates = data.get("updates") if data else None
-    if not pk_values or not updates:
+    data = request.get_json(silent=True)
+    pk_values = data.get("pk") if isinstance(data, dict) else None
+    updates = data.get("updates") if isinstance(data, dict) else None
+    if not isinstance(pk_values, dict) or not isinstance(updates, dict) or not pk_values or not updates:
         return jsonify({"error": "Missing pk or updates"}), 400
 
-    set_parts = []
-    params = {}
-    for i, (col, val) in enumerate(updates.items()):
-        set_parts.append(f'"{col}" = :val_{i}')
-        params[f"val_{i}"] = None if val == "" else val
-
-    where_parts = []
-    for i, (col, val) in enumerate(pk_values.items()):
-        where_parts.append(f'"{col}" = :pk_{i}')
-        params[f"pk_{i}"] = val
-
-    sql = f'UPDATE "{table_name}" SET {", ".join(set_parts)} WHERE {" AND ".join(where_parts)}'
     try:
-        db.session.execute(text(sql), params)
+        stmt = update(tbl).where(_pk_clause(tbl, pk_cols, pk_values)).values(
+            _values(tbl, updates, blank_is_null=True)
+        )
+    except _UnknownColumn as e:
+        return jsonify({"error": _db_error_message(e)}), 400
+    try:
+        db.session.execute(stmt)
         db.session.commit()
         return jsonify({"ok": True})
     except Exception as e:  # noqa: BLE001 - writes an admin-chosen table with no fixed schema, bypassing ORM validation; error surface is dialect- and table-specific, returned as JSON rather than raised
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": _db_error_message(e)}), 500
 
 @administrator_bp.route("/db/table/<table_name>/delete-row", methods=["POST"])
 @login_required
@@ -311,27 +404,26 @@ def db_delete_row(table_name):
     """Delete one row by primary key from any table — a raw `DELETE`, so no
     cascade/unmatch logic a model-level delete would trigger runs here.
     404s when the pk matched no row, distinct from a 500, so the UI can tell
-    "already gone" from "the delete failed"."""
+    "already gone" from "the delete failed". `pk` must name exactly the
+    table's primary-key columns (else 400)."""
     _, pk_cols = _get_table_meta(table_name)
-    if pk_cols is None:
+    tbl = _table(table_name)
+    if pk_cols is None or tbl is None:
         return jsonify({"error": "Table not found"}), 404
 
-    data = request.get_json()
-    pk_values = data.get("pk") if data else None
-    if not pk_values:
+    data = request.get_json(silent=True)
+    pk_values = data.get("pk") if isinstance(data, dict) else None
+    if not isinstance(pk_values, dict) or not pk_values:
         return jsonify({"error": "Missing pk"}), 400
 
-    where_parts = []
-    params = {}
-    for i, (col, val) in enumerate(pk_values.items()):
-        where_parts.append(f'"{col}" = :pk_{i}')
-        params[f"pk_{i}"] = val
-
-    sql = f'DELETE FROM "{table_name}" WHERE {" AND ".join(where_parts)}'
     try:
-        # A DELETE via text() always executes as a CursorResult at runtime;
+        stmt = delete(tbl).where(_pk_clause(tbl, pk_cols, pk_values))
+    except _UnknownColumn as e:
+        return jsonify({"error": _db_error_message(e)}), 400
+    try:
+        # A DELETE always executes as a CursorResult at runtime;
         # Session.execute()'s general overload just doesn't say so statically.
-        result = cast(CursorResult, db.session.execute(text(sql), params))
+        result = cast(CursorResult, db.session.execute(stmt))
         if result.rowcount == 0:
             db.session.rollback()
             return jsonify({"error": "No row matched that primary key"}), 404
@@ -339,7 +431,7 @@ def db_delete_row(table_name):
         return jsonify({"ok": True})
     except Exception as e:  # noqa: BLE001 - deletes from an admin-chosen table with no fixed schema; error surface is dialect- and table-specific, returned as JSON rather than raised
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": _db_error_message(e)}), 500
 
 @administrator_bp.route("/db/table/<table_name>/add-row", methods=["POST"])
 @login_required
@@ -348,28 +440,28 @@ def db_add_row(table_name):
     """Insert one row into any table from raw column values — no model
     validation, no default/hook logic (e.g. no password hashing if the
     table is a user subtype), just a parameterized `INSERT`. Empty-string
-    values are coerced to `NULL`, same convention as `db_update_row`."""
-    cols_info, _ = _get_table_meta(table_name)
-    if cols_info is None:
+    values are coerced to `NULL`, same convention as `db_update_row`; a
+    key that isn't one of the table's columns is a 400."""
+    tbl = _table(table_name)
+    if tbl is None:
         return jsonify({"error": "Table not found"}), 404
 
-    data = request.get_json()
-    row = data.get("row") if data else None
-    if not row:
+    data = request.get_json(silent=True)
+    row = data.get("row") if isinstance(data, dict) else None
+    if not isinstance(row, dict) or not row:
         return jsonify({"error": "No row data"}), 400
 
-    col_parts = [f'"{c}"' for c in row]
-    val_parts = [f":v_{i}" for i in range(len(row))]
-    params = {f"v_{i}": (None if v == "" else v) for i, v in enumerate(row.values())}
-
-    sql = f'INSERT INTO "{table_name}" ({", ".join(col_parts)}) VALUES ({", ".join(val_parts)})'
     try:
-        db.session.execute(text(sql), params)
+        stmt = insert(tbl).values(_values(tbl, row, blank_is_null=True))
+    except _UnknownColumn as e:
+        return jsonify({"error": _db_error_message(e)}), 400
+    try:
+        db.session.execute(stmt)
         db.session.commit()
         return jsonify({"ok": True})
     except Exception as e:  # noqa: BLE001 - inserts into an admin-chosen table with no fixed schema, bypassing ORM validation; error surface is dialect- and table-specific, returned as JSON rather than raised
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": _db_error_message(e)}), 500
 
 # ===================== DB Export =====================
 
@@ -381,6 +473,14 @@ def _serialize_val(v):
         return v.isoformat()
     return v
 
+def _export_rows(tbl: TableClause):
+    result = db.session.execute(select(tbl))
+    col_names = list(result.keys())
+    return [
+        {col: _serialize_val(val) for col, val in zip(col_names, row)}
+        for row in result.fetchall()
+    ]
+
 @administrator_bp.route("/db/export")
 @login_required
 @admin_required
@@ -390,18 +490,14 @@ def db_export_full():
     Treat the download as equivalent in sensitivity to a raw DB backup, and
     as the exact shape `db_import`'s "Full DB" mode expects back. A table
     that fails to read exports as `[]`."""
-    tables = _get_all_table_names()
     export = {}
-    for table in tables:
+    for name in _get_all_table_names():
+        tbl = _table(name)
         try:
-            result = db.session.execute(text(f'SELECT * FROM "{table}"'))
-            col_names = list(result.keys())
-            export[table] = [
-                {col: _serialize_val(val) for col, val in zip(col_names, row)}
-                for row in result.fetchall()
-            ]
+            export[name] = _export_rows(tbl) if tbl is not None else []
         except Exception:  # noqa: BLE001 - per-table best-effort export of an arbitrary/unmodeled table; a failure must not abort the whole export file
-            export[table] = []
+            db.session.rollback()
+            export[name] = []
 
     ts = utcnow_naive().strftime("%Y%m%d_%H%M%S")
     return Response(
@@ -417,50 +513,44 @@ def db_export_table(table_name):
     """Single-table counterpart to `db_export_full` — same no-filtering
     caveat applies, and the output shape (a bare JSON array of row objects)
     is what `db_import`'s "table" mode expects back."""
-    cols_info, _ = _get_table_meta(table_name)
-    if cols_info is None:
+    tbl = _table(table_name)
+    if tbl is None:
         abort(404)
 
     try:
-        result = db.session.execute(text(f'SELECT * FROM "{table_name}"'))
-        col_names = list(result.keys())
-        rows = [
-            {col: _serialize_val(val) for col, val in zip(col_names, row)}
-            for row in result.fetchall()
-        ]
+        rows = _export_rows(tbl)
     except Exception as e:  # noqa: BLE001 - reads an admin-chosen table with no fixed schema; error surface is dialect- and table-specific, shown to the admin rather than raised
-        flash(f"Export error: {e}", "error")
+        db.session.rollback()
+        flash(f"Export error: {_db_error_message(e)}", "error")
         return redirect(url_for("administrator.db_table", table_name=table_name))
 
     ts = utcnow_naive().strftime("%Y%m%d_%H%M%S")
     return Response(
         json.dumps(rows, indent=2, default=str),
         mimetype="application/json",
-        headers={"Content-Disposition": f"attachment; filename={table_name}_{ts}.json"},
+        headers={"Content-Disposition": f"attachment; filename={tbl.name}_{ts}.json"},
     )
 
 # ===================== DB Import =====================
 
-def _bulk_insert(table_name, rows):
+def _insert_ignoring_conflicts(tbl: TableClause, row: dict[str, Any]):
+    """`INSERT … ON CONFLICT DO NOTHING` (Postgres) / `INSERT OR IGNORE` (SQLite)."""
+    values = _values(tbl, row)
+    if db.engine.dialect.name == "postgresql":
+        return postgresql.insert(tbl).values(values).on_conflict_do_nothing()
+    return insert(tbl).values(values).prefix_with("OR IGNORE")
+
+def _bulk_insert(tbl: TableClause, rows):
     """Insert every row, silently skipping (not erroring on) any that
     collides with an existing primary key — `ON CONFLICT DO NOTHING` /
     `INSERT OR IGNORE`. Used for "replace" import modes where the table was
     just wiped so collisions aren't expected, and for merge modes where a
     caller has already decided a plain insert (not an upsert) is correct."""
-    is_pg = db.engine.dialect.name == "postgresql"
     for row in rows:
-        if not row:
-            continue
-        col_parts = [f'"{c}"' for c in row]
-        val_parts = [f":v_{i}" for i in range(len(row))]
-        params = {f"v_{i}": v for i, v in enumerate(row.values())}
-        if is_pg:
-            sql = f'INSERT INTO "{table_name}" ({", ".join(col_parts)}) VALUES ({", ".join(val_parts)}) ON CONFLICT DO NOTHING'
-        else:
-            sql = f'INSERT OR IGNORE INTO "{table_name}" ({", ".join(col_parts)}) VALUES ({", ".join(val_parts)})'
-        db.session.execute(text(sql), params)
+        if row:
+            db.session.execute(_insert_ignoring_conflicts(tbl, row))
 
-def _upsert_rows(table_name, rows, pk_cols):
+def _upsert_rows(tbl: TableClause, rows, pk_cols):
     """Update-if-exists, insert-if-not, keyed on the table's actual primary
     key columns. A row with no pk value present is just inserted (can't be
     matched to an existing one). This silently overwrites every non-pk
@@ -471,36 +561,30 @@ def _upsert_rows(table_name, rows, pk_cols):
             continue
         pk_vals = {col: row[col] for col in pk_cols if col in row}
         if not pk_vals:
-            _bulk_insert(table_name, [row])
+            _bulk_insert(tbl, [row])
             continue
 
-        where_parts = [f'"{col}" = :pk_{i}' for i, col in enumerate(pk_cols)]
-        where_params = {f"pk_{i}": pk_vals[col] for i, col in enumerate(pk_cols)}
-        exists = db.session.execute(
-            text(f'SELECT 1 FROM "{table_name}" WHERE {" AND ".join(where_parts)}'),
-            where_params,
-        ).scalar()
+        where = and_(*(_col(tbl, col) == pk_vals.get(col) for col in pk_cols))
+        exists = db.session.execute(select(1).select_from(tbl).where(where)).scalar()
 
         if exists:
-            set_parts = []
-            upd_params = dict(where_params)
-            for j, (col, val) in enumerate(row.items()):
-                if col not in pk_cols:
-                    set_parts.append(f'"{col}" = :u_{j}')
-                    upd_params[f"u_{j}"] = val
-            if set_parts:
-                db.session.execute(
-                    text(f'UPDATE "{table_name}" SET {", ".join(set_parts)} WHERE {" AND ".join(where_parts)}'),
-                    upd_params,
-                )
+            changes = {k: v for k, v in row.items() if k not in pk_cols}
+            if changes:
+                db.session.execute(update(tbl).where(where).values(_values(tbl, changes)))
         else:
-            col_parts = [f'"{c}"' for c in row]
-            val_parts = [f":v_{i}" for i in range(len(row))]
-            params = {f"v_{i}": v for i, v in enumerate(row.values())}
-            db.session.execute(
-                text(f'INSERT INTO "{table_name}" ({", ".join(col_parts)}) VALUES ({", ".join(val_parts)})'),
-                params,
-            )
+            db.session.execute(insert(tbl).values(_values(tbl, row)))
+
+def _check_rows(tbl: TableClause, rows):
+    """Raise `_UnknownColumn` before anything is deleted if any row names a
+    column the table doesn't have — so a bad file can't wipe a table and
+    then fail on its first insert."""
+    if not isinstance(rows, list):
+        raise _UnknownColumn(None)
+    for row in rows:
+        if not isinstance(row, dict):
+            raise _UnknownColumn(None)
+        for key in row:
+            _col(tbl, key)
 
 @administrator_bp.route("/db/import", methods=["POST"])
 @login_required
@@ -512,7 +596,8 @@ def db_import():
     JSON object of table->rows) and `replace_table`/`merge_rows` (single-table
     import, bare JSON array + `table_name` — see `_bulk_insert`/`_upsert_rows`
     for exact per-mode delete/rollback semantics). Input shape (object vs
-    array) picks full-DB vs single-table automatically."""
+    array) picks full-DB vs single-table automatically. Every row's columns
+    are checked against its table before anything is deleted."""
     f = request.files.get("file")
     mode = request.form.get("mode", "")
     target_table = request.form.get("table_name", "").strip()
@@ -533,49 +618,57 @@ def db_import():
 
     try:
         if is_full_db:
+            if mode not in ("replace_all", "merge_tables"):
+                flash("Unknown import mode.", "error")
+                return redirect(url_for("administrator.db_stats"))
+            # Tables the file names that the DB doesn't have are skipped, as before.
+            imports = []
+            for name, rows in data.items():
+                tbl = _table(name) if name in all_tables else None
+                if tbl is not None:
+                    _check_rows(tbl, rows)
+                    imports.append((tbl, rows))
             if mode == "replace_all":
                 # This delete is committed on its own, before any insert — unlike
                 # every other mode below, a wipe here is NOT covered by the
-                # rollback on the insert phase's exception handler. A missing
-                # table, malformed JSON, or an insert failure leaves that
-                # table's data permanently gone.
-                for table in reversed(all_tables):
-                    db.session.execute(text(f'DELETE FROM "{table}"'))
+                # rollback on the insert phase's exception handler. An insert
+                # failure leaves that table's data permanently gone.
+                for name in reversed(all_tables):
+                    tbl = _table(name)
+                    if tbl is not None:
+                        db.session.execute(delete(tbl))
                 db.session.commit()
-                for table_name, rows in data.items():
-                    if table_name in all_tables:
-                        _bulk_insert(table_name, rows)
-            elif mode == "merge_tables":
-                for table_name, rows in data.items():
-                    if table_name in all_tables:
-                        db.session.execute(text(f'DELETE FROM "{table_name}"'))
-                        _bulk_insert(table_name, rows)
+                for tbl, rows in imports:
+                    _bulk_insert(tbl, rows)
             else:
-                flash("Unknown import mode.", "error")
-                return redirect(url_for("administrator.db_stats"))
+                for tbl, rows in imports:
+                    db.session.execute(delete(tbl))
+                    _bulk_insert(tbl, rows)
             db.session.commit()
             flash(f"Full DB imported ({mode}).", "success")
 
         elif is_table_data and target_table:
-            if target_table not in all_tables:
-                flash(f"Table '{target_table}' not found.", "error")
+            tbl = _table(target_table)
+            if tbl is None:
+                flash("That table was not found.", "error")
                 return redirect(url_for("administrator.db_stats"))
-            _, pk_cols = _get_table_meta(target_table)
-            if mode == "replace_table":
-                db.session.execute(text(f'DELETE FROM "{target_table}"'))
-                _bulk_insert(target_table, data)
-            elif mode == "merge_rows":
-                _upsert_rows(target_table, data, pk_cols)
-            else:
+            if mode not in ("replace_table", "merge_rows"):
                 flash("Unknown import mode.", "error")
                 return redirect(url_for("administrator.db_stats"))
+            _check_rows(tbl, data)
+            _, pk_cols = _get_table_meta(target_table)
+            if mode == "replace_table":
+                db.session.execute(delete(tbl))
+                _bulk_insert(tbl, data)
+            else:
+                _upsert_rows(tbl, data, pk_cols or [])
             db.session.commit()
-            flash(f"Table '{target_table}' imported ({mode}).", "success")
+            flash(f"Table '{tbl.name}' imported ({mode}).", "success")
 
         else:
             flash("Cannot determine import type. Full DB = JSON object; table = JSON array with table selected.", "error")
     except Exception as e:  # noqa: BLE001 - imports arbitrary admin-uploaded data into arbitrary/unmodeled tables; error surface is dialect- and data-specific, shown as a flash message rather than raised
         db.session.rollback()
-        flash(f"Import failed: {e}", "error")
+        flash(f"Import failed: {_db_error_message(e)}", "error")
 
     return redirect(url_for("administrator.db_stats"))

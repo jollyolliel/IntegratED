@@ -28,7 +28,9 @@ def test_login_by_id_signs_in_and_lands_on_the_role_dashboard(client, db_session
     assert _session_user_id(client) == str(teacher.id)
 
 
-@pytest.mark.parametrize("next_path", ["//evil.example", "/\\evil.example", "https://evil.example"])
+@pytest.mark.parametrize(
+    "next_path", ["//evil.example", "/\\evil.example", "https://evil.example", "/\t/evil.example"]
+)
 def test_next_never_redirects_off_site(client, db_session, next_path):
     school = make_school(db_session)
     teacher = make_teacher(db_session, school)

@@ -192,7 +192,140 @@ def test_a_failing_insert_reports_the_error(client, db_session, authenticated_ad
     )
 
     assert response.status_code == 500
-    assert response.get_json()["error"]
+    error = response.get_json()["error"]
+    assert error
+    # The driver's own text (SQL, constraint and driver names) stays in the server log.
+    assert "NOT NULL" not in error
+    assert "sqlite" not in error.lower()
+
+
+# ── identifiers in request bodies never reach the SQL unchecked ──────────────
+
+
+def test_editing_an_unknown_column_is_refused(client, db_session, authenticated_admin):
+    from models import School
+
+    school = make_school(db_session, name="Before")
+
+    response = client.post(
+        "/admin/db/table/schools/update-row",
+        json={"pk": {"id": school.id}, "updates": {'name" = \'x\', "id': "7"}},
+    )
+
+    assert response.status_code == 400
+    db_session.expire_all()
+    assert db_session.get(School, school.id).name == "Before"
+
+
+def test_editing_by_a_column_that_is_not_the_primary_key_is_refused(client, db_session, authenticated_admin):
+    from models import School
+
+    make_school(db_session, name="One")
+    make_school(db_session, name="Two")
+
+    response = client.post(
+        "/admin/db/table/schools/update-row",
+        json={"pk": {"name": "One"}, "updates": {"name": "Changed"}},
+    )
+
+    assert response.status_code == 400
+    db_session.expire_all()
+    assert sorted(s.name for s in db_session.scalars(select(School))) == ["One", "Two"]
+
+
+def test_deleting_by_an_unknown_column_is_refused(client, db_session, authenticated_admin):
+    from models import School
+
+    make_school(db_session)
+
+    response = client.post(
+        "/admin/db/table/schools/delete-row", json={"pk": {'id" OR 1=1 --': 1}}
+    )
+
+    assert response.status_code == 400
+    assert db_session.scalar(select(func.count()).select_from(School)) == 1
+
+
+def test_adding_a_row_with_an_unknown_column_is_refused(client, db_session, authenticated_admin):
+    from models import School
+
+    response = client.post(
+        "/admin/db/table/schools/add-row", json={"row": {"name": "x", 'nope") --': "y"}}
+    )
+
+    assert response.status_code == 400
+    assert db_session.scalar(select(func.count()).select_from(School)) == 0
+
+
+def test_importing_rows_with_an_unknown_column_changes_nothing(client, db_session, authenticated_admin):
+    from models import School
+
+    make_school(db_session, name="Kept")
+
+    client.post(
+        "/admin/db/import",
+        data=_upload([{"id": 42, 'name") --': "x"}], mode="replace_table", table_name="schools"),
+        content_type="multipart/form-data",
+    )
+
+    db_session.expire_all()
+    assert [s.name for s in db_session.scalars(select(School))] == ["Kept"]
+
+
+# ── the query console is read-only even past the SELECT guard ────────────────
+
+
+def test_the_query_console_runs_on_a_read_only_connection(client, db_session, authenticated_admin, monkeypatch):
+    """`_safe_is_select` is a prefix check; the connection itself must refuse a write it misses."""
+    from models import School
+    from routes.administrator import db_console
+
+    make_school(db_session, name="Keep Me")
+    monkeypatch.setattr(db_console, "_safe_is_select", lambda _sql: True)
+
+    body = assert_success(
+        client.post("/admin/db/query", data={"sql": "DELETE FROM schools"})
+    ).get_data(as_text=True)
+
+    db_session.expire_all()
+    assert db_session.scalar(select(func.count()).select_from(School)) == 1
+    assert "read-only" in body.lower() or "readonly" in body.lower()
+
+
+def test_the_database_is_writable_again_after_a_console_query(client, db_session, authenticated_admin):
+    from models import School
+
+    client.post("/admin/db/query", data={"sql": "SELECT 1"})
+
+    make_school(db_session, name="Written After")
+    assert db_session.scalar(select(func.count()).select_from(School)) == 1
+
+
+def test_an_unterminated_comment_is_refused_quickly(app):
+    """Linear in the input: no quadratic rescans of `/*` on a hostile string."""
+    import time
+
+    from routes.administrator import _safe_is_select
+
+    started = time.perf_counter()
+    assert _safe_is_select("/*" + "a/*" * 50_000) is False
+    assert time.perf_counter() - started < 1.0
+
+
+@pytest.mark.parametrize(
+    ("sql", "allowed"),
+    [
+        ("/* a */ /* b */ SELECT 1", True),
+        ("/* unterminated SELECT 1", False),
+        ("SELECT 1 /* trailing ; */", True),
+        ("SELECT 1 -- ; DROP TABLE users", True),
+        ("/* x */ DROP TABLE users /* SELECT */", False),
+    ],
+)
+def test_comments_are_stripped_before_the_guard_decides(app, sql, allowed):
+    from routes.administrator import _safe_is_select
+
+    assert _safe_is_select(sql) is allowed
 
 
 # ── export and import ────────────────────────────────────────────────────────

@@ -198,6 +198,20 @@ def test_the_health_check_answers_without_a_session(client, db_session):
     assert_success(client.get("/health"))
 
 
+def test_a_failing_health_check_does_not_leak_the_database_error(client, db_session, monkeypatch):
+    from extensions import db
+
+    def explode(*_args, **_kwargs):
+        raise RuntimeError("could not connect to server at 10.0.0.5")
+
+    monkeypatch.setattr(db.session, "execute", explode)
+
+    response = client.get("/health")
+
+    assert response.status_code == 503
+    assert "10.0.0.5" not in response.get_data(as_text=True)
+
+
 def test_the_schools_page_lists_schools_with_their_totals(client, db_session):
     school = make_school(db_session, name="Riverside")
     teacher = make_teacher(db_session, school)

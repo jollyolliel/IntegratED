@@ -27,6 +27,7 @@ from helpers.matching import (
     match_band,
     normalize_levels,
 )
+from helpers.refusal import refusal_message
 from helpers.render import render_template
 from helpers.teacher_ops import MAX_VOLUNTEER_CAPACITY
 from helpers.utils import day_bounds, utcnow_naive, wants_json
@@ -205,7 +206,7 @@ def teacher_set_default_capacity():
             teacher, request.form.get("default_capacity", "")
         )["capacity"]
     except ValueError as exc:
-        message = str(exc)
+        message = refusal_message(exc)
         if wants_json():
             return jsonify(success=False, message=message), 400
         flash(message, "error")

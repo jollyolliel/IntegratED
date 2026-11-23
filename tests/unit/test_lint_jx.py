@@ -245,3 +245,26 @@ def test_a_quoted_expression_on_a_component_tag_is_reported():
     )
 
     assert rules_by_line(source) == [(4, "quoted-expression")]
+
+
+def test_a_select_holding_jinja_with_a_closing_angle_bracket_is_still_read_whole():
+    source = (
+        '<select name="n" {% if a > b %}disabled{% endif %} data-x="{{ c > d }}">\n'
+        "  <option>A</option>\n"
+        "</select>\n"
+    )
+
+    assert rules_by_line(source) == [(1, "select-without-button")]
+
+
+@pytest.mark.parametrize(("unit", "count"), [("{{%%}}", 12), ("}}}}{{{{", 8), ("%}}{{%", 400)])
+def test_a_hostile_select_tag_is_scanned_quickly(unit, count):
+    """Overlapping alternatives in the old pattern backtracked exponentially: 12 repetitions of
+    `{{%%}}` took ~2s and every extra one ~3x longer."""
+    import time
+
+    from scripts.lint_jx import _selects_without_button
+
+    started = time.perf_counter()
+    _selects_without_button("<select " + unit * count, PAGE)
+    assert time.perf_counter() - started < 0.5

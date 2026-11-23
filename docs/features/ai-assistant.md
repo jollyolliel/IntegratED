@@ -35,8 +35,8 @@ writes) carry the reasoning.
 
 **A read tool**: an `@ai_tool` function in any module under
 `helpers/ai/tools/` (auto-imported). Resolve rows through the scope or
-`teacher_ops._owned`; raise `ValueError` / `LookupError` / `PermissionError`
-for mistakes the model can correct (they're fed back to it as the tool's
+`teacher_ops._owned`; raise `Refusal` (a `ValueError`) / `LookupError` /
+`PermissionError` for mistakes the model can correct (they're fed back to it as the tool's
 result); return a `TypedDict`. Domain tools should reach the same answer the
 teacher's own screens would — wrap the existing helper rather than
 re-deriving.

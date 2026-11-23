@@ -78,3 +78,61 @@ def test_a_data_path_sits_under_the_writable_instance_directory():
     assert get_data_path("questions.json").replace("\\", "/").endswith(
         "instance/questions.json"
     )
+
+
+# ── redirect targets ─────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("target", ["/", "/teacher/people", "/learner/map?tab=2#top", "/a/b%2Fc"])
+def test_a_same_site_path_is_a_safe_redirect_target(target):
+    from helpers.utils import safe_local_path
+
+    assert safe_local_path(target) == target
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        None,
+        "",
+        "teacher/people",
+        "https://evil.example/",
+        "//evil.example/x",
+        "/\\evil.example",
+        "javascript:alert(1)",
+        # Browsers drop tab and newline from a URL before parsing it, so these become //evil.example.
+        "/\t/evil.example",
+        "/\n/evil.example",
+        "/\r/evil.example",
+        "/x\x00",
+        "/x\x7f",
+    ],
+)
+def test_anything_else_is_not_a_safe_redirect_target(target):
+    from helpers.utils import safe_local_path
+
+    assert safe_local_path(target) is None
+
+
+# ── refusals ─────────────────────────────────────────────────────────────────
+
+
+def test_a_refusal_shows_its_own_message():
+    from helpers.refusal import Refusal, refusal_message
+
+    assert refusal_message(Refusal("Enter a valid session date.")) == "Enter a valid session date."
+
+
+def test_a_refusal_is_still_a_value_error():
+    from helpers.refusal import Refusal
+
+    assert issubclass(Refusal, ValueError)
+
+
+@pytest.mark.parametrize(
+    "exc", [ValueError("invalid literal for int() with base 10: 'x'"), TypeError("internals"), KeyError("k")]
+)
+def test_any_other_exception_shows_a_generic_message(exc):
+    from helpers.refusal import GENERIC_REFUSAL, refusal_message
+
+    assert refusal_message(exc) == GENERIC_REFUSAL

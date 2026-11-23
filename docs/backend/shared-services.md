@@ -13,7 +13,11 @@ point: an invariant enforced here holds for all three.
 
 - Takes an explicit `teacher`, never reads the request, never aborts. It
   signals with exceptions the route maps to statuses: `LookupError` → 404,
-  `PermissionError` → 403, `ValueError` → 400 with `str(e)` as the message.
+  `PermissionError` → 403, `ValueError` → 400. Raise `Refusal`
+  (`helpers/refusal.py`, a `ValueError`) with a message written for the
+  teacher; the route shows it through `refusal_message(e)`, which turns any
+  other exception into a generic line so driver or library text never reaches
+  the response.
 - Most operations have a `validate_*` twin that checks without writing (the
   assistant stages with it).
 - Ownership is checked inside (`_owned`), and each call **commits** — don't

@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
 
+# Read-only token: these jobs only check out and test the code.
+permissions:
+  contents: read
+
 jobs:
   # Full suite for everything except Dependabot PRs.
   pytest:

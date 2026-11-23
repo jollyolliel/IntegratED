@@ -3,6 +3,7 @@ from flask import abort, jsonify, request
 from helpers.ai import staging
 from helpers.analytics import capture_event
 from helpers.current_user import current_teacher as current_user
+from helpers.refusal import refusal_message
 from routes.assistant import assistant_bp
 
 
@@ -16,23 +17,28 @@ def assistant_changes():
 
 
 def _change_action(change_id, action):
+    """Run `action` on one of the teacher's changes.
+
+    Returns:
+        tuple: `(change, None)` when it ran, `(None, response)` when it was refused — the
+        response is a ready 400 with the refusal's message.
+    """
     try:
-        change = action(current_user, change_id)
+        return action(current_user, change_id), None
     except PermissionError:
         abort(403)
     except LookupError:
         abort(404)
     except ValueError as exc:
-        return jsonify(success=False, message=str(exc),
-                       changes=_changes_payload(current_user)), 400
-    return change
+        return None, (jsonify(success=False, message=refusal_message(exc),
+                              changes=_changes_payload(current_user)), 400)
 
 
 @assistant_bp.route("/changes/<int:change_id>/apply", methods=["POST"])
 def assistant_apply_change(change_id):
-    result = _change_action(change_id, staging.apply_change)
-    if not hasattr(result, "status"):
-        return result  # the 400 tuple
+    result, refused = _change_action(change_id, staging.apply_change)
+    if refused is not None:
+        return refused
 
     event = "assistant_change_stale" if result.status == "stale" else "assistant_change_applied"
     capture_event(str(current_user.id), event,
@@ -52,9 +58,9 @@ def assistant_apply_change(change_id):
 
 @assistant_bp.route("/changes/<int:change_id>/reject", methods=["POST"])
 def assistant_reject_change(change_id):
-    result = _change_action(change_id, staging.reject_change)
-    if not hasattr(result, "status"):
-        return result
+    result, refused = _change_action(change_id, staging.reject_change)
+    if refused is not None:
+        return refused
     capture_event(str(current_user.id), "assistant_change_rejected",
                   properties={"tool": result.tool_name, "entity": result.entity})
     return jsonify(success=True, message="Skipped.",
@@ -74,7 +80,7 @@ def assistant_update_change(change_id):
     except LookupError:
         abort(404)
     except (ValueError, TypeError) as exc:
-        return jsonify(success=False, message=str(exc)), 400
+        return jsonify(success=False, message=refusal_message(exc)), 400
     return jsonify(success=True, message="Updated.",
                    changes=_changes_payload(current_user))
 

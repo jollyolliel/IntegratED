@@ -9,6 +9,7 @@ from helpers.matching import (
     WEIGHT_MULTIPLIERS,
     MatchLevels,
 )
+from helpers.refusal import Refusal
 from helpers.teacher_ops._shared import MAX_VOLUNTEER_CAPACITY, _owned
 from models import Learner, Teacher, Volunteer
 
@@ -30,7 +31,7 @@ def validate_set_volunteer_capacity(teacher: Teacher, volunteer_id: int, capacit
     except (TypeError, ValueError):
         value = None
     if value is None or value < 1 or value > MAX_VOLUNTEER_CAPACITY:
-        raise ValueError(
+        raise Refusal(
             f"Learner limit must be between 1 and {MAX_VOLUNTEER_CAPACITY}."
         )
 
@@ -38,7 +39,7 @@ def validate_set_volunteer_capacity(teacher: Teacher, volunteer_id: int, capacit
     # teacher's decision, not a side effect of typing a smaller number.
     learner_count = len(volunteer.learner_matches)
     if value < learner_count:
-        raise ValueError(
+        raise Refusal(
             f"{volunteer.name or volunteer.email} already has {learner_count} learners — "
             "unmatch someone before lowering the limit."
         )
@@ -77,7 +78,7 @@ def validate_set_default_capacity(teacher: Teacher, capacity: Any) -> dict[str, 
     except (TypeError, ValueError):
         value = None
     if value is None or value < 1 or value > MAX_VOLUNTEER_CAPACITY:
-        raise ValueError(
+        raise Refusal(
             f"Default learner limit must be between 1 and {MAX_VOLUNTEER_CAPACITY}."
         )
     return {"teacher": teacher, "capacity": value}
@@ -115,9 +116,9 @@ def _checked_level(value: Any, top: int, label: str) -> int:
     try:
         level = int(value)
     except (TypeError, ValueError):
-        raise ValueError(f"Each {label} must be a whole number from 0 to {top}.") from None
+        raise Refusal(f"Each {label} must be a whole number from 0 to {top}.") from None
     if not 0 <= level <= top:
-        raise ValueError(f"Each {label} must be from 0 to {top}.")
+        raise Refusal(f"Each {label} must be from 0 to {top}.")
     return level
 
 
@@ -139,10 +140,10 @@ def validate_set_match_settings(teacher: Teacher, weights: Any, spread: Any) -> 
         # ValueError, not TypeError: this package's contract maps ValueError to
         # a 400 with str(e) shown to the user, and a TypeError would escape as
         # a 500 (see the package docstring).
-        raise ValueError("Matching priorities must arrive as a set of factor levels.")  # noqa: TRY004
+        raise Refusal("Matching priorities must arrive as a set of factor levels.")
     unknown = set(weights) - set(FACTORS)
     if unknown:
-        raise ValueError(f"Unknown matching factor(s): {', '.join(sorted(unknown))}.")
+        raise Refusal(f"Unknown matching factor(s): {', '.join(sorted(unknown))}.")
 
     levels: MatchLevels = {
         "weights": {
@@ -197,7 +198,7 @@ def validate_match_pair(teacher: Teacher, learner_id: int, volunteer_id: int) ->
 
     already = learner.volunteer_id == volunteer.id
     if not already and volunteer.is_full:
-        raise ValueError(
+        raise Refusal(
             f"{volunteer.name or volunteer.email} is already matched with "
             f"{len(volunteer.learner_matches)} learner(s) — raise their learner limit first."
         )
@@ -351,7 +352,7 @@ def validate_unmatch_pair(teacher: Teacher, learner_id: int) -> dict[str, Any]:
     """
     learner = _owned(Learner, learner_id, teacher, "learner")
     if not learner.is_matched or not learner.volunteer_match:
-        raise ValueError(
+        raise Refusal(
             f"{learner.name or learner.username} is not matched with anyone."
         )
     return {"learner": learner, "volunteer": learner.volunteer_match}
