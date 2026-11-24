@@ -159,7 +159,7 @@ def read_manifest(directory: str) -> list[dict[str, Any]] | None:
     return data
 
 
-def sync_worksheet_manifest(storage: "Bucket", directory: str) -> ManifestSync:
+def sync_worksheet_manifest(storage: Bucket, directory: str) -> ManifestSync:
     """Upsert one Worksheet per manifest entry; a missing manifest changes nothing.
 
     PDF rows are keyed on `storage.key_for(file)`, the key a storage upload uses;

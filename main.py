@@ -8,13 +8,12 @@ dotenv.load_dotenv(override=False)
 
 from pathlib import Path
 
-import stripe
 from flask import Flask, abort, jsonify, make_response, request
 from sqlalchemy.exc import InterfaceError, OperationalError
 from werkzeug.exceptions import HTTPException
 
 from commands import register_commands
-from extensions import compress, db, limiter, login_manager, migrate, oauth
+from extensions import compress, db, limiter, login_manager
 from helpers.i18n import i18n_context_processor
 from helpers.jx_catalog import build_catalog
 from helpers.paths import get_data_path
@@ -90,7 +89,6 @@ def create_app(config_class=None):
     # from Google OAuth or a Stripe redirect (top-level GETs) stays signed in.
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
-    stripe.api_key = settings.stripe_secret_key or None
 
     # Bucket: GCS in production; in development a folder with the same keys, `instance/bucket/`
     # unless LOCAL_BUCKET_DIR names another. The test suite swaps in a throwaway one (conftest.py).
@@ -98,7 +96,7 @@ def create_app(config_class=None):
         # Cloud Run's front end appends the client's address to X-Forwarded-For; without this,
         # remote_addr is the proxy's, and every visitor shares one rate-limit bucket.
         from werkzeug.middleware.proxy_fix import ProxyFix
-        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)  # ty: ignore[invalid-assignment]  # Flask documents wrapping wsgi_app with middleware; its stub types it as a method
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
         from helpers.storage import GCSBucket
         app.config["BUCKET"] = GCSBucket(settings.gcs_bucket_name)
     else:
@@ -134,18 +132,6 @@ def create_app(config_class=None):
 
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
-    
-    # Initialize OAuth with app directly; routes/auth/_oauth.py fetches the client by name.
-    oauth.init_app(app)
-    oauth.register(
-        name="google",
-        client_id=settings.google_client_id,
-        client_secret=settings.google_client_secret,
-        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
-        client_kwargs={"scope": "openid email profile"},
-    )
-
-    migrate.init_app(app, db)
     limiter.init_app(app)
     compress.init_app(app)
 

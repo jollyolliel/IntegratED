@@ -3,8 +3,8 @@ import re
 from datetime import UTC, date, datetime, timedelta
 from urllib.parse import urlsplit
 
-import markdown
 from flask import request
+lazy import markdown  # loaded on the first page that renders Markdown, not at app start
 
 from models import Learner, Volunteer
 

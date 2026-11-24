@@ -3,7 +3,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 
 import click
-from flask import current_app
+from flask import Flask, current_app
 from flask.cli import with_appcontext
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -27,8 +27,34 @@ from helpers.worksheet_manifest import (
 )
 
 
+def init_migrate(app: Flask) -> None:
+    """Attach Flask-Migrate (and Alembic) on first migrate, never at app start."""
+    if "migrate" not in app.extensions:
+        from flask_migrate import Migrate
+
+        Migrate(app, db)
+
+
+class MigrateCommands(click.Group):
+    """`flask db …`: stands in for Flask-Migrate's group until a `db` command runs.
+
+    `flask --help` lists it from the help text below; parsing a `db` command line
+    attaches Flask-Migrate and hands the rest to its real group.
+    """
+
+    def __init__(self, app: Flask) -> None:
+        super().__init__("db", help="Perform database migrations.")
+        self._app = app
+
+    def make_context(self, info_name, args, parent=None, **extra) -> click.Context:
+        init_migrate(self._app)
+        from flask_migrate.cli import db as migrate_group
+
+        return migrate_group.make_context(info_name, args, parent=parent, **extra)
+
+
 @contextmanager
-def _content_folder() -> Generator[str, None, None]:
+def _content_folder() -> Generator[str]:
     """The storage's `content/` folder, staged locally for the block (helpers/content_source.py)."""
     from helpers.storage import get_bucket
 
@@ -342,6 +368,7 @@ def release_command():
         backup = run_backup_check(current_app, force=True)
         click.echo(f"Backup: {backup}." if backup else "Backup: skipped (not production Postgres with a bucket).")
 
+        init_migrate(current_app._get_current_object())  # ty: ignore[missing-attribute]  # the proxy's real app, which Flask-Migrate keeps
         upgrade()
         click.echo("Migrations applied.")
 
@@ -352,7 +379,8 @@ def release_command():
         _sync_worksheets(folder)
 
 
-def register_commands(app):
+def register_commands(app: Flask) -> None:
+    app.cli.add_command(MigrateCommands(app))
     app.cli.add_command(init_db_command)
     app.cli.add_command(import_questions_command)
     app.cli.add_command(backup_db_command)

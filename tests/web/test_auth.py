@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 
 from helpers.auth_utils import get_or_create_invite_code, regenerate_invite_code
 from models import Learner, Teacher, Volunteer
+from tests.support.app import use_environment
 from tests.support.assertions import assert_redirects_to, assert_success
 from tests.support.factories import (
     make_admin,
@@ -491,6 +492,22 @@ def test_starting_volunteer_registration_stashes_the_invite(client, db_session, 
 
 
 # ── Google OAuth ─────────────────────────────────────────────────────────────
+
+
+def test_the_google_client_is_built_on_first_use_from_the_deploys_settings(app, monkeypatch):
+    # Authlib loads on the first Google sign-in, not at app start.
+    from routes.auth import _oauth
+
+    use_environment(app, monkeypatch, "development", google_client_id="id-from-settings", google_client_secret="s")
+    monkeypatch.setattr(app, "extensions", {k: v for k, v in app.extensions.items() if "authlib" not in k})
+
+    with app.test_request_context():
+        google = _oauth._google()
+        again = _oauth._google()
+
+    assert google.name == "google"
+    assert google.client_id == "id-from-settings"
+    assert again is google
 
 
 @pytest.fixture

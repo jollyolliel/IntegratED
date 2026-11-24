@@ -19,8 +19,6 @@ import re
 import sys
 from datetime import date
 
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # ty: ignore[unresolved-attribute]
-
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 if os.path.abspath(ROOT) not in sys.path:
     sys.path.insert(0, os.path.abspath(ROOT))

@@ -109,7 +109,7 @@ def _fake_gcs_module(client_factory):
     import types
 
     module = types.ModuleType("google.cloud.storage")
-    module.Client = client_factory  # ty: ignore[unresolved-attribute]  # ModuleType has no static attrs; this IS the fake module's API
+    module.Client = client_factory  # ty: ignore[missing-attribute]  # ModuleType has no static attrs; this IS the fake module's API
     return module
 
 

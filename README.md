@@ -27,7 +27,7 @@ Python dependencies are managed with [uv](https://docs.astral.sh/uv/).
 
 ## Running it locally
 
-You need Python 3.12+ and uv.
+You need Python 3.15+ and uv.
 
 ```sh
 cp .env.example .env      # APP_ENV=development is required

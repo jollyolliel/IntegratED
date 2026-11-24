@@ -26,7 +26,7 @@ Two stages:
    standalone Tailwind CLI (`scripts/tailwind.py`). It copies only what
    Tailwind's `content` scans — a new file holding class names must be copied
    here too, or its classes are purged in production only.
-2. **App**: `python:3.12-slim` + `postgresql-client-17` (for backups, from the
+2. **App**: `python:3.15-slim` + `postgresql-client-17` (for backups, from the
    PGDG repo to match Neon's version); no compiler or `-dev` headers, since
    every dependency in `uv.lock` ships a prebuilt wheel — a dependency that
    needs one would have to build in its own stage. `uv` is pinned once as the

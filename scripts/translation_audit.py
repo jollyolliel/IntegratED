@@ -1130,12 +1130,6 @@ def resolve_template(arg: str) -> Path:
 
 
 def main():
-    # Windows: force UTF-8 stdout so emoji/unicode in output doesn't crash
-    if sys.platform == "win32":
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # ty: ignore[unresolved-attribute]
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # ty: ignore[unresolved-attribute]
-
-
     parser = argparse.ArgumentParser(
         description="IntegratED translation audit and auto-fix tool"
     )

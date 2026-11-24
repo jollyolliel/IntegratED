@@ -16,7 +16,7 @@ from typing import Any
 from flask import abort, current_app, flash, redirect, request, session, url_for
 from flask.typing import ResponseReturnValue
 
-from extensions import db, oauth
+from extensions import db
 from helpers.analytics import capture_event, capture_exception
 from helpers.auth_utils import (
     dashboard_url,
@@ -32,13 +32,28 @@ from settings import get_settings
 
 
 def _google() -> Any:
-    """The Google OAuth client `create_app` registered (Authlib's clients are untyped)."""
+    """The Google OAuth client (untyped), registered on first use so Authlib stays out of app start.
+
+    Two threads racing the first sign-in each register an identical client; either works."""
+    oauth = current_app.extensions.get("authlib.integrations.flask_client")
+    if oauth is None:
+        from authlib.integrations.flask_client import OAuth
+
+        settings = get_settings()
+        oauth = OAuth(current_app._get_current_object())  # ty: ignore[missing-attribute]  # LocalProxy's real object, which Authlib stores as its app
+        oauth.register(
+            name="google",
+            client_id=settings.google_client_id,
+            client_secret=settings.google_client_secret,
+            server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+            client_kwargs={"scope": "openid email profile"},
+        )
     return oauth.create_client("google")
 
 
 @auth_bp.route("/login/google")
 def login_google():
-    """Kick off Google OAuth (the client `create_app` registers on `oauth`), or open the
+    """Kick off Google OAuth (the client `_google()` registers on first use), or open the
     dev stand-in on a local development server. `?real=1` (the dev page's "Sign in with real
     Google" button) skips the stand-in when Google credentials are configured."""
     if is_local_dev_request():

@@ -18,7 +18,7 @@ def get_resource_path(relative_path: str) -> str:
         # PyInstaller creates a temp folder and stores path in _MEIPASS —
         # injected onto sys at runtime only inside a frozen build, not in the
         # stdlib stub.
-        base_path = sys._MEIPASS  # ty: ignore[unresolved-attribute]
+        base_path = sys._MEIPASS  # ty: ignore[missing-attribute]
     except AttributeError:
         # In development, use the project root
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

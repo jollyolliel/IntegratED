@@ -42,7 +42,8 @@ import main
 import sys
 
 connects_during_import = len(attempts)
-loaded = sorted(name for name in ("google.cloud.storage",) if name in sys.modules)
+heavy = ("alembic", "authlib", "flask_migrate", "google.cloud.storage", "markdown", "stripe")
+loaded = sorted(name for name in heavy if name in sys.modules)
 status = main.app.test_client().get("/static/svg/book.svg").status_code
 print(json.dumps({
     "connects_during_import": connects_during_import,
@@ -96,6 +97,15 @@ def test_production_import_leaves_storage_for_the_requests_that_use_it(tmp_path)
     # Every module the import opens is a slow read on a cold Cloud Run host,
     # and building the GCS client also asks the metadata server for
     # credentials — all before gunicorn opens its port.
+    boot = _boot_production(tmp_path)
+    assert "google.cloud.storage" not in boot["heavy_modules_loaded"]
+
+
+def test_production_import_leaves_cli_and_rare_route_libraries_unloaded(tmp_path):
+    # Each is a noticeable slice of a cold start, and only a CLI command or a
+    # rarely hit route uses it: Alembic under Flask-Migrate (`flask db`,
+    # `flask release`), Stripe (donations), Authlib (Google sign-in) and
+    # Markdown (pages that render it).
     boot = _boot_production(tmp_path)
     assert boot["heavy_modules_loaded"] == []
 
