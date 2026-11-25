@@ -60,6 +60,10 @@ css = [
 
 [tool.uv]
 package = false
+# The uv every environment runs: dev machines, CI (setup-uv reads this when no
+# version is given) and the Docker build, whose `uv` image tag must fall inside
+# it. Capped at the next minor: before 1.0, a uv minor release can break things.
+required-version = ">=0.13.10,<0.14"
 
 [tool.ruff.lint]
 # Naive datetimes are this app's deliberate architecture: dev SQLite and prod
