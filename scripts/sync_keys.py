@@ -16,7 +16,9 @@ Usage:
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 from datetime import date
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
@@ -43,9 +45,26 @@ def load_json(path: str) -> dict:
 
 
 def save_json(path: str, data) -> None:
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-        f.write("\n")
+    """Write `data` to a temp file beside `path`, then swap it in.
+
+    Several chats share one working tree, so a reader never sees a half-written file.
+    """
+    fd, tmp = tempfile.mkstemp(prefix=f".{os.path.basename(path)}.", suffix=".tmp", dir=os.path.dirname(path) or ".")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        if os.path.exists(path):
+            shutil.copymode(path, tmp)
+        else:  # mkstemp makes the file private; a new file gets the usual permissions
+            umask = os.umask(0)
+            os.umask(umask)
+            os.chmod(tmp, 0o666 & ~umask)
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise
 
 
 # ---------------------------------------------------------------------------
