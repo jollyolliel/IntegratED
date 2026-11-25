@@ -1,5 +1,5 @@
 # uv, pinned once for both stages below (bind-mounted, never COPYed into a layer).
-FROM ghcr.io/astral-sh/uv:0.12.13 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.10 AS uv
 
 # Build Tailwind CSS with the standalone CLI — no Node. scripts/tailwind.py pins
 # the Tailwind release; only the `css` dependency group (pytailwindcss) installs.
