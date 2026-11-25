@@ -74,3 +74,20 @@ def test_reads_and_sanctioned_scripts_are_allowed(command):
 
 def test_unrelated_tool_is_allowed():
     assert reason("Read", file_path="translations/en.json") is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "uv run scripts/add_translation_key.py --remove old.banner.title",
+        "uv run scripts/add_translation_key.py --remove a.b c.d --force",
+    ],
+)
+def test_the_remove_mode_is_allowed(command):
+    assert reason("Bash", command=command) is None
+
+
+def test_the_message_documents_removal():
+    from scripts.guard_translations import MESSAGE
+
+    assert "--remove" in MESSAGE

@@ -7,7 +7,7 @@ translations, and the automatic checks that will stop you.
 |---|---|
 | Writing or running tests | [testing.md](testing.md) |
 | Writing Python — types, imports, docstrings, lint | [python-conventions.md](python-conventions.md) |
-| Adding or changing any user-visible text | [translations.md](translations.md) |
+| Adding, changing or removing any user-visible text | [translations.md](translations.md) |
 
 ## Running it
 

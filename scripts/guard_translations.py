@@ -45,6 +45,13 @@ English placeholder and re-logs it for translation):
 
   uv run scripts/add_translation_key.py --update <section.key> "<new English value>"
 
+Remove keys the UI no longer uses (deletes them from every language file and
+needs_translation.json; refuses, listing the files, while the code still
+references one — --force overrides). --unused lists keys nothing references:
+
+  uv run scripts/add_translation_key.py --remove <section.key> [<key> ...]
+  uv run scripts/add_translation_key.py --unused
+
 Stop there: leave the English placeholders. Don't translate them or run the
 translation tools — translation is done separately, not by agents.
 """

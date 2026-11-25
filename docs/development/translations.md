@@ -23,7 +23,24 @@ language, and lists the key in `translations/needs_translation.json` for
 translators. **`translations/*.json` are script-only** — a hook blocks hand
 edits and shell writes to them.
 
-Adding the key is the whole job. Agents never translate: leave the English
+## Removing text
+
+When a change drops UI text, remove its key too:
+
+```bash
+uv run scripts/add_translation_key.py --remove section.sub.key [more.keys ...]
+```
+
+It deletes the key from every language file and `needs_translation.json`,
+pruning sections left empty. First it searches the code (templates, Python,
+JS, JSON) for the key in quotes, or for a quoted prefix it could be built from
+(`t('teacher.people.factor_' ~ factor)`), and refuses, listing the files, if it
+finds one. `--force` overrides that when the match isn't a real use. A key put
+together any other way (`'%s.title' % section`) isn't seen, so check before
+removing one with a generic name. `--unused` lists every key in `en.json` that
+nothing references.
+
+Adding or removing the key is the whole job. Agents never translate: leave the English
 placeholders in place and don't run `translate_missing.py` or
 `translation_audit.py` — translation is done separately by a person.
 

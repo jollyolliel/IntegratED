@@ -47,9 +47,10 @@ usually needs one file, not the folder.
 - New web feature → PostHog analytics and translation keys. New UI text →
   `{{ t('section.key') }}` plus
   `uv run scripts/add_translation_key.py section.key "English"`; never
-  hand-edit `translations/*.json` (a hook blocks it). Add keys only — never
-  translate them or run `translate_missing.py`; other languages keep the
-  English placeholder until a person translates them.
+  hand-edit `translations/*.json` (a hook blocks it). Text the UI no longer
+  uses → `uv run scripts/add_translation_key.py --remove section.key`. Add or
+  remove keys only — never translate them or run `translate_missing.py`; other
+  languages keep the English placeholder until a person translates them.
 - A change that makes a sentence in `docs/` or `.claude/rules/` false → fix
   that sentence in the same response. Adding new doc prose is a judgment call:
   `docs/README.md` says what belongs.
