@@ -141,7 +141,7 @@ def _classification_logged() -> None:
     scope.log_classification()
 
 
-def run_turn(teacher_id: int, conversation_id: int, user_text: str, lang: str = "en") -> Generator[dict[str, Any], None, None]:
+def run_turn(teacher_id: int, conversation_id: int, user_text: str, lang: str = "en") -> Generator[dict[str, Any]]:
     """Yield event dicts for one exchange.
 
     Events: {"type": "step"|"delta"|"changes"|"error"|"done", ...}

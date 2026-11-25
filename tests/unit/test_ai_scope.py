@@ -276,8 +276,8 @@ def test_log_classification_lists_every_model(scope):
             super().__init__("recorder")
             self.messages = []
 
-        def info(self, message, *args, **kwargs):
-            self.messages.append(message % args if args else message)
+        def info(self, msg, *args, **kwargs):
+            self.messages.append(msg % args if args else msg)
 
     recorder = Recorder()
     scope.log_classification(recorder)

@@ -21,9 +21,6 @@ Usage:
 
 import os
 import re
-import sys
-
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # ty: ignore[unresolved-attribute]
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 COMPONENTS_DIR = os.path.join(ROOT, "static", "css", "components")

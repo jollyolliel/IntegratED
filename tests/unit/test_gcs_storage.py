@@ -33,7 +33,7 @@ def _fake_gcs(monkeypatch):
             return _Bucket()
 
     module = types.ModuleType("google.cloud.storage")
-    module.Client = _Client  # ty: ignore[unresolved-attribute]  # ModuleType has no static attrs; this IS the fake module's API
+    module.Client = _Client  # ty: ignore[missing-attribute]  # ModuleType has no static attrs; this IS the fake module's API
     monkeypatch.setitem(sys.modules, "google.cloud.storage", module)
     return built
 

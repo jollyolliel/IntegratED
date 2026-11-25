@@ -10,9 +10,6 @@ import json
 import os
 import sys
 
-# Fix Windows cp1252 terminal encoding issues
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # ty: ignore[unresolved-attribute]
-
 TRANSLATIONS_DIR = os.path.join(os.path.dirname(__file__), "..", "translations")
 SEPARATOR = " ||| "
 MAX_CHARS = 4000
@@ -44,9 +41,8 @@ def collect_missing(source: dict, target: dict, prefix: str = "") -> list[tuple[
             if not isinstance(sub, dict):
                 sub = {}
             missing.extend(collect_missing(v, sub, path))
-        elif isinstance(v, str):
-            if _get_nested(target, path) is None:
-                missing.append((path, v))
+        elif isinstance(v, str) and _get_nested(target, path) is None:
+            missing.append((path, v))
     return missing
 
 

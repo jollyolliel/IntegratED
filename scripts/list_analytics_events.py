@@ -15,9 +15,6 @@ Usage:
 
 import ast
 import os
-import sys
-
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # ty: ignore[unresolved-attribute]
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 SCAN_DIRS = ["routes", "helpers"]  # scanned recursively

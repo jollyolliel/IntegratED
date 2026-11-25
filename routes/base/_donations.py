@@ -1,9 +1,12 @@
 import logging
 from datetime import UTC, datetime
 
-import stripe
 from flask import flash, redirect, request, url_for
 from sqlalchemy.exc import IntegrityError
+
+# Loaded on the first donation, not at app start: importing Stripe (with requests and asyncio
+# under it) costs a noticeable slice of every cold start, and no other page needs it.
+lazy import stripe
 
 from extensions import db
 from helpers.analytics import capture_event
@@ -91,6 +94,7 @@ def donations_submit():
         # enables. stripe 16 renamed `payment_method_types` to
         # `allowed_payment_method_types`, so naming either ties this call to one
         # SDK major version.
+        stripe.api_key = get_settings().stripe_secret_key or None
         session = stripe.checkout.Session.create(
             line_items=[{
                 "price_data": {
@@ -176,6 +180,7 @@ def donation_success():
     amount = None
     if session_id:
         try:
+            stripe.api_key = get_settings().stripe_secret_key or None
             session = stripe.checkout.Session.retrieve(session_id)
             metadata = session.metadata
             school = metadata.get("school") if isinstance(metadata, dict) else None

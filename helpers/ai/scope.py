@@ -148,7 +148,7 @@ def mapped_models() -> dict[str, type]:
     # cannot resolve its MRO (see [tool.ty.rules] unsupported-base in
     # pyproject.toml) so `.registry` reads as unresolved even though it's a
     # real attribute at runtime.
-    for mapper in db.Model.registry.mappers:  # ty: ignore[unresolved-attribute]
+    for mapper in db.Model.registry.mappers:  # ty: ignore[missing-attribute]
         models[mapper.class_.__name__] = mapper.class_
     return models
 
@@ -162,11 +162,7 @@ def local_table(model: type) -> sa.Table:
     Returns:
         sa.Table: The model's local table.
     """
-    # sa.inspect() on a bare `type` resolves to an overload returning
-    # `Any | None` — `model` is always a mapped class here (walked from
-    # `mapped_models()`), so raiseerr's default (True) means this is never
-    # actually None at runtime.
-    return sa.inspect(model).local_table  # ty: ignore[unresolved-attribute]
+    return sa.inspect(model).local_table
 
 
 def _outbound_fks(model: type) -> list[tuple[str, str]]:

@@ -52,7 +52,7 @@ def _remove(path: str, token: str | None = None) -> None:
 
 
 @contextmanager
-def locked(path: str, timeout: float = 30, stale: float = 120) -> Generator[None, None, None]:
+def locked(path: str, timeout: float = 30, stale: float = 120) -> Generator[None]:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     token = f"{os.getpid()} {secrets.token_hex(8)}"
     deadline = time.monotonic() + timeout

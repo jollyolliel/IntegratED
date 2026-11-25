@@ -94,9 +94,8 @@ def _check_question(q: Any, path: str, problems: list[str], *, in_group: bool = 
     elif ct == "text_comprehension_word_selection":
         if not q.get("word_selection_correct_words"):
             problems.append(f"{path}: a word-selection question needs word_selection_correct_words")
-    elif ct == "open_answer":
-        if not q.get("answer") and not q.get("fill_blank_options"):
-            problems.append(f"{path}: an open_answer question needs answer")
+    elif ct == "open_answer" and not q.get("answer") and not q.get("fill_blank_options"):
+        problems.append(f"{path}: an open_answer question needs answer")
     return [q]
 
 

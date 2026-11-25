@@ -45,11 +45,11 @@ def _install_external_fakes() -> None:
     # implementations onto it is exactly what a runtime module-swap needs,
     # and ty has no way to type-check that structurally.
     compress = types.ModuleType("flask_compress")
-    compress.Compress = type("Compress", (), {"init_app": lambda self, app: None})  # ty: ignore[unresolved-attribute]
+    compress.Compress = type("Compress", (), {"init_app": lambda self, app: None})  # ty: ignore[missing-attribute]
     sys.modules["flask_compress"] = compress
 
     posthog = types.ModuleType("posthog")
-    posthog.Posthog = FakePosthogClient  # ty: ignore[unresolved-attribute]
+    posthog.Posthog = FakePosthogClient  # ty: ignore[missing-attribute]
     sys.modules["posthog"] = posthog
 
     module_names = [
@@ -68,9 +68,9 @@ def _install_external_fakes() -> None:
         sys.modules.setdefault(name, types.ModuleType(name))
 
     logs = sys.modules["opentelemetry._logs"]
-    logs.set_logger_provider = lambda provider: None  # ty: ignore[unresolved-attribute]
+    logs.set_logger_provider = lambda provider: None  # ty: ignore[missing-attribute]
     sdk_logs = sys.modules["opentelemetry.sdk._logs"]
-    sdk_logs.LoggerProvider = type(  # ty: ignore[unresolved-attribute]
+    sdk_logs.LoggerProvider = type(  # ty: ignore[missing-attribute]
         "FakeLoggerProvider",
         (),
         {
@@ -78,13 +78,13 @@ def _install_external_fakes() -> None:
             "shutdown": lambda self: None,
         },
     )
-    sdk_logs.LoggingHandler = _NoopLoggingHandler  # ty: ignore[unresolved-attribute]
+    sdk_logs.LoggingHandler = _NoopLoggingHandler  # ty: ignore[missing-attribute]
     sdk_export = sys.modules["opentelemetry.sdk._logs.export"]
-    sdk_export.BatchLogRecordProcessor = type(  # ty: ignore[unresolved-attribute]
+    sdk_export.BatchLogRecordProcessor = type(  # ty: ignore[missing-attribute]
         "FakeBatchLogRecordProcessor", (), {"__init__": lambda self, exporter: None}
     )
     exporter = sys.modules["opentelemetry.exporter.otlp.proto.http._log_exporter"]
-    exporter.OTLPLogExporter = type(  # ty: ignore[unresolved-attribute]
+    exporter.OTLPLogExporter = type(  # ty: ignore[missing-attribute]
         "FakeOTLPLogExporter", (), {"__init__": lambda self, endpoint=None: None}
     )
 

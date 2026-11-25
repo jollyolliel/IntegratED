@@ -27,7 +27,7 @@ class ContentSourceError(RuntimeError):
 
 
 @contextmanager
-def staged_content(storage: "Bucket") -> Generator[str, None, None]:
+def staged_content(storage: Bucket) -> Generator[str]:
     """Copy the storage's `content/` folder to a temporary folder for the block.
 
     Args:

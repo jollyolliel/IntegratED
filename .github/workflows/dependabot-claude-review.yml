@@ -71,7 +71,7 @@ jobs:
             --json-schema '{"type":"object","properties":{"comment":{"type":"string"}},"required":["comment"]}'
           prompt: |
             A Dependabot dependency-update pull request (#${{ github.event.pull_request.number }})
-            has just been opened on this repository — a Flask web app (Python 3.12)
+            has just been opened on this repository — a Flask web app (Python 3.15)
             for the IntegratED learning platform. Decide whether merging it could
             break the app.
 
@@ -82,7 +82,7 @@ jobs:
                workflow files.
             2. For each bumped package, judge the risk from the size of the version
                jump (patch / minor / major) and any breaking changes, removed or
-               renamed APIs, or dropped Python 3.12 support in the new release. Grep
+               renamed APIs, or dropped Python 3.15 support in the new release. Grep
                this repo for how the package is imported and used to see whether a
                breaking change would actually bite.
 

@@ -13,8 +13,6 @@ import json
 import re
 import sys
 
-sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # ty: ignore[unresolved-attribute]
-
 _FILE_TOOLS = {"Edit", "Write", "MultiEdit"}
 _SHELL_TOOLS = {"Bash", "PowerShell"}
 

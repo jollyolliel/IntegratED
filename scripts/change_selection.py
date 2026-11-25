@@ -216,7 +216,7 @@ def parse_unified_diff(text: str) -> dict[str, object]:
         if line.startswith("@@") and path and changed.get(path) is not WHOLE_FILE:
             span = _hunk_span(line)
             if span is not None:
-                changed.setdefault(path, []).append(span)  # ty: ignore[unresolved-attribute]  # guarded non-WHOLE_FILE above, so this is always list-shaped
+                changed.setdefault(path, []).append(span)  # ty: ignore[missing-attribute]  # guarded non-WHOLE_FILE above, so this is always list-shaped
 
     return {key: value for key, value in changed.items() if value}
 

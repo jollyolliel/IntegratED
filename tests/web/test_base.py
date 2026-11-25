@@ -663,6 +663,31 @@ class _FakeRetrieved:
         }
 
 
+def test_checkout_and_the_success_page_call_stripe_with_the_deploys_secret_key(app, client, db_session, monkeypatch):
+    # Stripe loads on the first donation, not at app start, so the key is set there.
+    use_environment(app, monkeypatch, "development", stripe_secret_key="sk_test_from_settings")
+    monkeypatch.setattr(stripe, "api_key", None)
+    keys = []
+
+    def create(**kwargs):
+        keys.append(stripe.api_key)
+        return _FakeCheckoutSession()
+
+    def retrieve(session_id):
+        keys.append(stripe.api_key)
+        raise stripe.StripeError("not needed")
+
+    monkeypatch.setattr(stripe.checkout.Session, "create", staticmethod(create))
+    monkeypatch.setattr(stripe.checkout.Session, "retrieve", staticmethod(retrieve))
+    make_school(db_session, name="Riverside")
+
+    client.post("/donations", data={"school": "Riverside", "amount": "25"})
+    monkeypatch.setattr(stripe, "api_key", None)
+    client.get("/donation-success?session_id=cs_test")
+
+    assert keys == ["sk_test_from_settings", "sk_test_from_settings"]
+
+
 def test_the_success_page_survives_a_stripe_error(client, db_session, monkeypatch):
 
     def explode(session_id):

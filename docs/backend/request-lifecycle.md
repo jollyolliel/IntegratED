@@ -34,9 +34,12 @@ import holds the first request for a Neon wake.
 `tests/integration/test_release.py` counts the connects.
 
 Keep the import light too: the import is most of a cold start, and on a
-cold Cloud Run host every module file is a slow read. Import a heavy library
-inside the function that needs it — the GCS client loads on first use, and
-the same test keeps it out of the boot.
+cold Cloud Run host every module file is a slow read. Load a heavy library on
+first use: `lazy import x` at the top of the module (PEP 810), or an import
+inside the function that needs it. The GCS client, Stripe, Authlib (Google
+sign-in), Markdown and Flask-Migrate with Alembic (`flask db`, via
+`MigrateCommands` in `commands.py`) all load this way, and the same test keeps
+them out of the boot.
 
 ## A sleeping database
 

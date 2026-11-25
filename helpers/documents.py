@@ -4,8 +4,8 @@ import re
 from io import BytesIO
 from typing import TYPE_CHECKING, Any
 
-import markdown
 from flask import Response, send_file
+lazy import markdown  # loaded on the first page that renders Markdown, not at app start
 
 if TYPE_CHECKING:
     from pypdf import PdfReader
