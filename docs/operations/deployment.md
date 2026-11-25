@@ -30,7 +30,7 @@ Two stages:
    PGDG repo to match Neon's version); no compiler or `-dev` headers, since
    every dependency in `uv.lock` ships a prebuilt wheel — a dependency that
    needs one would have to build in its own stage. `uv` is pinned once as the
-   `uv` stage. Dependencies install with `uv sync --locked --no-dev` into
+   `uv` stage, inside the `required-version` range in `pyproject.toml`. Dependencies install with `uv sync --locked --no-dev` into
    `/opt/venv`, outside `/app`. The code is copied with `--chown`, never a
    recursive `chown`, which would store a second copy of it. Runs as non-root
    `appuser`, port 8080.
