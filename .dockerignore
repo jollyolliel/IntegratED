@@ -1,50 +1,54 @@
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv
-.git
-.gitignore
-.claude/
+# Build context for DOCKERFILE. The image needs only the app code, migrations,
+# templates, static, translations, pyproject.toml/uv.lock, entrypoint.sh, and
+# what the tailwind-builder stage COPYs (tailwind.config.js, scripts/tailwind.py).
+#
+# A bare pattern matches at the repo root only; prefix **/ to match at any depth.
+
+# Secrets. google-github-actions/auth writes its credentials file into the
+# workspace, and deploy.yml authenticates before `docker build`, so COPY . .
+# would bake it in.
 .env
 .env.*
-# google-github-actions/auth writes its credentials file into the workspace, and
-# deploy.yml authenticates before `docker build`, so COPY . . would bake it in.
 gha-creds-*.json
-instance/
-.pytest_cache
+
+# VCS, agent and editor state. .claude/ also holds worktrees: full repo copies.
+.git
+.gitignore
+.gitattributes
+.claude/
+.vscode/
+.idea/
+**/.DS_Store
+**/*.swp
+**/*~
+
+# Python and tooling caches, local environment and data.
+.venv/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.ruff_cache/
 .coverage
+.coveragerc
 htmlcov/
-dist/
-build/
-*.egg-info/
-node_modules/
-.DS_Store
-*.log
-.vscode
-.idea
-*.swp
-*.swo
-*~
-.vagrant
-.dockerignore
-DOCKERFILE
-static/css/pages/README.md
-TODO.markdown
+instance/
+**/*.log
 
 # The dev seed never ships, not one file of it: production reads questions,
 # worksheets and announcements from the bucket's content/ folder (helpers/content_source.py).
 seed/
 
-# Dev-only tooling, docs, CI config — no runtime dependency on any of these.
-tests/
+# Dev-only tooling, docs, CI config: no runtime dependency on any of these.
 .github/
+docs/
+tests/
+lint/
+sgconfig.yml
+**/*.md
 scripts/
 # Except the CSS build the tailwind-builder stage runs.
 !scripts/tailwind.py
-lint/
-vide/
-*.md
+
+# Docker reads these itself; the image doesn't need copies.
+.dockerignore
+DOCKERFILE
