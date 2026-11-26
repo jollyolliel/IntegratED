@@ -34,10 +34,14 @@ Commit-message wording: the `.claude/skills/create-commit-message` skill.
 
 ## Dependabot
 
-One grouped weekly PR per ecosystem (Python via uv, GitHub Actions, the
-Docker base images), labelled `release:patch` + `deploy:skip`. Security
-updates arrive as their own grouped PR per ecosystem, with the same labels,
-as soon as an advisory lands. Dependabot PRs never deploy (skipped by
+One weekly PR for every ecosystem together (Python via uv, GitHub Actions,
+the Docker base images — a multi-ecosystem group), labelled `release:patch` +
+`deploy:skip`; that weekly PR also picks up fixes for non-critical
+advisories. Only **critical** advisories get an immediate security PR (one
+per dependency, same labels).
+The severity filter is a repo setting, not `dependabot.yml`: Settings → Code
+security → "Dependabot security updates" is off, and a custom Dependabot rule
+targeting `severity:critical` opens the pull requests. Dependabot PRs never deploy (skipped by
 author, not only by label) and skip the full suite; the full suite runs on the
 merge commit instead, so tagging is still gated on it.
 

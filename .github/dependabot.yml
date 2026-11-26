@@ -1,73 +1,53 @@
 version: 2
 
-# Version updates run weekly; security updates run as soon as an advisory lands. Both read this
-# file: the labels and commit prefix below apply to either kind, and each ecosystem has one group
-# per kind so a week's bumps (or one advisory's fixes) arrive as a single PR.
+# Version updates: ONE pull request a week covering every ecosystem below (Python via uv,
+# GitHub Actions, the DOCKERFILE base images), through the `weekly` multi-ecosystem group. It
+# bumps everything, including any non-critical vulnerable package.
+#
+# Security updates open an immediate PR for CRITICAL advisories only. dependabot.yml cannot
+# filter by severity, so that lives in the repo settings: the "Dependabot security updates"
+# toggle is off and a custom Dependabot rule (severity:critical → open a pull request) opts
+# critical alerts back in. Those PRs are per dependency and read the ecosystem entries below,
+# so they still get the labels.
+#
 # `release:patch` + `deploy:skip`: a dependency bump cuts a patch tag but does not redeploy on
-# its own (see .github/workflows/auto-tag.yml and deploy.yml).
+# its own (see .github/workflows/auto-tag.yml and deploy.yml). Labels sit on each ecosystem so
+# security PRs get them too; for the weekly PR they merge with the group's (none here).
+# `commit-message` may only be set on the group, never on an ecosystem.
+multi-ecosystem-groups:
+  weekly:
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Athens"
+    commit-message:
+      prefix: "chore(deps)"
+
 updates:
   - package-ecosystem: "uv"
     directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Athens"
-    open-pull-requests-limit: 10
-    groups:
-      all-dependencies:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      security-fixes:
-        applies-to: security-updates
-        patterns:
-          - "*"
+    multi-ecosystem-group: "weekly"
+    patterns: ["*"]
     labels:
       - "dependencies"
       - "release:patch"
       - "deploy:skip"
-    commit-message:
-      prefix: "chore(deps)"
 
   - package-ecosystem: "github-actions"
     directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Athens"
-    groups:
-      all-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      security-fixes:
-        applies-to: security-updates
-        patterns:
-          - "*"
+    multi-ecosystem-group: "weekly"
+    patterns: ["*"]
     labels:
       - "dependencies"
       - "release:patch"
       - "deploy:skip"
-    commit-message:
-      prefix: "chore(deps)"
 
-  # The base images in DOCKERFILE.
   - package-ecosystem: "docker"
     directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Athens"
-    groups:
-      base-image:
-        patterns:
-          - "*"
+    multi-ecosystem-group: "weekly"
+    patterns: ["*"]
     labels:
       - "dependencies"
       - "release:patch"
       - "deploy:skip"
-    commit-message:
-      prefix: "chore(deps)"
