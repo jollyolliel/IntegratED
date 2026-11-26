@@ -257,7 +257,22 @@ def test_a_select_holding_jinja_with_a_closing_angle_bracket_is_still_read_whole
     assert rules_by_line(source) == [(1, "select-without-button")]
 
 
-@pytest.mark.parametrize(("unit", "count"), [("{{%%}}", 12), ("}}}}{{{{", 8), ("%}}{{%", 400)])
+def test_a_select_whose_jinja_never_closes_is_skipped_and_a_later_select_is_still_read():
+    from scripts.lint_jx import _selects_without_button
+
+    markup = (
+        "<select {{ broken >\n"
+        '<select name="n">\n  <option>A</option>\n</select>\n'
+        '<select name="m">\n  <button><selectedcontent></selectedcontent></button>\n</select>\n'
+    )
+
+    assert [finding.line for finding in _selects_without_button(markup, PAGE)] == [2]
+
+
+@pytest.mark.parametrize(
+    ("unit", "count"),
+    [("{{%%}}", 12), ("}}}}{{{{", 8), ("%}}{{%", 400), ("}}}}{{{{", 20000), ("{%%}", 20000), ("{{", 20000)],
+)
 def test_a_hostile_select_tag_is_scanned_quickly(unit, count):
     """Overlapping alternatives in the old pattern backtracked exponentially: 12 repetitions of
     `{{%%}}` took ~2s and every extra one ~3x longer."""

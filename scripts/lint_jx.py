@@ -121,14 +121,32 @@ def _raw_clay_classes(markup: str, path: str) -> list[Finding]:
     return findings
 
 
-#: A `<select …>` open tag (Jinja inside it may hold a `>`) and whether its first child is the button.
-#: The alternatives never overlap — a `{{`/`{%` block cannot run past its own close and a lone `{`
-#: is only ever a `{` — so a tag that never closes fails in linear time instead of backtracking.
-SELECT_RE = re.compile(
-    r"<select\b((?:\{\{(?:(?!\}\}).)*\}\}|\{%(?:(?!%\}).)*%\}|\{(?![{%])|[^>{])*)>\s*(<button>\s*<selectedcontent)?",
-    re.DOTALL,
-)
+SELECT_OPEN_RE = re.compile(r"<select\b")
+BUTTON_FIRST_RE = re.compile(r"\s*<button>\s*<selectedcontent")
 LISTBOX_RE = re.compile(r"\bmultiple\b|\bsize\s*=\s*[\"']?(?:[2-9]|\d\d)")
+JINJA_CLOSE = {"{{": "}}", "{%": "%}"}
+
+
+def _select_open_tags(markup: str):
+    """(start, attributes, end) of each `<select …>` open tag, `end` just past its `>`. Jinja inside
+    the tag may hold a `>`, so a `{{`/`{%` block is skipped whole, to its own close; a tag whose block
+    or `>` never closes is not a tag."""
+    # A hand scan, not one regex: CodeQL flags the equivalent pattern as exponential backtracking.
+    pos = 0
+    while (match := SELECT_OPEN_RE.search(markup, pos)) is not None:
+        i = match.end()
+        while i < len(markup) and markup[i] != ">":
+            close = JINJA_CLOSE.get(markup[i:i + 2])
+            if close is None:
+                i += 1
+                continue
+            found = markup.find(close, i + 2)
+            i = len(markup) if found == -1 else found + 2
+        if i < len(markup):
+            yield match.start(), markup[match.end():i], i + 1
+            pos = i + 1
+        else:
+            pos = match.end()
 
 
 def _selects_without_button(markup: str, path: str) -> list[Finding]:
@@ -136,12 +154,12 @@ def _selects_without_button(markup: str, path: str) -> list[Finding]:
     it is what `appearance: base-select` draws as the closed control (docs/ui-design/page-behaviour.md)."""
     return [
         Finding(
-            path, markup.count("\n", 0, match.start()) + 1, "select-without-button",
+            path, markup.count("\n", 0, start) + 1, "select-without-button",
             "A <select> opens with <button><selectedcontent></selectedcontent></button>, "
             "or Chromium drops the clay picker.",
         )
-        for match in SELECT_RE.finditer(markup)
-        if match.group(2) is None and not LISTBOX_RE.search(match.group(1))
+        for start, attributes, end in _select_open_tags(markup)
+        if not BUTTON_FIRST_RE.match(markup, end) and not LISTBOX_RE.search(attributes)
     ]
 
 
