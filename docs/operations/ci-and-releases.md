@@ -10,6 +10,7 @@ The workflows in `.github/workflows/` and the labels that steer them.
 | `codeql.yml` | every push / PR to `master`, weekly, manually | CodeQL code scanning for Python, JS and the workflows, configured by `.github/codeql/codeql-config.yml` (see [Security scanning](#security-scanning)) |
 | `migrations.yml` | changes to migrations, models or the lock | replays every migration on a real Postgres 17 and diffs against the models — catches SQLite-only migrations |
 | `deploy.yml` | push to `master` | builds and deploys ([deployment.md](deployment.md)) unless skipped — **independent of tests** |
+| `preview.yml` | PRs, pushes to `master`, nightly | one preview URL per PR plus a `main` baseline ([previews.md](previews.md)); skipped until the one-time setup is done |
 | `auto-tag.yml` | after `tests.yml` succeeds on `master` | tags `vX.Y.Z` and creates the GitHub Release |
 | `release.yml` | a hand-pushed `v*.*.*` tag | creates a Release |
 | `labels.yml` | its own change, or manually | creates the CI labels |

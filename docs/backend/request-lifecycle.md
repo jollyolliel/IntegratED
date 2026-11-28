@@ -6,8 +6,8 @@ constraints that follow from running on scale-to-zero infrastructure.
 ## Dev vs production
 
 `create_app()` reads `settings.py` once. `APP_ENV` names the environment,
-`development` or `production` (required; unset or any other value stops
-startup). Production → Postgres from `DATABASE_URL` and the GCS bucket named by
+`development`, `production` or `preview` (required; unset or any other value
+stops startup; a preview is covered in [../operations/previews.md](../operations/previews.md)). Production → Postgres from `DATABASE_URL` and the GCS bucket named by
 `GCS_BUCKET_NAME` (both required, or startup stops), JSON logs. Development →
 SQLite at `instance/site.db`, the local bucket at `instance/bucket/` (or
 `LOCAL_BUCKET_DIR`), `db.create_all()` and dev seeding (`helpers/seed/`: an

@@ -194,11 +194,13 @@ flowchart LR
     T -- success --> Tag["auto-tag.yml<br/>semver tag + release"]
     GH -- "push to master<br/>(unless deploy:skip)" --> Dep["deploy.yml<br/>docker build → Artifact Registry"]
     Dep --> CR[Cloud Run]
+    GH -- "each PR" --> Prev["preview.yml<br/>fake data, separate project"]
     Bot[Dependabot] -- one weekly PR --> GH
 ```
 
 Labels on a PR choose the version bump and can skip a deploy; Dependabot
-updates never deploy on their own. → `operations/`
+updates never deploy on their own. Each PR also gets a preview URL on fake
+data (`operations/previews.md`). → `operations/`
 
 ## Deliberate limits
 

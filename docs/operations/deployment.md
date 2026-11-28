@@ -20,7 +20,9 @@ deploys.
 
 ## The image
 
-Two stages:
+Two stages build production; a third, `preview`, exists only for PR previews
+([previews.md](previews.md)), and `production` stays last so a build without
+`--target` ignores it:
 
 1. **Tailwind**: a slim Python image builds `static/css/tailwind.css` with the
    standalone Tailwind CLI (`scripts/tailwind.py`). It copies only what
@@ -86,7 +88,7 @@ secret version; running revisions keep the old one until the next deploy.
 | `POSTHOG_API_KEY`, `POSTHOG_HOST`, `POSTHOG_PERSONAL_API_KEY` | secret / env / secret | analytics; the personal key is needed for feature-flag evaluation, without it flag checks warn and no-op |
 | `GEMINI_AISTUDIO_API_KEY`, `ASSISTANT_PROVIDER`, `ASSISTANT_MODEL`, `ASSISTANT_MODEL_FALLBACK` | secret / env | AI assistant |
 | `ELEVEN_API_KEY` | secret | text-to-speech, generated on a question's first play (the web service needs it) |
-| `APP_ENV` | env, required | `development` or `production`; no default, and anything else stops startup. The service and both Cloud Run jobs set `production`; nothing is auto-detected |
+| `APP_ENV` | env, required | `development`, `production` or `preview` ([previews.md](previews.md)); no default, and anything else stops startup. The service and both Cloud Run jobs set `production`; nothing is auto-detected |
 | `CONTACT_EMAIL`, `GITHUB_REPO_URL` | env | legal-page contact line and footer link; each is left out when empty |
 | `TTS_ENABLED`, `ELEVEN_VOICE_ID`, `ELEVEN_MODEL_ID` | env | audio generation is off unless `TTS_ENABLED=true`; set it on the web service |
 | `RATELIMIT_STORAGE_URI` | env | default per-process memory |

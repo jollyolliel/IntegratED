@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # PR previews: one Cloud Run service per PR, in a separate GCP project, on synthetic data, behind IAP
@@ -41,8 +41,8 @@ No database credential is ever given to a preview. On boot the container:
 1. runs `flask db upgrade` against an empty SQLite file in `/tmp`, which
    exercises the PR's own migration chain;
 2. runs a new `flask seed-preview` command. It is deterministic (fixed RNG
-   seed) and builds on `helpers/flood.py`, `data/questions.json` and a fixed
-   list of **personas**: `learner-new` (placement not taken),
+   seed) and builds on `helpers/flood.py`, the public sample content in
+   `seed/files/` and a fixed list of **personas**: `learner-new` (placement not taken),
    `learner-midpath`, `learner-matched`, `volunteer`, `teacher`,
    `school-admin`, `admin`. Each persona has a known slug, and all names are
    generated.
@@ -59,34 +59,32 @@ preview starts from a known state.
 Prod data is never a source: no Neon branch of prod, and no restore of a
 `backups/` dump.
 
-### 3. A third app mode: `PREVIEW`, fail-closed
+### 3. A third app mode: `preview`, fail-closed
 
-`create_app()` currently has two modes, dev and deployed, and `K_SERVICE`
-alone forces deployed mode, which demands `DATABASE_URL` and GCS. Previews add
-a third mode, switched on by `INTEGRATED_PREVIEW=1`. It behaves like
-production for serving (gunicorn, image, templates) and like dev for
-infrastructure:
+`APP_ENV` names the environment, and previews add a third value, `preview`. It
+behaves like production for serving (gunicorn, image, templates) and like dev
+for infrastructure:
 
 | Concern | Preview behaviour |
 |---|---|
 | DB | SQLite in `/tmp` (step 2) |
 | `SECRET_KEY` | random per container, generated at boot. Sessions die with the container, as the data does. |
-| Worksheet storage | `LocalWorksheetStorage`. `data/worksheets/` is excluded from the image, so the seed writes synthetic markdown worksheets. |
+| Worksheet storage | `LocalBucket` in `/tmp`, filled from `seed/files/`. The image gets that folder through a named build context only its `preview` stage reads, because `.dockerignore` keeps `seed/` out of production. |
 | PostHog | off (no key), so prod analytics never see preview events |
 | Stripe | off (no key). Donation pages render, and checkout shows as unavailable rather than calling Stripe. |
 | ElevenLabs TTS | off (no key). `generate_audio` already fails soft. |
-| Google login | placeholder `GOOGLE_CLIENT_ID`/`SECRET` (they are read with `os.environ[...]`). Non-functional, and personas replace it. |
+| Google login | no client; "Sign in with Google" opens the persona hub. |
 | Teacher AI assistant | a scripted `fake` provider registered in `helpers/ai/registry.py` (the ADR 0007 seam). No LLM key. |
-| `/dev/components` | available (it already 404s only when deployed) |
+| `/dev/components` | available (it 404s only in production) |
 | Every response | a "PREVIEW · PR #N · fake data" banner, plus `X-Robots-Tag: noindex` |
 
-**Boot guard.** In preview mode the app refuses to start if any prod signal is
-present: `DATABASE_URL`, `GCS_BUCKET_NAME`, `STRIPE_SECRET_KEY`,
-`STRIPE_WEBHOOK_SECRET`, `GOOGLE_CLIENT_SECRET` other than the placeholder,
-`K_SERVICE == "integrated"`, or the prod project ID in
-`GOOGLE_CLOUD_PROJECT`. This catches the inverse mistake as well: prod
-accidentally given `INTEGRATED_PREVIEW=1` crashes on boot rather than exposing
-a login bypass. The `/_preview` blueprint is only *imported* in preview mode.
+**Boot guard.** In preview mode the app refuses to start if it is given any real
+credential (`REFUSED_IN_PREVIEW` in `settings.py`, `SECRET_KEY` and
+`DATABASE_URL` among them) or if `K_SERVICE` is set to anything but `pr-<n>` or
+`main`. An allow-list of service names needs no production id and also refuses
+services nobody thought of. This catches the inverse mistake as well: prod
+accidentally given `APP_ENV=preview` crashes on boot rather than exposing a
+login bypass. The `/_preview` blueprint is only *imported* in preview mode.
 Tests cover both directions: the guard raises, and `/_preview/*` 404s outside
 preview mode.
 
@@ -128,8 +126,8 @@ A PR author writes, in the description:
 
 ````md
 ```preview
-learner-midpath /learner/quiz
-teacher         /teacher/matching
+learner-midpath /learner/learn/subjects
+teacher         /teacher/people
 ```
 ````
 
@@ -146,8 +144,8 @@ the hub.
 
 ### 7. Backend testing: seed sizes plus a baseline preview of `master`
 
-- **Seed sizes.** `small` is the default. `large` (thousands of
-  learners/volunteers, sized for matching) is selectable from the hub by POST,
+- **Seed sizes.** `small` is the default. `large` (about two thousand
+  learners and volunteers, sized for matching) is selectable from the hub by POST,
   with fixed caps. The size can't be an arbitrary number, which keeps reseeding
   cheap and memory-bounded.
 - **Baseline.** A long-lived `main` service in the preview project is
@@ -169,12 +167,12 @@ A `pull_request` workflow runs the workflow file **from the PR's head**, so a
 PR can rewrite it. The workflow is therefore not trusted to protect anything,
 and the real limits live in Google Cloud IAM:
 
-- **Narrow the prod deployer first (prerequisite).** Today the prod deploy
-  service account trusts *every* workflow run in the repo from any branch
-  (WIF binding on `attribute.repository`, no ref condition). Before any
-  workflow that runs PR code ships, map `attribute.ref` and restrict that
-  binding to `refs/heads/master`. Better still, restrict it to the `production`
-  environment claim.
+- **Narrow the prod deployer first (prerequisite).** Bound on
+  `attribute.repository`, the prod deploy service account trusts every workflow
+  run in the repo from any branch. Before any workflow that runs PR code gets
+  credentials, that binding moves to `attribute.workflow_ref`: only
+  `deploy.yml` on `refs/heads/master`. A ref alone is not enough, because
+  `claude.yml` also requests a token and its runs carry `master`'s ref.
 - **A separate preview deployer service account.** Bound to the same pool but
   allowed for PR refs, with roles only in `integrated-preview` (deploy Cloud
   Run, push to its registry, act as the zero-role runtime account). A hijacked
@@ -197,11 +195,12 @@ The workflow itself:
 - **`teardown` job** on `closed`: deletes the service and the PR's image tags.
   A nightly scheduled sweep deletes any `pr-*` service whose PR is no longer
   open, so a failed teardown can't leave orphans.
-- Add `gha-creds-*.json` to `.dockerignore`. `google-github-actions/auth`
+- `.dockerignore` excludes `gha-creds-*.json`. `google-github-actions/auth`
   writes its credentials file into the workspace, and `COPY . .` would bake it
-  into any image built after auth. This applies to `deploy.yml` too, which
+  into any image built after auth, including `deploy.yml`'s, which
   authenticates before building.
-- A budget alert on `integrated-preview` caps runaway cost.
+- A budget alert on `integrated-preview` reports runaway cost; `--max-instances=1`
+  is what bounds it.
 
 ## Considered options
 

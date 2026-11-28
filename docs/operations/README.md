@@ -9,6 +9,7 @@ when diagnosing production.
 | Changing the image, the startup script, dependencies, env vars or secrets; deploying; reading prod logs | [deployment.md](deployment.md) |
 | Changing CI, Dependabot, the release/version or deploy-skip rules | [ci-and-releases.md](ci-and-releases.md) |
 | Running migrations in prod, backups and restores, Neon behaviour | [database.md](database.md) |
+| PR preview URLs: using them, `preview.yml`, `APP_ENV=preview`, the setup script | [previews.md](previews.md) |
 
 What happens between a container starting and a page being served ("starting
 up" page, error handlers): [../backend/request-lifecycle.md](../backend/request-lifecycle.md).
