@@ -24,7 +24,7 @@
     <section class="hero-section lp-hero">
       <div class="lp-hero-grid">
         <div>
-          <h1 class="lp-hero-title pub-display display-font font-extrabold text-ink-heading">{{ t('index.hero_title_1') }}
+          <h1 class="lp-hero-title pub-display display-font font-extrabold text-ink-heading uppercase">{{ t('index.hero_title_1') }}
             <span class="lp-mark">{{ t('index.hero_title_2') }}</span>
           </h1>
           <p class="pub-lead text-ink-body lp-hero-lead">{{ t('index.hero_lead') }}</p>
