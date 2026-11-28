@@ -56,6 +56,8 @@ def login_google():
     """Kick off Google OAuth (the client `_google()` registers on first use), or open the
     dev stand-in on a local development server. `?real=1` (the dev page's "Sign in with real
     Google" button) skips the stand-in when Google credentials are configured."""
+    if get_settings().is_preview:  # no Google client there: the persona sign-ins stand in
+        return redirect(url_for("preview.hub"))
     if is_local_dev_request():
         if not request.args.get("real"):
             return redirect(url_for("auth.dev_google_sign_in"))

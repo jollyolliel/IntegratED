@@ -1,6 +1,7 @@
-"""Dev-only component gallery (spec 02): every shared component in templates/components/, in
+"""Component gallery (spec 02): every shared component in templates/components/, in
 every allowed value, at /dev/components. The page shells are whole documents, so each renders
-on its own at /dev/components/shell/<name> and the gallery frames it. Both 404 outside development.
+on its own at /dev/components/shell/<name> and the gallery frames it. Both 404 in production
+(development and PR previews have them).
 `?lang=<code>` switches this session's UI language, as the language picker does (`?lang=ar` for RTL).
 No PostHog events and no translation keys: it is a developer tool."""
 
@@ -21,7 +22,7 @@ SHELLS = ("game", "legal", "library", "announcement", "assistant")
 
 
 def _dev_only() -> None:
-    if not get_settings().is_development:
+    if get_settings().is_production:
         abort(404)
     lang = request.args.get("lang")
     if lang in NATIVE_LANGS:

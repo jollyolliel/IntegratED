@@ -1,0 +1,68 @@
+{#- PR previews only (routes/preview/): pick a persona and a page, follow the PR's links, reset
+    the fake data. English only, no translation keys: it is a developer tool. -#}
+{#import "@components/shell/page.jx" as Page #}
+{#import "@components/shell/main.jx" as Main #}
+{#import "@components/base/field.jx" as Field #}
+{#import "@components/base/button.jx" as Button #}
+{#import "@components/base/input.jx" as Input #}
+{#def personas, links, sizes, pr="", sha="dev" #}
+<Page title="Preview - IntegratED" styles="auth">
+  <Main layout="centered" width="md">
+    <div class="auth-card p-6 md:p-10">
+      <div class="text-center mb-6">
+        <h1 class="display-font text-2xl font-extrabold text-sky-950 mb-1">
+          Preview{% if pr %} of PR #{{ pr }}{% endif %}
+        </h1>
+        <p class="text-sm text-ink-heading/65">
+          Commit <code>{{ sha }}</code>. Every account and record here is fake, and it all resets
+          on each push and after the preview has been idle.
+        </p>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+      <p role="status" class="mb-4 text-center text-sm font-bold text-sky-950">{{ message }}</p>
+      {% endfor %}
+      {% endwith %}
+
+      {% if links %}
+      <h2 class="display-font text-lg font-extrabold text-sky-950 mb-2">What this PR changed</h2>
+      <ul class="mb-6 space-y-2">
+        {% for link in links %}
+        <li class="break-all text-sm">
+          <a href="{{ link.href }}" class="font-bold text-sky-700 underline">{{ link.persona }}: {{ link.path }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      <h2 class="display-font text-lg font-extrabold text-sky-950 mb-2">Sign in as</h2>
+      <form action="{{ url_for('preview.enter') }}" method="GET" class="mb-8 space-y-3">
+        <Field label="Page to open (optional, e.g. /teacher/people)" for_id="next">
+          <Input type="text" name="next" id="next" class="w-full" autocomplete="off"
+                 placeholder="the role's dashboard" />
+        </Field>
+        {% for persona in personas %}
+        <div>
+          <Button type="submit" variant="gray" name="as" value={{ persona.slug }} class="w-full">{{ persona.slug }}</Button>
+          <p class="mt-1 text-center text-xs text-ink-heading/65">{{ persona.description }}</p>
+        </div>
+        {% endfor %}
+      </form>
+
+      <h2 class="display-font text-lg font-extrabold text-sky-950 mb-2">Reset the data</h2>
+      <form action="{{ url_for('preview.reseed') }}" method="POST" class="grid grid-cols-2 gap-3">
+        {% for name, counts in sizes.items() %}
+        <Button type="submit" variant="gray" name="size" value={{ name }} icon="arrow-path">{{ name }}</Button>
+        {% endfor %}
+        <p class="col-span-2 text-center text-xs text-ink-heading/65">
+          {% for name, counts in sizes.items() %}{{ name }}: {{ counts.learners }} learners, {{ counts.volunteers }} volunteers.
+          {% endfor %}
+          For timing, run the same size here and on the <code>main</code> preview, then compare the
+          <code>Server-Timing</code> header in your browser's network tab. The numbers are only
+          comparable with each other, never with production.
+        </p>
+      </form>
+    </div>
+  </Main>
+</Page>

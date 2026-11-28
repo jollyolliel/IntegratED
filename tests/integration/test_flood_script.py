@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 from sqlalchemy import func, select
 
+from helpers import flood as helpers_flood
 from scripts import flood
 from tests.support.app import use_environment
 
@@ -200,5 +201,5 @@ def test_a_dry_run_saves_nothing(app, db_session, school, teacher):
 def test_no_school_names_are_baked_into_the_script():
     import inspect
 
-    source = inspect.getsource(flood).lower()
+    source = (inspect.getsource(flood) + inspect.getsource(helpers_flood)).lower()
     assert "acs" not in source and "home project" not in source

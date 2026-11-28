@@ -5,6 +5,10 @@ fails at startup instead of booting production as development. Code asks which e
 is in (`settings.is_production` / `is_development`, both read off `env`), never a separate yes/no
 "deployed" flag, so a further environment can be added without every check meaning something new.
 
+`preview` serves unreviewed pull-request code (ADR 0013). It takes no credential at all and
+refuses to start beside one, so it can never reach production data, and a production service
+mistakenly given `APP_ENV=preview` crashes instead of opening its one-click sign-ins.
+
 Everything is read from the environment once, at startup, and nothing else reads `os.environ`
 for these names. None of it lives in the database, because a constant should not cost a query
 on every request.
@@ -13,6 +17,9 @@ on every request.
 from __future__ import annotations
 
 import os
+import re
+import secrets
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -21,6 +28,7 @@ __all__ = [
     "DEFAULT_ELEVEN_MODEL_ID",
     "DEFAULT_ELEVEN_VOICE_ID",
     "DEFAULT_POSTHOG_HOST",
+    "REFUSED_IN_PREVIEW",
     "Environment",
     "Settings",
     "SettingsError",
@@ -33,12 +41,29 @@ DEFAULT_POSTHOG_HOST = "https://eu.i.posthog.com"
 
 _TRUE = {"1", "true", "yes", "on"}
 
+#: Any of these means the process is wired to something real, which a preview never is.
+REFUSED_IN_PREVIEW = (
+    "SECRET_KEY",
+    "DATABASE_URL",
+    "GCS_BUCKET_NAME",
+    "GOOGLE_CLIENT_SECRET",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "POSTHOG_API_KEY",
+    "POSTHOG_PERSONAL_API_KEY",
+    "GEMINI_AISTUDIO_API_KEY",
+    "ELEVEN_API_KEY",
+)
+#: The only Cloud Run services a preview may be: one per PR, and `master`'s baseline.
+_PREVIEW_SERVICE = re.compile(r"main|pr-[0-9]+")
+
 
 class Environment(StrEnum):
     """Where the app runs. `APP_ENV` must name one of these."""
 
     DEVELOPMENT = "development"
     PRODUCTION = "production"
+    PREVIEW = "preview"
 
 
 class SettingsError(RuntimeError):
@@ -47,6 +72,16 @@ class SettingsError(RuntimeError):
 
 def _read(environ: Mapping[str, str], name: str, default: str = "") -> str:
     return environ.get(name, default).strip()
+
+
+def _refuse_real_infrastructure(environ: Mapping[str, str]) -> None:
+    """Raise if a preview is wired to anything real; the message names variables, never values."""
+    present = [name for name in REFUSED_IN_PREVIEW if _read(environ, name)]
+    if present:
+        raise SettingsError(f"APP_ENV=preview takes no credentials, but these are set: {', '.join(present)}.")
+    service = environ.get("K_SERVICE", "")
+    if service and not _PREVIEW_SERVICE.fullmatch(service):
+        raise SettingsError("APP_ENV=preview only runs as a `pr-<number>` or `main` service; K_SERVICE is neither.")
 
 
 def _require(environ: Mapping[str, str], name: str, why: str) -> str:
@@ -80,6 +115,9 @@ class Settings:
     tts_enabled: bool
     contact_email: str
     github_repo_url: str
+    preview_pr: str
+    preview_links: str
+    preview_data_dir: str
 
     @property
     def is_production(self) -> bool:
@@ -90,6 +128,11 @@ class Settings:
     def is_development(self) -> bool:
         """True when `APP_ENV=development`."""
         return self.env is Environment.DEVELOPMENT
+
+    @property
+    def is_preview(self) -> bool:
+        """True when `APP_ENV=preview`."""
+        return self.env is Environment.PREVIEW
 
     @property
     def analytics_enabled(self) -> bool:
@@ -120,9 +163,16 @@ class Settings:
                 "Set it in .env for development; production services set APP_ENV=production."
             ) from None
         production = env is Environment.PRODUCTION
+        preview = env is Environment.PREVIEW
+        if preview:
+            _refuse_real_infrastructure(environ)
         return cls(
             env=env,
-            secret_key=_require(environ, "SECRET_KEY", "it signs every session cookie"),
+            # A preview makes its own per boot: sessions die with the container, as its data does.
+            secret_key=(
+                secrets.token_hex(32) if preview
+                else _require(environ, "SECRET_KEY", "it signs every session cookie")
+            ),
             # Development signs in through /dev/google-sign-in instead (routes/auth/_oauth.py).
             google_client_id=(
                 _require(environ, "GOOGLE_CLIENT_ID", "teachers and volunteers sign in with Google")
@@ -151,9 +201,14 @@ class Settings:
             eleven_api_key=_read(environ, "ELEVEN_API_KEY"),
             eleven_voice_id=_read(environ, "ELEVEN_VOICE_ID") or DEFAULT_ELEVEN_VOICE_ID,
             eleven_model_id=_read(environ, "ELEVEN_MODEL_ID") or DEFAULT_ELEVEN_MODEL_ID,
-            tts_enabled=_read(environ, "TTS_ENABLED").lower() in _TRUE,
+            tts_enabled=not preview and _read(environ, "TTS_ENABLED").lower() in _TRUE,
             contact_email=_read(environ, "CONTACT_EMAIL"),
             github_repo_url=_read(environ, "GITHUB_REPO_URL"),
+            preview_pr=_read(environ, "PREVIEW_PR"),
+            preview_links=_read(environ, "PREVIEW_LINKS"),
+            preview_data_dir=(
+                _read(environ, "PREVIEW_DATA_DIR") or os.path.join(tempfile.gettempdir(), "integrated-preview")
+            ),
         )
 
 

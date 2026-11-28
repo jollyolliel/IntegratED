@@ -297,6 +297,21 @@ def seed_command(audio):
         _generate_audio()
 
 
+@click.command("seed-preview")
+@click.option("--size", type=click.Choice(["small", "large"]), default="small", show_default=True)
+@with_appcontext
+def seed_preview_command(size):
+    """Replace a PR preview's data with a fresh seed (APP_ENV=preview only)."""
+    from helpers.preview.seed import seed_preview
+
+    try:
+        lines = seed_preview(size)
+    except RuntimeError as error:
+        raise click.ClickException(str(error)) from error
+    for line in lines:
+        click.echo(line)
+
+
 @click.command("sync-announcements")
 @with_appcontext
 def sync_announcements_command():
@@ -390,5 +405,6 @@ def register_commands(app: Flask) -> None:
     app.cli.add_command(sync_sequences_command)
     app.cli.add_command(sync_announcements_command)
     app.cli.add_command(seed_command)
+    app.cli.add_command(seed_preview_command)
     app.cli.add_command(release_command)
     app.cli.add_command(sync_worksheets_command)

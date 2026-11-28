@@ -27,7 +27,7 @@ Translations for any new text: [../development/translations.md](../development/t
 ## Ground truth to look at instead of reading
 
 - **`/dev/components`** — the live gallery: every shared component in every
-  allowed prop value (`?lang=ar` for RTL). Local dev only.
+  allowed prop value (`?lang=ar` for RTL). Local dev and PR previews only.
 - **`helpers/clay_primitives.py`** — the registry: each component's file, its
   allowed prop values and the classes it alone may write.
 - **`tailwind.config.js`** — every colour, radius and clay-geometry token.

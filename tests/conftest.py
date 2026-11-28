@@ -20,6 +20,7 @@ pytest_plugins = [
     "tests.support.db",
     "tests.support.auth",
     "tests.support.jx",
+    "tests.support.preview",
 ]
 
 

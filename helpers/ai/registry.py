@@ -7,6 +7,7 @@ Nothing else in the app names a vendor.
 import os
 
 from helpers.ai.provider import LLMProvider, ProviderError
+from settings import get_settings
 
 DEFAULT_PROVIDER = "gemini"
 
@@ -23,7 +24,8 @@ def _builders() -> dict[str, type[LLMProvider]]:
 
 
 def get_provider(name: str | None = None) -> LLMProvider:
-    """Instantiate the configured (or requested) LLM provider.
+    """Instantiate the configured (or requested) LLM provider. A PR preview always gets the
+    scripted one: it holds no key, and no setting may point it at a real model.
 
     Args:
         name (str | None): Provider name to force; defaults to
@@ -32,6 +34,10 @@ def get_provider(name: str | None = None) -> LLMProvider:
     Returns:
         LLMProvider: A new instance of the resolved provider.
     """
+    if get_settings().is_preview:
+        from helpers.ai.scripted import ScriptedProvider
+
+        return ScriptedProvider()
     key = (name or os.environ.get("ASSISTANT_PROVIDER") or DEFAULT_PROVIDER).strip().lower()
     builders = _builders()
     if key not in builders:

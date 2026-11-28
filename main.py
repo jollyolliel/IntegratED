@@ -43,8 +43,8 @@ def sqlalchemy_database_url(url: str) -> str:
 
 def create_app(config_class=None):
     """Build and configure the Flask app: settings from `APP_ENV`, DB config
-    (Postgres in production, SQLite in development, `TEST_DATABASE_URL` for
-    tests), extension init, blueprint registration, request hooks, error
+    (Postgres in production, SQLite in development and preview,
+    `TEST_DATABASE_URL` for tests), extension init, blueprint registration, request hooks, error
     handlers, then — inside an app context — `db.create_all()` and
     development-only seeding (skipped under `TESTING_DB`). Nothing here may block on the database; see
     "Startup diagnostic logs" for why. The module-level `app` this returns
@@ -72,6 +72,12 @@ def create_app(config_class=None):
             # raises is caught below to serve the "starting up" page.
             "connect_args": {"connect_timeout": 3},
         }
+    elif settings.is_preview:
+        # Built from the settings' own folder, never from a URL, so a preview cannot be pointed
+        # at a database server.
+        os.makedirs(settings.preview_data_dir, exist_ok=True)
+        database_file = os.path.join(settings.preview_data_dir, "site.db")
+        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{database_file}"
     elif settings.test_database_url:
         # TEST_DATABASE_URL points the app at a throwaway DB for the test suite.
         # Deliberately NOT DATABASE_URL: that name is commonly a real database in
@@ -90,15 +96,20 @@ def create_app(config_class=None):
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
 
-    # Bucket: GCS in production; in development a folder with the same keys, `instance/bucket/`
-    # unless LOCAL_BUCKET_DIR names another. The test suite swaps in a throwaway one (conftest.py).
-    if settings.is_production:
+    # Bucket: GCS in production; otherwise a folder with the same keys — `instance/bucket/` in
+    # development unless LOCAL_BUCKET_DIR names another, inside the data folder in a preview.
+    # The test suite swaps in a throwaway one (conftest.py).
+    if not settings.is_development:
         # Cloud Run's front end appends the client's address to X-Forwarded-For; without this,
         # remote_addr is the proxy's, and every visitor shares one rate-limit bucket.
         from werkzeug.middleware.proxy_fix import ProxyFix
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
+    if settings.is_production:
         from helpers.storage import GCSBucket
         app.config["BUCKET"] = GCSBucket(settings.gcs_bucket_name)
+    elif settings.is_preview:
+        from helpers.storage import LocalBucket
+        app.config["BUCKET"] = LocalBucket(os.path.join(settings.preview_data_dir, "bucket"))
     else:
         from helpers.storage import LocalBucket
         app.config["BUCKET"] = LocalBucket(settings.local_bucket_dir or get_data_path("bucket"))
@@ -155,6 +166,10 @@ def create_app(config_class=None):
     app.register_blueprint(administrator_bp, url_prefix="/admin")
     app.register_blueprint(school_admin_bp)
     app.register_blueprint(assistant_bp)
+    if settings.is_preview:
+        # Imported only here: the passwordless sign-ins do not exist in any other environment.
+        from routes.preview import init_preview
+        init_preview(app)
 
     # Template Filters & Context Processors
     app.template_filter("markdown")(render_markdown)

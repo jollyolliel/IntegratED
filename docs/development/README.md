@@ -50,6 +50,7 @@ translations, and the automatic checks that will stop you.
 
 Hook output on stderr is blocking feedback: fix it in the same turn.
 
-Other scripts in `scripts/`: `flood.py` (bulk dev data for load testing),
+Other scripts in `scripts/`: `flood.py` (bulk dev data for load testing; the
+generator is `helpers/flood.py`, which preview seeding also uses),
 `list_analytics_events.py` (existing event names),
 `tailwind.py` (CSS build), and the translation tools.

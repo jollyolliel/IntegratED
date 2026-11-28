@@ -82,6 +82,11 @@ def donations_submit():
         flash("Please select a school.", "error")
         return redirect(url_for("base.donations"))
 
+    if get_settings().is_preview:
+        # English only, like the rest of the preview's own text: reviewers are its only readers.
+        flash("Checkout is unavailable in a preview. Nothing was sent to Stripe.", "error")
+        return redirect(url_for("base.donations"))
+
     capture_event(None, "donation_checkout_started", properties={
         "school": school,
         "amount": amount,

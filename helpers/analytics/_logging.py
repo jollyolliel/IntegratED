@@ -124,7 +124,7 @@ def init_logging() -> None:
     root_logger = logging.getLogger()
     if not any(isinstance(h, logging.StreamHandler) for h in root_logger.handlers):
         console_handler = logging.StreamHandler()
-        if get_settings().is_production:
+        if not get_settings().is_development:  # Cloud Run reads JSON lines
             console_handler.setFormatter(_GcpJsonFormatter())
         else:
             console_handler.setFormatter(logging.Formatter(

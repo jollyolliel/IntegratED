@@ -4,7 +4,7 @@ Layout:
   _public.py     home, schools, about, articles, legal pages, favicon
   _donations.py  donation form, Stripe checkout + webhook, record_donation_from_session
   _settings.py   account settings (profile/password/delete)
-  _dev.py        dev-only component gallery and brand preview (404 outside development)
+  _dev.py        component gallery and brand preview (404 in production)
   _dev_login.py  dev-only /dev/login-as — sign in as any user (404 outside development)
 """
 
